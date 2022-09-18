@@ -1,0 +1,3 @@
+(executable
+  (name run_shor)
+  (libraries ml unix))
