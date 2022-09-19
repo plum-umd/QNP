@@ -40,26 +40,29 @@ Definition type_cfac : Type := nat -> rz_val.
 Inductive type_phase :=  Uni.
 
 (*| Uni (b: nat -> rz_val) | DFT (b: nat -> rz_val). *)
-Inductive type_elem : Type := TNor (p : option (rz_val))
+Inductive se_type : Type := TNor (p : option (rz_val))
          | TH (r:option type_phase)
-         | CH (t:option (nat * type_cfac)).
+         | CH (t:option (nat * type_cfac))
+         | ExT (x:var) (t:(nat * type_cfac)) (t:se_type).
 
+(*
 Inductive se_type : Type := THT (n:nat) (t:type_elem).
+*)
 
 Definition type_map := list (session * se_type).
 
 Fixpoint ses_len (l:list (var * nat * nat)) :=
    match l with nil => 0 | (x,l,h)::xl => (h - l) + ses_len xl end. 
 
-Inductive subtype : se_type -> se_type -> Prop :=
-   | nor_ch_none: forall n, subtype (THT n (TNor None)) (THT n (CH None))
-   | nor_ch: forall n p, subtype (THT n (TNor (Some p))) 
-           (THT n (CH (Some (1,fun i => if i =? 0 then p else allfalse))))
-   | ch_nor: forall n b, subtype (THT n (CH (Some (1,b)))) (THT n (TNor (Some (b 0))))
-   | had_ch: forall n p, subtype (THT n (TH p)) (THT n (CH (Some ((2^n),(fun i => nat2fb i)))))
+Inductive subtype : nat -> se_type -> se_type -> Prop :=
+   | nor_ch_none: forall n, subtype n (TNor None) (CH None)
+   | nor_ch: forall n p, subtype n (TNor (Some p))
+           (CH (Some (1,fun i => if i =? 0 then p else allfalse)))
+   | ch_nor: forall n b, subtype n (CH (Some (1,b))) (TNor (Some (b 0)))
+   | had_ch: forall n p, subtype n (TH p) (CH (Some ((2^n),(fun i => nat2fb i))))
    | ch_had: forall p, p 0 = nat2fb 0 -> p 1 = nat2fb 1 -> 
-           subtype (THT 1 (CH (Some (2,p)))) (THT 1 (TH None))
-   | ch_none: forall n p, subtype (THT n (CH (Some p))) (THT n (CH None)).
+           subtype 1 (CH (Some (2,p))) (TH None)
+   | ch_none: forall n p, subtype n (CH (Some p)) (CH None).
 
 Definition join_val {A:Type} (n :nat) (r1 r2:nat -> A) := fun i => if i <? n then r1 n else r2 (i-n).
 
@@ -91,13 +94,13 @@ Definition join_ch_val (size:nat) (r1 r2:option (nat * type_cfac)) :=
                    | (_,_) => None
    end.
 
-Inductive times_type: se_type -> se_type -> se_type -> Prop :=
-  | nor_nor_to: forall n m p1 p2,
-               times_type (THT n (TNor p1)) (THT m (TNor p2)) (THT (n+m) (TNor (join_nor_val n p1 p2)))
-  | had_had_to: forall n m p1 p2,
-               times_type (THT n (TH p1)) (THT m (TH p2)) (THT (n+m) (TH (join_had_val n p1 p2)))
-  | ch_ch_to : forall n m p1 p2,
-               times_type (THT n (CH p1)) (THT m (CH p2)) (THT (n+m) (CH (join_ch_val n p1 p2))).
+Inductive times_type: nat -> se_type -> se_type -> se_type -> Prop :=
+  | nor_nor_to: forall n p1 p2,
+               times_type n (TNor p1) (TNor p2) (TNor (join_nor_val n p1 p2))
+  | had_had_to: forall n p1 p2,
+               times_type n (TH p1) (TH p2) (TH (join_had_val n p1 p2))
+  | ch_ch_to : forall n p1 p2,
+               times_type n (CH p1)  (CH p2) (CH (join_ch_val n p1 p2)).
 
 Definition split_nor_val (n:nat) (r:option rz_val) :=
    match r with None => (None,None)
@@ -110,12 +113,12 @@ Definition split_had_val (n:nat) (r:option type_phase) :=
    end.
 
 Inductive split_type: nat -> se_type -> se_type * se_type -> Prop :=
-  | nor_split: forall n m r r1 r2, split_nor_val n r = (r1,r2)
-                -> split_type n (THT (n+m) (TNor (r))) ((THT n (TNor r1)),(THT m (TNor r2)))
-  | had_split: forall n m r r1 r2, split_had_val n r = (r1,r2)
-                -> split_type n (THT (n+m) (TH (r))) ((THT n (TH r1)),(THT m (TH r2)))
-  | ch_split: forall n m num r r1 r2, join_ch_val n (Some (num,r1)) (Some(1,r2)) = (Some (num,r))
-                -> split_type n (THT (n+m) (CH (Some (num,r)))) ((THT n (CH (Some (num,r1)))),(THT m (CH (Some (1,r2))))).
+  | nor_split: forall n r r1 r2, split_nor_val n r = (r1,r2)
+                -> split_type n (TNor (r)) ((TNor r1),(TNor r2))
+  | had_split: forall n r r1 r2, split_had_val n r = (r1,r2)
+                -> split_type n (TH (r)) ((TH r1),((TH r2)))
+  | ch_split: forall n num r r1 r2, join_ch_val n (Some (num,r1)) (Some(1,r2)) = (Some (num,r))
+                -> split_type n (CH (Some (num,r))) ((CH (Some (num,r1))),(CH (Some (1,r2)))).
 
 Definition mut_nor_aux (pos n m: nat) (r : rz_val) :=
     fun i => if i <? pos then r i
@@ -134,20 +137,20 @@ Definition mut_ch (pos n m : nat) (r : option (nat * type_cfac)) :=
   match r with None => None | Some (len,ra) => Some (len, mut_ch_aux pos n m ra) end.
 
 Inductive mut_type: nat -> nat -> nat -> se_type -> se_type -> Prop :=
-  | nor_mut: forall pos n m len r,
-             mut_type pos n m (THT len (TNor (r))) (THT len (TNor (mut_nor pos n m r)))
-  | had_mut: forall pos n m len r, mut_type pos n m (THT len (TH (r))) (THT len (TH r))
-  | ch_mut: forall pos n m len r, mut_type pos n m (THT len (CH r)) (THT len (CH (mut_ch pos n m r))).
+  | nor_mut: forall pos n m r,
+             mut_type pos n m (TNor (r)) (TNor (mut_nor pos n m r))
+  | had_mut: forall pos n m r, mut_type pos n m ((TH (r))) ((TH r))
+  | ch_mut: forall pos n m r, mut_type pos n m ((CH r)) ((CH (mut_ch pos n m r))).
 
 Inductive env_equiv : type_map -> type_map -> Prop :=
      | env_empty : forall v S, env_equiv ((nil,v)::S) S
      | env_comm :forall a1 a2, env_equiv (a1++a2) (a2++a1)
      | env_ses_split: forall x n m u l v S, n < u < m -> env_equiv ((((x,n,m)::l),v)::S) ((((x,n,u)::(x,u,m)::l),v)::S)
      | env_ses_merge: forall x n m u l v S, n < u < m -> env_equiv ((((x,n,u)::(x,u,m)::l),v)::S) ((((x,n,m)::l),v)::S)
-     | env_sub: forall x v u a, subtype v u -> env_equiv ((x,v)::a) ((x,u)::a)
+     | env_sub: forall x v u a, subtype (ses_len x) v u -> env_equiv ((x,v)::a) ((x,u)::a)
      | env_mut: forall l1 l2 a b v u S, mut_type (ses_len l1) (ses_len ([a])) (ses_len ([b])) v u ->
                  env_equiv ((l1++(a::b::l2),v)::S) ((l1++(b::a::l2),u)::S)
-     | env_merge: forall x v y u a vu, times_type v u vu -> env_equiv ((x,v)::((y,u)::a)) ((x++y,vu)::a)
+     | env_merge: forall x v y u a vu, times_type (ses_len x) v u vu -> env_equiv ((x,v)::((y,u)::a)) ((x++y,vu)::a)
      | env_split: forall x y v v1 v2 a, split_type (ses_len x) v (v1,v2) -> env_equiv ((x++y,v)::a) ((x,v1)::(y,v2)::a).
 
 Inductive find_env {A:Type}: list (session * A) -> session -> option (session * A) -> Prop :=
@@ -305,16 +308,16 @@ Fixpoint build_type_par (m n v i:nat) (f acc:type_cfac) :=
     end.
 Definition build_type_pars m n v f := build_type_par m n v 0 f (fun i => allfalse).
 
-Definition build_type_ch n v (t : type_elem) := 
+Definition build_type_ch n v (t : se_type) := 
      match t with CH None => Some (CH None)
                 | CH (Some (m,f)) => match build_type_pars m n v f with (m',f') => Some (CH (Some (m', f'))) end
                 | _ => None
      end.
 
 Inductive mask_type : session -> nat -> type_map -> type_map -> Prop :=
-    mask_rule : forall l n m l1 t t' S Sa, env_equiv S ((l++l1,THT (n+m) t)::Sa) -> 
+    mask_rule : forall l n l1 t t' S Sa, env_equiv S ((l++l1,t)::Sa) -> 
               build_type_ch (ses_len l) n t = Some t'
-                      -> mask_type l n S ((l1,THT m t')::Sa).
+                      -> mask_type l n S ((l1,t')::Sa).
 
 Fixpoint build_state_par (m n v i:nat) (f acc:nat -> C * rz_val) :=
     match m with 0 => (i,acc)
