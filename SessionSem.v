@@ -32,6 +32,30 @@ Inductive simp_varia {qenv: var -> nat}: varia -> (var * nat * nat) -> Prop :=
     | aexp_sem : forall x, simp_varia (AExp (BA x)) (x,0,qenv x)
     | index_sem : forall x v, simp_varia (Index x (Num v)) (x,v,v+1).
 
+Definition add_one_ch_aux_1 (rmax m:nat) (v v' : nat -> R * rz_val * rz_val) (c:rz_val) :=
+   (fun i => if i <? m then v i else (fst (fst (v' (i-m))), n_rotate rmax c (snd (fst (v' (i-m)))), snd (v' (i-m)))).
+
+Definition add_one_ch_aux_2 (rmax m:nat) (v v' : nat -> C * rz_val) (c:rz_val) :=
+   (fun i => if i <? m then v i else (((get_amplitude rmax (1%R) c) + (fst (v' (i-m)%nat)))%C, snd (v' (i-m)))).
+
+Definition add_one_ch (rmax:nat) (v v': state_elem) (c:rz_val) := 
+   match (v,v') with (Cval m f,Cval m' f') => Some (Cval (2*m) (add_one_ch_aux_1 rmax m f f' c))
+                   | (Fval m f,Fval m' f') => Some (Fval (2*m) (add_one_ch_aux_2 rmax m f f' c))
+                   | _ => None
+   end.
+
+Definition is_core_var (b:bexp) (x:var) (n:nat) := 
+   match b with BEq a b y (Num m) => ((x = y) /\ (n = m))
+             | BLt a b y (Num m) => ((x = y) /\ (n = m))
+             | _ => False
+   end. 
+
+Definition merge_one_ch (rmax:nat) (v1 v2 v3 : state_elem) (b:bool) :=
+   match (v1,v2,v3) with (Cval m f,Cval m' f', Cval n f2)
+           => Some (Cval (n*m) (fun i => f2 i))
+                   | _ => None
+   end.
+
 Inductive qfor_sem  {qenv: var -> nat} {rmax:nat}
            : aenv -> state -> pexp -> state -> Prop :=
   | skip_sem: forall aenv s, qfor_sem aenv s PSKIP s
@@ -47,14 +71,15 @@ Inductive qfor_sem  {qenv: var -> nat} {rmax:nat}
            (@up_state rmax s ([a]) (Nval (fun j => b j 0)) s') -> qfor_sem aenv s (AppSU (RH p)) s'
   (* rewrite the tenv type for oqasm with respect to the ch list type. *)
   | appu_sem : forall aenv s a e,  qfor_sem aenv s (AppU a e) s
-  | seq_sem: forall aenv e1 e2 s s1 s2, qfor_sem aenv s e1 s1 -> qfor_sem aenv s1 e2 s2 -> qfor_sem aenv s (PSeq e1 e2) s2.
-  | if_sem : forall aenv l1 l2 b e s s', type_pexp qenv aenv e (Ses l1) -> type_bexp aenv b (Ses l2) 
-                -> qfor_sem aenv s e s'
-     (*TODO: rewrite Fval state design, instead of function, we use list. 
-        for every items in the s whose session is l1++l2, the result is 
-              s[l1++l2 |-> ori_l1 ++ if s(l1) = true then s(l2)_of_l1 update to s'; otherwise s ] *)
-           -> qfor_sem aenv s (If b e) s.
-
+  | seq_sem: forall aenv e1 e2 s s1 s2, qfor_sem aenv s e1 s1 -> qfor_sem aenv s1 e2 s2 -> qfor_sem aenv s (PSeq e1 e2) s2
+  | if_sem_1 : forall aenv l x n v v' v'' c e M M' s s' s'', type_pexp qenv aenv e (Ses l) -> add_one_ch rmax v v' (c 0) = Some v''
+                -> qfor_sem aenv (M,(l,v)::s) e (M',(l,v')::s') -> @find_state rmax (M,s) ([(x,n,S n)]) (Some (([(x,n,S n)]),Hval c))
+         -> @up_state rmax (M',s') ((x,n,S n)::l) v'' s'' -> qfor_sem aenv (M,(l,v)::s) (If (BTest x (Num n)) e) s''
+  | if_sem_2 : forall aenv l l1 b x n v v' va c v'' e M M' s s' s'', type_pexp qenv aenv e (Ses l) -> type_bexp aenv b (Ses ((x,n,S n)::l1))
+                -> merge_one_ch rmax v v' va (c 0) = Some v'' -> is_core_var b x n -> @find_state rmax (M,s) ((x,n,S n)::l1) (Some (l1,va))
+                -> @find_state rmax (M,s) ([(x,n,S n)]) (Some (([(x,n,S n)]),Nval c))
+                -> qfor_sem aenv (M,(l,v)::s) e (M',(l,v')::s')
+         -> @up_state rmax (M',s') ((x,n,S n)::l) v'' s'' -> qfor_sem aenv (M,(l,v)::s) (If b e) s''.
 
 
 

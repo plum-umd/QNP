@@ -200,7 +200,7 @@ Fixpoint turn_angle_r (rval :nat -> bool) (n:nat) (size:nat) : R :=
 Definition turn_angle (rval:nat -> bool) (n:nat) : R :=
       turn_angle_r (fbrev n rval) n n.
 
-Definition get_amplitude (rmax:nat) (n:nat) (r1:R) (r2:rz_val) : C := 
+Definition get_amplitude (rmax:nat) (r1:R) (r2:rz_val) : C := 
     r1 * Cexp (2*PI * (turn_angle r2 rmax)).
 
 Inductive state_same {rmax:nat} : nat -> state_elem -> state_elem -> Prop :=
@@ -212,7 +212,7 @@ Inductive state_same {rmax:nat} : nat -> state_elem -> state_elem -> Prop :=
    | ch_had_ssame: forall r a e1 e2, r 0 = (a,e1,nat2fb 0) -> 
             r 1 = (a,e2,nat2fb 1) -> state_same 1 (Cval 2 r) (Hval (fun i => r_n_rotate rmax e2 e1))
    | ch_fch_ssame: forall n m r, state_same n (Cval m r) 
-                (Fval m (fun i => (get_amplitude rmax (2*n) (fst (fst (r i))) (snd (fst (r i))), snd (r i)))).
+                (Fval m (fun i => (get_amplitude rmax (fst (fst (r i))) (snd (fst (r i))), snd (r i)))).
 
 Definition mut_had_state (pos n m: nat) (r : (nat -> rz_val)) :=
     fun i => if i <? pos then r i
