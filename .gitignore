@@ -1,2 +1,16 @@
 .lia.cache
 *.crashcoqide
+*.aux
+
+.DS_Store
+auto/
+*.log
+*.aux
+*.out
+*.nav
+*.toc
+*.snm
+*.bbl
+*.bcf
+*.blg
+*.xml
