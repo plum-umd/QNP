@@ -296,10 +296,6 @@ Inductive state_equiv {rmax:nat} : qstate -> qstate -> Prop :=
      | state_merge: forall x v y u a vu, @times_state rmax (ses_len x) v u vu -> state_equiv ((x,v)::((y,u)::a)) ((x++y,vu)::a)
      | state_split: forall x y v v1 v2 a, @split_state rmax (ses_len x) v (v1,v2) -> state_equiv ((x++y,v)::a) ((x,v1)::(y,v2)::a).
 
-
-Inductive find_state {rmax} : qstate -> session -> option (session * state_elem) -> Prop :=
-    | find_state_rule: forall S S' x t, @state_equiv rmax S S' -> find_env S' x t -> find_state S x t.
-
 (* partial measurement list filter.  *)
 Fixpoint build_type_par (m n v i:nat) (f acc:type_cfac) :=
     match m with 0 => (i,acc)
@@ -320,6 +316,23 @@ Inductive mask_type : session -> nat -> type_map -> type_map -> Prop :=
               build_type_ch (ses_len l) n t = Some t'
                       -> mask_type l n S ((l1,THT m t')::Sa).
 
+Fixpoint build_state_par (m n v i:nat) (f acc:nat -> C * rz_val) :=
+    match m with 0 => (i,acc)
+              | S m' => if a_nat2fb (snd (f i)) n =? v
+             then build_state_par m' n v (i+1) f (fun x => if x =? i then (fst (f i),lshift_fun (snd (f i)) n) else acc x)
+             else build_state_par m' n v i f acc
+    end.
+Definition build_state_pars m n v f := build_state_par m n v 0 f (fun i => (C0,allfalse)).
+
+Definition build_state_ch n v (t : state_elem) := 
+     match t with | Fval m f => match build_state_pars m n v f with (m',f') => Some (Fval m' f') end
+                | _ => None
+     end.
+
+Inductive mask_state {rmax:nat}: session -> nat -> qstate -> qstate -> Prop :=
+    mask_state_rule : forall l n l1 t t' S Sa, @state_equiv rmax S ((l++l1,t)::Sa) -> 
+              build_state_ch (ses_len l) n t = Some t' -> mask_state l n S ((l1,t')::Sa).
+
 (* substitution *)
 
 Fixpoint subst_aexp (a:aexp) (x:var) (n:nat) :=
@@ -333,13 +346,13 @@ Fixpoint subst_aexp (a:aexp) (x:var) (n:nat) :=
                              end
     end.
 
-Fixpoint eval_aexp (a:aexp) :=
+Fixpoint simp_aexp (a:aexp) :=
    match a with BA y => None
              | Num a => Some a
-             | APlus c d => match (eval_aexp c,eval_aexp d) with (Some v1,Some v2) => Some (v1+v2)
+             | APlus c d => match (simp_aexp c,simp_aexp d) with (Some v1,Some v2) => Some (v1+v2)
                                 | (_,_) => None
                             end
-             | AMult c d => match (eval_aexp c,eval_aexp d) with (Some v1,Some v2) => Some (v1*v2)
+             | AMult c d => match (simp_aexp c,simp_aexp d) with (Some v1,Some v2) => Some (v1*v2)
                                 | (_,_) => None
                             end
    end.
@@ -403,10 +416,27 @@ Coercion Ses : session  >-> factor.
 Module AEnv := FMapList.Make Nat_as_OT.
 Module AEnvFacts := FMapFacts.Facts (AEnv).
 Definition aenv := AEnv.t factor.
-Definition empty_benv := @AEnv.empty atype.
+Definition empty_aenv := @AEnv.empty atype.
 
-Definition stack := AEnv.t nat.
-Definition empty_stack := @AEnv.empty nat.
+Definition stack := AEnv.t (R * nat).
+Definition empty_stack := @AEnv.empty (R * nat).
+
+Definition state : Type := (stack * qstate).
+
+Definition find_cenv (l:state) (a:var) := (AEnv.find a (fst l)).
+
+Inductive find_state {rmax} : state -> session -> option (session * state_elem) -> Prop :=
+    | find_qstate_rule: forall M S S' x t, @state_equiv rmax S S' -> find_env S' x t -> find_state (M,S) x t.
+
+Inductive pick_mea {rmax:nat} : state -> var -> nat -> (R * nat) -> Prop :=
+   pick_meas : forall s x n l m b i r bl, @find_state rmax s ([(x,0,n)]) (Some (([(x,0,n)])++l, Fval m b))
+            -> 0 <= i < m -> b i = (r,bl) -> pick_mea s x n (Cmod r, a_nat2fb bl n).
+
+
+Definition update_cval (l:state) (a:var) (v: R * nat) := (AEnv.add a v (fst l),snd l).
+
+Inductive up_state {rmax:nat} : state -> session -> state_elem -> state -> Prop :=
+    | up_state_rule : forall S M M' M'' l t, @state_equiv rmax M M' -> update_env M' l t M'' -> up_state (S,M) l t (S,M'').
 
 Definition join_two_ses (a:(var * nat * nat)) (b:(var*nat*nat)) :=
    match a with (x,n1,n2) => 
@@ -514,7 +544,7 @@ Inductive Fold_all {P : (var -> nat) -> aenv -> pexp -> factor -> Prop} (qenv:va
 
 Inductive type_pexp (qenv : var -> nat) : aenv -> pexp -> factor -> Prop :=
   | pskip_fa: forall env, type_pexp qenv env (PSKIP) (Ses nil)
-  | let_fa_c : forall env x a v e t2, type_aexp env a (AType CT) -> eval_aexp a = Some v ->
+  | let_fa_c : forall env x a v e t2, type_aexp env a (AType CT) -> simp_aexp a = Some v ->
                    type_pexp qenv env (subst_pexp e x v) t2 -> type_pexp qenv env (Let x (AE a) CT e) t2
   | let_fa_1 : forall env x a e t2, type_aexp env a (AType MT) ->
                    type_pexp qenv env e t2 -> type_pexp qenv env (Let x (AE a) MT e) (union_f MT t2)
