@@ -31,9 +31,24 @@ Inductive in_session : list (var*nat*nat) -> list (var*nat*nat) -> Prop :=
      in_session_rule : forall a a' b c d, b = c++a'++d -> in_seses a a' -> in_session a b.
 
 Inductive in_ses_pos : list (var*nat*nat) -> list (var*nat*nat) -> nat * nat -> Prop :=
-   find_pos: forall a b c d, b = c++a++d -> in_ses_pos a b (length c, length c + length a).
+   find_pos_rule: forall a b c d, b = c++a++d -> in_ses_pos a b (length c, length c + length a).
 
 
+Fixpoint find_pos' (p:posi) (l:list (var*nat*nat)) (pos:nat) :=
+   match l with [] => 0
+              | (x,n,m)::xs => if (x =? fst p) && (n <=? snd p) && (snd p <? m)
+                               then (pos + (snd p) - n)
+                               else find_pos' p xs (pos + m - n)
+   end.
+Definition find_pos p l := find_pos' p l 0.
+
+Fixpoint find_range' (x:var) (l:list (var*nat*nat)) (pos : nat) :=
+   match l with [] => None
+             | (y,n,m)::xs => if x =? y
+                          then (if n =? 0 then Some (pos,pos +m) else None)
+                          else find_range' x xs (pos + m -n)
+   end.
+Definition find_range x l := find_range' x l 0.
 
 Definition type_cfac : Type := nat -> rz_val.
 
@@ -43,7 +58,7 @@ Inductive type_phase :=  Uni.
 Inductive se_type : Type := TNor (p : option (rz_val))
          | TH (r:option type_phase)
          | CH (t:option (nat * type_cfac))
-         | ExT (x:var) (t:(nat * type_cfac)) (t:se_type).
+         | ExT (t:(nat * type_cfac)) (t1:nat -> se_type).
 
 (*
 Inductive se_type : Type := THT (n:nat) (t:type_elem).
@@ -314,10 +329,22 @@ Definition build_type_ch n v (t : se_type) :=
                 | _ => None
      end.
 
-Inductive mask_type : session -> nat -> type_map -> type_map -> Prop :=
-    mask_rule : forall l n l1 t t' S Sa, env_equiv S ((l++l1,t)::Sa) -> 
-              build_type_ch (ses_len l) n t = Some t'
-                      -> mask_type l n S ((l1,t')::Sa).
+Fixpoint merge_acc' (m size n:nat) (f:type_cfac) (r:rz_val) := 
+   match m with 0 => (size+1,fun i => if i =? size then r else f i)
+             | S i => if a_nat2fb (f i) n =? a_nat2fb r n then (size,f) else merge_acc' i size n f r
+   end.
+Definition merge_acc (m n:nat) (f:type_cfac) (r:rz_val) := merge_acc' m m n f r.
+
+Fixpoint build_type_fac (m n:nat) (f:type_cfac) (acc: nat * type_cfac) :=
+    match m with 0 => acc
+              | S i => build_type_fac i n f (merge_acc (fst acc) n (snd acc) (cut_n (f i) n))
+    end.
+Definition build_type_facs (m n:nat) (f:type_cfac) := build_type_fac m n f (0,fun i => allfalse).
+
+Definition mask_type (l:session) (m n:nat) (t:type_cfac) :=
+   ExT (build_type_facs m n t) (fun v => CH (Some (build_type_pars m n v t))).
+
+
 
 Fixpoint build_state_par (m n v i:nat) (f acc:nat -> C * rz_val) :=
     match m with 0 => (i,acc)
@@ -428,6 +455,12 @@ Definition state : Type := (stack * qstate).
 
 Definition find_cenv (l:state) (a:var) := (AEnv.find a (fst l)).
 
+Inductive remove_type : type_map -> session -> type_map -> Prop :=
+   | remove_type_rule: forall S S' l v, @env_equiv S ((l,v)::S') -> remove_type S l S'.
+
+Inductive up_type : type_map -> session -> se_type -> type_map -> Prop :=
+   | up_type_rule: forall S S' l l1 v t, @env_equiv S ((l++l1,v)::S') -> up_type S l t ((l,t)::S').
+
 Inductive find_state {rmax} : state -> session -> option (session * state_elem) -> Prop :=
     | find_qstate_rule: forall M S S' x t, @state_equiv rmax S S' -> find_env S' x t -> find_state (M,S) x t.
 
@@ -440,6 +473,7 @@ Definition update_cval (l:state) (a:var) (v: R * nat) := (AEnv.add a v (fst l),s
 
 Inductive up_state {rmax:nat} : state -> session -> state_elem -> state -> Prop :=
     | up_state_rule : forall S M M' M'' l t, @state_equiv rmax M M' -> update_env M' l t M'' -> up_state (S,M) l t (S,M'').
+
 
 Definition join_two_ses (a:(var * nat * nat)) (b:(var*nat*nat)) :=
    match a with (x,n1,n2) => 
