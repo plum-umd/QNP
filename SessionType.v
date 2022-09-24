@@ -22,7 +22,8 @@ Delimit Scope pexp_scope with pexp.
 Local Open Scope pexp_scope.
 Local Open Scope nat_scope.
 
-(* Type system -- The Static Type system, and the dynamic gradual typing part will be merged with the triple rule. *)
+(* Type system -- The Static Type system, 
+   and the dynamic gradual typing part will be merged with the triple rule. *)
 
 (* Type system for oqasm. *)
 
@@ -159,54 +160,67 @@ Fixpoint cal_set' (m:nat) (n:nat) (size:nat) (c:type_cfac) (acc:nat * type_cfac)
    end.
 Definition cal_set (m n size:nat) (c:type_cfac) := cal_set' m n size c (0,fun i => allfalse).
 
+Inductive add_to_types' : type_map -> type_map -> type_map -> Prop :=
+   add_to_empty: forall T, add_to_types' T [] T
+ | add_to_many_1: forall T T' s t T1, In s (dom T) -> add_to_types' T T' T1 -> add_to_types' T ((s,t)::T') T1
+ | add_to_many_2: forall T T' s t T1, ~ In s (dom T) -> add_to_types' T T' T1 -> add_to_types' T ((s,t)::T') ((s,t)::T1).
+
+Inductive add_to_types : type_map -> type_map -> type_map -> Prop :=
+   add_to_type_rule: forall T T1 T2 T3, env_equiv T1 T2 -> add_to_types' T T2 T3 -> add_to_types T T1 T3.
+
 
 Inductive session_system {qenv: var -> nat} {rmax:nat}
-           : atype -> aenv -> type_map -> pexp -> session -> se_type -> Prop :=
-    | skip_ses : forall q env T l t, session_system q env T (PSKIP) l t
-    | assign_ses_c : forall q env x v e T l t, session_system q env T (subst_pexp e x v) l t
-                  -> session_system q env T (Let x (Num v) CT e) l t
-    | assign_ses_m1 : forall q env x a e T l t, type_aexp env a MT ->
-              session_system q (AEnv.add x (AType MT) env) T e l t -> session_system q env T (Let x a MT e) l t
-    | assign_ses_m2 : forall env x y e T T' l t, find_type T ([(y,0,qenv y)]) (Some (([(y,0,(qenv y))]),CH None)) ->
-              remove_type T ([(y,0,(qenv y))]) T' ->
-              session_system MT (AEnv.add x (AType MT) env) T' e l t -> session_system CT env T (Let x (Meas y) MT e) l t
-    | assign_ses_m3 : forall env x y e T T' la l m ta t, find_type T ([(y,0,qenv y)]) (Some ((y,0,qenv y)::la,CH (Some (m,ta)))) ->
-              up_type T la (mask_type ([(y,0,qenv y)]) m (qenv y) ta) T' ->
-              session_system MT (AEnv.add x (AType MT) env) T' e l t -> session_system CT env T (Let x (Meas y) MT e) l t
+           : atype -> aenv -> type_map -> pexp -> type_map -> Prop :=
+    | skip_ses : forall q env T, session_system q env T (PSKIP) nil
+    | assign_ses_c : forall q env x v e T T', 
+             session_system q env T (subst_pexp e x v) T'
+                  -> session_system q env T (Let x (Num v) e) T'
+    | assign_ses_m1 : forall q env x a e T T', type_aexp env a MT ->
+              session_system q (AEnv.add x (AType MT) env) T e T' -> session_system q env T (Let x a e) T'
+    | assign_ses_m2 : forall q env x n e T T',
+              session_system q (AEnv.add x (Ses ([(x,0,n)])) env) T e T' -> session_system q env T (Let x (Init n) e) T'
+    | meas_m1 : forall env x y T, find_type T ([(y,0,qenv y)]) (Some (([(y,0,(qenv y))]),CH None))
+                 -> AEnv.MapsTo x (AType MT) env -> session_system CT env T (Meas x y) nil
+    | meas_m2 : forall env x y T T' la m ta, find_type T ([(y,0,qenv y)]) (Some ((y,0,qenv y)::la,CH (Some (m,ta)))) ->
+              up_type T la (mask_type ([(y,0,qenv y)]) m (qenv y) ta) T' -> AEnv.MapsTo x (AType MT) env
+                -> session_system CT env T (Meas x y) ([(la, (mask_type ([(y,0,qenv y)]) m (qenv y) ta))])
     | appu_ses_h_nor:  forall q env T p s n, gen_ses qenv p = Some (s,n)
                   -> find_type T s (Some (s,(TNor (Some allfalse)))) ->
-                    session_system q env T (AppSU (RH p)) s ((TH (Some Uni)))
+                    session_system q env T (AppSU (RH p)) ([(s, ((TH (Some Uni))))])
     | appu_ses_h_had:  forall q env T p s n, gen_ses qenv p = Some (s,n) -> 
                  find_type T s (Some (s,(TH (Some Uni)))) ->
-                    session_system q env T (AppSU (RH p)) s ((TNor (Some allfalse)))
+                    session_system q env T (AppSU (RH p)) ([(s, ((TNor (Some allfalse))))])
     | appu_ses_h_ch:  forall q env T p s s' n b, gen_ses qenv p = Some (s,n) -> find_type T s (Some (s',(CH (Some b)))) ->
-                    session_system q env T (AppSU (RH p)) s' ((CH None))
+                    session_system q env T (AppSU (RH p)) ([(s', ((CH None)))])
     | appu_ses_qft_nor:  forall q env T x, find_type T ([(x,0,qenv x)]) (Some (([(x,0,qenv x)]),(TNor (Some allfalse)))) ->
-                    session_system q env T (AppSU (SQFT x)) ([(x,0,qenv x)]) ((TH (Some Uni)))
+                    session_system q env T (AppSU (SQFT x)) ([(([(x,0,qenv x)]), ((TH (Some Uni))))])
     | appu_ses_qft_had:  forall q env T x, find_type T ([(x,0,qenv x)]) (Some (([(x,0,qenv x)]),(TH (Some Uni)))) ->
-         session_system q env T (AppSU (SRQFT x)) ([(x,0,qenv x)]) ((TNor (Some allfalse)))
+         session_system q env T (AppSU (SRQFT x)) ([(([(x,0,qenv x)]), ((TNor (Some allfalse))))])
     | appu_ses_qft_ch:  forall q env T x b s, find_type T ([(x,0,qenv x)]) (Some (s,(CH (Some b)))) ->
-         session_system q env T (AppSU (SQFT x)) s ((CH None))
+         session_system q env T (AppSU (SQFT x)) ([(s, ((CH None)))])
     | appu_ses_ch:  forall q env T e s s' m b, type_exp qenv env e (Ses s) -> find_type T s (Some (s', (CH (Some (m,b)))))
-                -> session_system q env T (AppU s e) s' (CH (Some (m,gen_ch_set qenv b s' e)))
+                -> session_system q env T (AppU s e) ([(s', (CH (Some (m,gen_ch_set qenv b s' e))))])
     | appu_ses_ch_1:  forall q env T e s s', type_exp qenv env e (Ses s) -> find_type T s (Some (s', (CH None)))
-                -> session_system q env T (AppU s e) s' (CH (None))
+                -> session_system q env T (AppU s e) ([(s', (CH (None)))])
     | qif_ses_had : forall q env T x n e m m' s c t t', find_type T ([(x,n,S n)]) (Some (([(x,n,S n)]),TH c)) ->
-        find_type T s (Some (s,CH (Some (m,t)))) -> session_system MT env T e s (CH (Some (m',t')))
-                    -> session_system q env T (If (BTest x (Num n)) e) ((x,n,S n)::s) (CH (Some (m+m',double_type m t t')))
+        find_type T s (Some (s,CH (Some (m,t)))) -> session_system MT env T e ([(s,(CH (Some (m',t'))))])
+                    -> session_system q env T (If (BTest x (Num n)) e) ([(((x,n,S n)::s), (CH (Some (m+m',double_type m t t'))))])
     | qif_ses_ch: forall q env T a b e x n y m c s' m' c', 
            get_core_ses b = Some (x,n,S n) -> find_type T ([(x,n,S n)]) (Some ([(x,n,S n)],(TNor (Some a)))) ->
            type_bexp env b (Ses ((y,0,qenv y)::[(x,n,S n)])) -> type_pexp qenv env (If b e) (Ses ((y,0,qenv y)::s')) ->
            find_type T ((y,0,qenv y)::s') (Some ((y,0,qenv y)::s',CH (Some (m,c))))
-           -> session_system MT env T e ((y,0,qenv y)::s') (CH (Some (m',c')))
-         -> session_system q env T (If b e) ((y,0,qenv y)::((x,n,S n)::s')) (CH (Some (m', flat_type y (qenv y) b (a 0) c c')))
-    | qfor_ses_ch: forall q env T i l h b e s t, 
-        (forall v, l <= v < h -> session_system q env T (If (subst_bexp b i v) (subst_pexp e i v)) s t)
-              -> session_system q env T (For i (Num l) (Num h) b e) s t
+           -> session_system MT env T e ([((y,0,qenv y)::s',CH (Some (m',c')))])
+         -> session_system q env T (If b e) ([((y,0,qenv y)::((x,n,S n)::s'),CH (Some (m', flat_type y (qenv y) b (a 0) c c')))])
+    | qfor_ses_ch: forall q env T i l h b e T', 
+        (forall v, l <= v < h -> session_system q env T (If (subst_bexp b i v) (subst_pexp e i v)) T')
+              -> session_system q env T (For i (Num l) (Num h) b e) T'
     | amp_ses_ch: forall q env T x v s t, find_type T ([(x,0,qenv x)]) (Some (s,t)) ->
-                 session_system q env T (Amplify x (Num v)) s t
+                 session_system q env T (Amplify x (Num v)) ([(s,t)])
     | dif_ses_ch: forall q env T x s m c, find_type T ([(x,0,qenv x)]) (Some (([(x,0,qenv x)])++s,(CH (Some (m,c))))) ->
-                 session_system q env T (Diffuse (AExp (BA x))) (([(x,0,qenv x)])++s)
-                           (CH (Some (cal_set m (qenv x) (ses_len (([(x,0,qenv x)])++s)) c))).
+                 session_system q env T (Diffuse (AExp (BA x))) ([(([(x,0,qenv x)])++s,
+                           CH (Some (cal_set m (qenv x) (ses_len (([(x,0,qenv x)])++s)) c)))])
+    | pseq_ses_type: forall q env T e1 e2 T1 T2 T3 T4, session_system q env T e1 T1 -> up_types T T1 T2 ->
+                       session_system q env T2 e2 T3 -> add_to_types T3 T1 T4 ->
+                       session_system q env T (PSeq e1 e2) T4.
 
 

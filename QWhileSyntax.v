@@ -77,8 +77,10 @@ Definition meet_atype (a1 a2: atype) :=
                 | MT => a2
         end.
 
+Definition session := list (var * nat * nat).
 
-Inductive aexp := BA (x:var) | Num (n:nat) | APlus (e1:aexp) (e2:aexp) | AMult (e1:aexp) (e2:aexp).
+Inductive aexp := BA (x:var) | Num (n:nat) | MNum (r:R) (n:nat)
+         | APlus (e1:aexp) (e2:aexp) | AMult (e1:aexp) (e2:aexp) | Select (s:session) (n:aexp).
 
 Coercion BA : var >-> aexp.
 
@@ -114,9 +116,9 @@ Inductive type_rotation := TV (b:aexp) | Infty.
 
 
 (* Ethan: I don't remember what is this tuple... *)
-Definition session := list (var * nat * nat).
 
-Inductive maexp := AE (n:aexp) | Meas (a:var).
+
+Inductive maexp := AE (n:aexp) | Init (a:nat).
 
 Coercion AE : aexp >-> maexp.
 
@@ -141,9 +143,10 @@ Inductive type := Phi (b:nat) | Nor.
 Inductive single_u := RH (p:varia) | SQFT (x:var) | SRQFT (x:var).
 
 Inductive pexp := PSKIP 
-            | Let (x:var) (n:maexp) (t:atype) (e:pexp)
+            | Let (x:var) (n:maexp) (e:pexp)
               (*| InitQubit (p:posi) *) 
               (* Ethan: Init = reset = trace out = measurement... commeneted out *)
+            | Meas (x:var) (y:var)
             | AppSU (e:single_u)
             | AppU (l:session) (e:exp) 
             | PSeq (s1:pexp) (s2:pexp)

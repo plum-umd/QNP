@@ -368,23 +368,27 @@ Inductive mask_state {rmax:nat}: session -> nat -> qstate -> qstate -> Prop :=
 Fixpoint subst_aexp (a:aexp) (x:var) (n:nat) :=
     match a with BA y => if x =? y then Num n else BA y
               | Num a => Num a
+              | MNum r a => MNum r a
               | APlus c d => match ((subst_aexp c x n),(subst_aexp d x n)) with (Num q, Num t) =>  Num (q+t)
                                 | _ => APlus (subst_aexp c x n) (subst_aexp d x n) 
                              end
               | AMult c d => match ((subst_aexp c x n),(subst_aexp d x n)) with (Num q, Num t) =>  Num (q*t)
                                 | _ => AMult (subst_aexp c x n) (subst_aexp d x n) 
                              end
+              | Select s a => Select s (subst_aexp a x n)
     end.
 
 Fixpoint simp_aexp (a:aexp) :=
    match a with BA y => None
              | Num a => Some a
+              | MNum r a => None
              | APlus c d => match (simp_aexp c,simp_aexp d) with (Some v1,Some v2) => Some (v1+v2)
                                 | (_,_) => None
                             end
              | AMult c d => match (simp_aexp c,simp_aexp d) with (Some v1,Some v2) => Some (v1*v2)
                                 | (_,_) => None
                             end
+              | Select s a => None
    end.
 
 
@@ -418,13 +422,14 @@ Fixpoint subst_exp (e:exp) (x:var) (n:nat) :=
 
 Definition subst_mexp (e:maexp) (x:var) (n:nat) :=
    match e with AE a => AE (subst_aexp a x n)
-              | Meas y => Meas y
+              | Init y => Init y
    end.
 
 Check List.fold_right.
 Fixpoint subst_pexp (e:pexp) (x:var) (n:nat) :=
         match e with PSKIP => PSKIP
-                   | Let y a t e' => if y =? x then Let y (subst_mexp a x n) t e' else Let y (subst_mexp a x n) t (subst_pexp e' x n)
+                   | Let y a e' => if y =? x then Let y (subst_mexp a x n) e' else Let y (subst_mexp a x n) (subst_pexp e' x n)
+                   | Meas x y => Meas x y
                    | AppSU (RH v) => AppSU (RH (subst_varia v x n))
                    | AppSU p => AppSU p
                    | AppU l e' => AppU l (subst_exp e' x n)
@@ -461,6 +466,10 @@ Inductive remove_type : type_map -> session -> type_map -> Prop :=
 Inductive up_type : type_map -> session -> se_type -> type_map -> Prop :=
    | up_type_rule: forall S S' l l1 v t, @env_equiv S ((l++l1,v)::S') -> up_type S l t ((l,t)::S').
 
+Inductive up_types: type_map -> type_map -> type_map -> Prop :=
+   | up_type_empty: forall T, up_types T [] T
+   | up_type_many: forall T T1 T2 T3 s t, up_type T s t T1 -> up_types T1 T2 T3 -> up_types T ((s,t)::T2) T3.
+
 Inductive find_state {rmax} : state -> session -> option (session * state_elem) -> Prop :=
     | find_qstate_rule: forall M S S' x t, @state_equiv rmax S S' -> find_env S' x t -> find_state (M,S) x t.
 
@@ -488,6 +497,8 @@ Definition join_two_ses (a:(var * nat * nat)) (b:(var*nat*nat)) :=
             else None
      end
    end.
+
+Definition dom {A:Type} (l: list (session * A)) := fst (split l).
 
 Fixpoint join_ses_aux (a:(var * nat * nat)) (l:list ((var * nat * nat))) :=
      match l with [] => ([a])
@@ -519,7 +530,10 @@ Inductive type_aexp : aenv -> aexp -> factor -> Prop :=
                      type_aexp env (APlus e1 e2) (union_f t1 t2)
    | mult_type : forall env e1 e2 t1 t2, 
                    type_aexp env e1 t1 -> type_aexp env e2 t2 ->  
-                     type_aexp env (AMult e1 e2) (union_f t1 t2).
+                     type_aexp env (AMult e1 e2) (union_f t1 t2)
+   | mnum_type : forall env r n, type_aexp env (MNum r n) MT
+   | select_type : forall env s a t, type_aexp env a t ->
+                        type_aexp env (Select s a) MT.
 
 
 Inductive type_vari : aenv -> varia -> factor -> Prop :=
@@ -582,12 +596,12 @@ Inductive Fold_all {P : (var -> nat) -> aenv -> pexp -> factor -> Prop} (qenv:va
 Inductive type_pexp (qenv : var -> nat) : aenv -> pexp -> factor -> Prop :=
   | pskip_fa: forall env, type_pexp qenv env (PSKIP) (Ses nil)
   | let_fa_c : forall env x a v e t2, type_aexp env a (AType CT) -> simp_aexp a = Some v ->
-                   type_pexp qenv env (subst_pexp e x v) t2 -> type_pexp qenv env (Let x (AE a) CT e) t2
+                   type_pexp qenv env (subst_pexp e x v) t2 -> type_pexp qenv env (Let x (AE a) e) t2
   | let_fa_1 : forall env x a e t2, type_aexp env a (AType MT) ->
-                   type_pexp qenv env e t2 -> type_pexp qenv env (Let x (AE a) MT e) (union_f MT t2)
-  | let_fa_2 : forall env x y e t2, AEnv.MapsTo y (Ses ([(y,0,qenv y)])) env ->
-                   type_pexp qenv (AEnv.remove y (remove_ses_env env (y,0,qenv y))) e t2 
-                     -> type_pexp qenv env (Let x (Meas y) MT e) t2
+                   type_pexp qenv env e t2 -> type_pexp qenv env (Let x (AE a) e) (union_f MT t2)
+  | let_fa_2 : forall env x y e t2, 
+                   type_pexp qenv (AEnv.add x (Ses ([(x,0,y)])) env) e t2 
+                     -> type_pexp qenv env (Let x (Init y) e) t2
   | appsu_fa_h: forall env a x lb rb,
           type_aexp env a (Ses ([(x,lb,rb)])) -> type_pexp qenv env (AppSU (RH a)) (Ses ([(x,lb,rb)]))
   | appsu_fa_qft: forall env x s, AEnv.MapsTo x (Ses s) env
