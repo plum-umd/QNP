@@ -57,6 +57,7 @@
 
 %Language names
 
+\newcommand{\qafny}{\textsc{Qafny}\;}
 \newcommand{\name}{\textsc{vqo}\xspace}
 \newcommand{\qvm}{\textsc{qvm}\xspace}
 \newcommand{\sourcelang}{\ensuremath{\mathcal{O}\textsc{qimp}}\xspace}
@@ -106,7 +107,9 @@
 \newcommand{\interpalt}[1]{\llbracket #1 \rrbracket}
 \newcommand{\ecode}[1]{\emph{\texttt{#1}}}
 \newcommand{\cmode}{\texttt{c}}
-\newcommand{\mmode}{\texttt{q}}
+\newcommand{\qmode}{\texttt{q}}
+\newcommand{\topt}[1]{#1\;\texttt{opt}}
+\newcommand{\slen}[1]{\texttt{len}(#1)}
 % From QPL2017
 \newenvironment{nscenter}
  {\parskip=3pt\par\nopagebreak\centering}
@@ -291,7 +294,10 @@
 \newcommand{\sincr}[1]{{#1}\texttt{++}}
 \newcommand{\tnor}[1]{\texttt{Nor}~{#1}}
 \newcommand{\thad}[1]{\texttt{Had}~{#1}}
-\newcommand{\tch}[2]{\texttt{CH}~{#1}~{#2}}
+\newcommand{\tch}[1]{\texttt{CH}~{#1}}
+\newcommand{\shad}[3]{\frac{1}{\sqrt{#1}}\bigotimes_{j=0}^{#2}{(\ket{0}+#3\ket{1})}}
+\newcommand{\sch}[3]{\sum_{j=0}^{#1}{#2\ket{#3}}}
+
 \newcommand{\tpower}[1]{\mathcal{P}(#1)}
 \newcommand{\iev}[1]{\texttt{ev}(#1)}
 \newcommand{\itau}{\mathcal{T}}
@@ -397,6 +403,7 @@
 \newcommand{\denote}[1]{\llbracket #1 \rrbracket\xspace}
 %\newcommand{\pdenote}[1]{(\!| #1 |\!)}
 \newcommand{\dabs}[1]{|\!| #1 |\!|}
+\newcommand{\tos}[1]{(\!| #1 |\!)}
 \newcommand{\pdenote}[1]{\{\hspace{-0.2em}| #1 |\hspace{-0.2em}\}}
 \newcommand{\plusplus}{\mathbin{+\hspace{-0.08em}+}}
 \newcommand{\lift}[1]{\ensuremath{\lceil #1 \rceil}\xspace} 

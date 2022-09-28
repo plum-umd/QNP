@@ -6,6 +6,94 @@ As a running example, we specify Shor's algorithm and its proof in Q-Dafny in \C
 The Q-Dafny to Dafny compiler is under construction, but the compiled version of the Shor's algorithm proof has been finalized
 and can be found at \url{https://github.com/inQWIRE/VQO/blob/naturalproof/Q-Dafny/examples/Shor-compiled.dfy}.
 
+\subsection{Sessions, Kinds, Types, and States}\label{sec:state}
+
+\begin{figure}[t]
+{
+  \small
+  \[\begin{array}{llcl} 
+      \text{Bitstring} & c & \in & (0\mid 1)^{+}       \\
+      \text{Indexed bitstring set} & \overline{c}(m) & ::= & \{c_0,c_1,...,c_{m-1}\}       \\
+      \text{Nat. Num} & m, n & \in & \mathbb{N}       \\
+      \text{Real} & r & \in & \mathbb{R}\\
+      \text{Complex Number} & z & \in & \mathbb{C} \\
+      \text{Phase} & \alpha(r) & ::= & e^{2\pi i r} \\
+      \text{Program/Session Variable} & x,y \\
+      \text{Mode} & g & ::= & \cmode  \mid \qmode\\
+      \text{Classical Value} & v & ::= & n \mid (r,n)\\
+      \text{Session} & \lambda & ::= & \overline{x[n..m]} \\
+      \text{Full Mode (Kind)} & k & ::= & g \mid \lambda \\
+      \text{Option} & p \in\; \topt{'a} & ::= & 'a \mid \infty \\
+      \text{Uniform Distribution} & \bigcirc \\
+      \text{Type} & \tau & ::= & \tnor{(\topt{c})}\mid \thad{(\topt{\bigcirc})}
+                    \mid \tch{(\topt{\overline{c}(m)})} \\
+      \text{Quantum States} & q & ::= & \ket{c}\mid \shad{2^n}{n}{\alpha(r_j)} \mid \sch{m}{z_j}{c_j} \\
+    \end{array}
+  \]
+}
+  \caption{\qafny element syntax. In $\overline{c}(m)$, $\overline{c}$ is a bitstring set and $m$ is the element number, and it can be abbreviated as $\overline{c}$. Each element $x[n..m]$ in a session $\overline{x[n..m]}$ represents the range $[n,m)$ in a qubit array $x$. }
+  \label{fig:qafny-state}
+\end{figure}
+
+\begin{figure}
+{\small
+{\hspace*{-6em}
+\begin{minipage}[t]{0.4\textwidth}
+\begin{center}
+ \[
+  \begin{array}{l@{~}cl}
+  \tnor{\infty} &\sqsubseteq_n& \tch{\infty}\\
+  \tnor{c} &\sqsubseteq_n& \tch{\{c\}}\\
+  \tch{\overline{c}(1)} &\sqsubseteq_n& \tnor{\overline{c}[0]}\\
+  \thad{p} &\sqsubseteq_n& \tch{\{c(i)|i\in[0,2^n)\}(2^n)}\\
+  \tch{\{0,1\}} &\sqsubseteq_1& \thad{\infty}\\
+  \tch{p} &\sqsubseteq_n& \tch{\infty}
+    \end{array}
+  \]
+\end{center}
+\subcaption{Subtyping}
+  \label{fig:qafny-subtype}
+\end{minipage}
+\qquad
+\begin{minipage}[t]{0.45\textwidth}
+\begin{center}
+   \[
+   \begin{array}{l@{~}cl}
+  \ket{c} &\equiv_n& \sch{1}{ }{c}\\
+  \sch{1}{z_j}{c_j} &\equiv_n& \ket{c_0}\\
+  \shad{2^n}{n}{\alpha(r_j)} &\equiv_n& \sch{2^n}{\frac{\alpha(\sum_{k=0}^{n} r_k \cdot \tos{j}[k])}{\sqrt{2^n}}}{j}\\
+  \sch{2}{z_j}{c_j} &\equiv_1& \shad{2}{1}{\frac{\sqrt{2}z_1}{z_0}}\\
+   &&\qquad\texttt{when }c_0=0\;\;c_1=1
+    \end{array}
+ \]
+\end{center}
+\subcaption{State Equivalence}
+  \label{fig:qafny-sequiv}
+\end{minipage}
+  \caption{\qafny type/state relations. $\overline{c}[n]$ produces the $n$-th element in set $\overline{c}$. $\{c(i)|i\in[0,2^n)\}(2^n)$ defines a set $\{c(i)|i\in[0,2^n)\}$ with the emphasis that it has $2^n$ elements. $\{0,1\}$ is a set of two single element bitstrings $0$ and $1$. $\cdot$ is the multiplication operation, $\tos{j}$ turns a number $j$ to a bitstring, $\tos{j}[k]$ takes the $k$-th element in the bitstring $\tos{j}$, and $\ket{j}$ is an abbreviation of $\ket{\tos{j}}$.}
+  \label{fig:qafny-eq}
+}
+}
+\end{figure}
+
+The \qafny element component syntax is represented according to the grammar in \Cref{fig:qafny-state}. 
+In \qafny, there are three kinds of values, two of which are classical ones represented by the two modes: $\cmode$ and $\qmode$.
+The former represents classical values, represented as a natural number $n$, that do not intervene with quantum measurements and are evaluated in the compilation time, the latter represents values, represented as a pair $(r,n)$, produced from a quantum measurement. The real number $r$ is a characteristic representing the theoretical probability of the measurement resulting in the value $n$.
+Any classical arithmetic operation does not change $r$, i.e., $(r,n)+m=(r,n+m)$. 
+
+Quantum values are defined in terms of sessions ($\lambda$), which can be viewed as clusters of possibly entangled qubits, where the number of qubits is exactly the session length, i.e., $\slen{\overline{x[n..m]}}$.
+Each session consists of different disjoint ranges represented as $x[n..m]$ that refers the range $[n,m)$ in a quantum array named $x$.
+For simplicity, we assume that different variable names referring to different quantum arrays without aliasing.
+Each length-$n$ session is associated to a quantum state that can be one of the three forms ($q$ in \Cref{fig:qafny-state}) that are corresponding to three different types ($\tau$ in \Cref{fig:qafny-state}). The first kind of state is of \texttt{Nor} type ($\tnor{(\topt{c})}$), having the state form $\ket{c}$, which is a computational basis value. $c$ is of length $n$ and represents a tensor product of qubits, all being $0$ or $1$. The second kind of state is of \texttt{Had} type ($\thad{(\topt{\bigcirc})}$),  meaning that qubits in such session are in superposition but not entangled.
+The state form is $\shad{2^n}{n}{\alpha(r_j)}$, where $\alpha(r_j)$ is a local phase for the $j$-th qubit in the session. If $r_j=0$ for all $j$, the state can be represented by  type $\thad{\bigcirc}$ representing a uniformly distributed superposition; otherwise, we represent the type as $\thad{\infty}$. The third kind of state is of $\texttt{CH}$ type ($\tch{(\topt{\overline{c}(m)})}$), having the state form $\sch{m}{z_j}{c_j}$, referring to that qubits in such session are possibly entangled. The state $\sch{m}{z_j}{c_j}$ can be viewed as an $m$ element set of pairs $z_j\ket{c_j}$, where $z_j$ and $c_j$ are the $j$-th amplitude and basis.
+The well-formed restrictions for the state are three: 1) $\sum_{j=0}^{m}|z_j|^2=1$ ($z_j$ is a complex number); 2) length of $c_j$ is $n$ for all $j$ and $m \le 2^n$; 3) any two bases $c_j$ and $c_k$ are distinct.
+
+In \qafny, the quantum types and states are associated through bases and equational properties.
+For each quantum state $q$, especially for \texttt{Nor} type state $\ket{c}$ and \texttt{CH} type state $\sch{m}{z_j}{c_j}$, the type factors are either $\infty$ meaning no bases can be tracked, or having the form $c$ and $\overline{c}(m)$ that track the bases of the state $\ket{c}$ and $\sch{m}{z_j}{c_j}$, respectively. For \texttt{Nor} type, this means that the type factor $c$ (in $\tnor{c}$) and the state qubit format $\ket{c}$ must be equal; for \texttt{CH} type ($\tch{\overline{c}(m)}$), if the state is $\sch{m}{z_j}{c_j}$, the $j$-th element $\overline{c}[j]$ is equal to $c_j$.
+Additionally, \qafny types permit subtyping relations that correspond to state equivalent relations in \Cref{fig:qafny-eq}. 
+Both subtype relation $\sqsubseteq_n$ and state equivalence relation $\equiv_n$ are parameterized by a session length number $n$, such that they establish relations between two quantum states describing a session of length $n$.
+$\sqsubseteq_n$ in \Cref{fig:qafny-subtype} describes a type term on the left can be used as a type on the right. For example, a \texttt{Nor} type qubit array $\tnor{c}$ can be used as a single element entanglement type term $\tch{\{c\}}$ \footnote{If a qubit array only consists of $0$ and $1$, it can be viewed as an entanglement of unique possibility. }. 
+Correspondingly, state equivalence relation $\equiv_n$ describes the two state forms to be equivalent; specifically, the left state term can be used as the right one, e.g., a single element entanglement state $\sch{1}{z_j}{c_j}$ can be used as a \texttt{Nor} type state $\ket{c_0}$ with the fact that $z_0$ is now a global phase that can be neglected.
 
 \subsection{Syntax}
 \sloppy
@@ -21,12 +109,12 @@ which permits quantum control and for-loop statements.
       \text{Real} & r & \in & \mathbb{R}\\
       \text{Variable} & x,y \\
       \text{\cmode-Mode Value} & n\\
-      \text{\mmode-Mode Value} & (r,n)\\
+      \text{\qmode-Mode Value} & (r,n)\\
       \text{\oqasm Expr} & \mu\\
       \text{Session} & \zeta & ::= & \overline{(x,n,m)} \\
       \text{Type Predicate} & T & ::= & x:\tau  \mid x:\{\zeta:\tau\} \mid ...\\
       \text{State Predicate} & P,Q & ::= & x=n\mid x=(r,n)  \mid \zeta=\rho \mid ...\\
-      \text{Mode} & g & ::= & \cmode  \mid \mmode\\
+      \text{Mode} & g & ::= & \cmode  \mid \qmode\\
       \text{Mode Check Result} & q & ::= & g  \mid \zeta\\
       \text{Factor} & l & ::= & x \mid x[a] \\
       \text{Arith Expr} & p,a & ::= & l \mid a + a \mid a * a \mid ... \\
@@ -106,11 +194,11 @@ g \sqcup \zeta = \zeta
 \qquad
 \cmode \sqcup \cmode = \cmode
 \qquad
-\mmode \sqcup \cmode = \mmode
+\qmode \sqcup \cmode = \qmode
 \qquad
-\cmode \sqcup \mmode = \mmode
+\cmode \sqcup \qmode = \qmode
 \qquad
-\cmode \le \mmode \le \zeta
+\cmode \le \qmode \le \zeta
 \\[0.2em]
 \bot \uplus l = l
 \qquad 
@@ -135,7 +223,7 @@ A QWhile program consists of a sequence of C-like statements $s$.
 Values and variables (ranged by $x$ and $y$) in a statement
 are classified as three different categories: compilation time classical values, 
 classical values generated from quantum measurement, and quantum state registers.
-We use variable \textit{modes} to classify the first two kinds as \cmode and \mmode modes.
+We use variable \textit{modes} to classify the first two kinds as \cmode and \qmode modes.
 We represent \cmode-mode values as natural numbers, while $M$-mode values are represented as pairs of reals and natural numbers.
 The reals represent the conceptual occurrence probability of the result measurement,
 and the natural numbers are the measurement results.
@@ -158,12 +246,12 @@ to enhance the Shor's algorithm proof automation.
 We use $x[a]$ to represent the $a$-th position qubit in $x$.
 It is worth noting that the variable $x$ in $x[a]$ must represent quantum registers. 
 We name a variable $x$ or an array index $x[a]$ as a factor.
-In a QWhile program, \cmode and \mmode mode variables act like stack variables
+In a QWhile program, \cmode and \qmode mode variables act like stack variables
 and they must be bounded by variables introduced by \texttt{let} statements;
 while quantum registers represent arrays in a "quantum heap" and are bounded by $\Sigma$.
 
 The statements $s$ in the first row in \Cref{fig:vqimp} are \sskip (SKIP) and assignment operations.
-Classic assignment (\sexp{x}{e}{s}) evaluates $e$ and assigns the value to \cmode or \mmode mode variable $x$ that is used in $s$.
+Classic assignment (\sexp{x}{e}{s}) evaluates $e$ and assigns the value to \cmode or \qmode mode variable $x$ that is used in $s$.
 Expressions $e$ can be an arithmetic or a measurement operation.
 $\sexp{x}{\smea{y}}{...}$ assigns the measurement result of qubit array $y$ to $x$.
 $\ssassign{l}{}{op}$ and $\ssassign{\overline{l}}{}{a(\mu)}$ are quantum assignments.
@@ -255,7 +343,7 @@ In the Q-Dafny implementation section, we show how we can represent $\theta_k$ f
 
 The QWhile type system has the type judgment: $\Omega,\itau\vdash_g s : \zeta\triangleright \tau$, where $g$ is the context mode, mode environment $\Omega$ maps variables to modes or sessions ($q$ in \Cref{fig:vqimp}), type environment $\itau$ maps a session to its type, $s$ is the statement being typed, $\zeta$ is the session of $s$, and $\tau$ is $\zeta$'s type. 
 The QWhile type system in \Cref{fig:exp-sessiontype} has several tasks. First, it enforces context mode restrictions.
-Context mode $g$ is either \cmode or \mmode.
+Context mode $g$ is either \cmode or \qmode.
 $Q$ represents the current expression lives inside a quantum conditional or loop, while \cmode refers to other cases.
 In a $Q$ context, one cannot perform $M$-mode operations, i.e., no measurement is allowed.
 There are other well-formedness enforcement. For example,
@@ -367,7 +455,7 @@ This concept is important for generating auto-proof, which will be discussed in 
     \inferrule[TMEA]{ \Omega \vdash y:\zeta \\ n'=\size{\zeta'}
      \\ m' = \texttt{size}(\{\overline{c'}|\overline{c}\cdot\overline{c'}\in\beta\cdot\beta'\wedge \overline{c}=\texttt{val}(x)\})
 \\\\
-           \Omega[x\mapsto \mmode],\itau[\zeta' \mapsto \ttype{n'}{\tch{m'}{\{\overline{c'}|\overline{c}\cdot\overline{c'}\in\beta\cdot\beta'\wedge \overline{c}=\texttt{val}(x)\}}}]\vdash_{\cmode} s : \zeta''\triangleright  \tau}{\Omega,\itau[\zeta\uplus \zeta'\mapsto \ttype{n}{\tch{m}{(\beta\cdot\beta')}} ] \vdash_{\cmode} \sexp{x}{\smea{y}}{s} : \zeta'' \triangleright \tau }
+           \Omega[x\mapsto \qmode],\itau[\zeta' \mapsto \ttype{n'}{\tch{m'}{\{\overline{c'}|\overline{c}\cdot\overline{c'}\in\beta\cdot\beta'\wedge \overline{c}=\texttt{val}(x)\}}}]\vdash_{\cmode} s : \zeta''\triangleright  \tau}{\Omega,\itau[\zeta\uplus \zeta'\mapsto \ttype{n}{\tch{m}{(\beta\cdot\beta')}} ] \vdash_{\cmode} \sexp{x}{\smea{y}}{s} : \zeta'' \triangleright \tau }
 
     \inferrule[TA-CH]{ \Omega \vdash \overline{l}:\zeta \\ \zeta' = \zeta\uplus\zeta_r \\ }{\Omega,\itau[\zeta' \mapsto \ttype{n}{\tch{k}{\beta}}] \vdash_g \ssassign{\overline{l}}{}{a} :\zeta' \triangleright \ttype{n}{\tch{k}{\{\overline{d'}\cdot\overline{d_r} \;|\;\overline{d}\cdot\overline{d_r}\in \beta(\downarrow\zeta)\cdot \beta(\downarrow\zeta_r)
 \wedge \llbracket a \rrbracket\ket{\overline{d}}=\alpha\ket{\overline{d'}} \}}} }
@@ -385,7 +473,7 @@ This concept is important for generating auto-proof, which will be discussed in 
 
     \inferrule[TIF]{ \Omega\vdash b(@x[v]) : \zeta \\ \itau(\zeta)=\ttype{n}{\tch{k}{(\beta_1\cdot 0 \cup \beta_2\cdot 1)}} 
    \\\\ \zeta \cupdot \zeta' \\ \texttt{last}(\zeta)=(x,v,v+1)
-     \\ \Omega,\itau \vdash_{\mmode} s :\zeta' \triangleright \ttype{n'}{\tch{k'}{\beta'}} }{\Omega,\itau[\zeta\mapsto \ttype{n}{\tch{k}{\beta}}] \vdash_g \sifq{x[v]}{s} : \zeta\uplus\zeta' \triangleright \ttype{n+n'}{\tch{(k\times k')}{
+     \\ \Omega,\itau \vdash_{\qmode} s :\zeta' \triangleright \ttype{n'}{\tch{k'}{\beta'}} }{\Omega,\itau[\zeta\mapsto \ttype{n}{\tch{k}{\beta}}] \vdash_g \sifq{x[v]}{s} : \zeta\uplus\zeta' \triangleright \ttype{n+n'}{\tch{(k\times k')}{
 (\beta_1\cdot 0 \cdot \beta' \cup \beta_2\cdot 1 \cdot \beta')}} }
 
     \inferrule[TLOOP]{ v_1 \le v < v_2 \\ \Omega \vdash f(v):\cmode \\ \Omega\vdash b(@x[v]) : \zeta(v) \\ \zeta(v) \cupdot \zeta'(v) \\ \texttt{last}(\zeta)=(x,v,v+1)
@@ -540,7 +628,7 @@ depending on the session data structures, the $\texttt{size}$ can be computed ef
   \\ v < m \\
    \Omega[x\mapsto M,y\mapsto \bot]\vdash_{\cmode} \fivepule{T''}{P[(\iasa{2}{\zeta[v]},\ibs{\zeta[v]}) /x, \bot / \zeta] } {s} {T'}{Q} } {\Omega\vdash_{\cmode}\fivepule{T}{P}{\sexp{x}{\smea{y}}{s}}{T'}{Q}}
 
-    \inferrule[P-IF ]{(\itau,\itau')\models_{\mmode} (T,s,T'):\zeta'\triangleright \ttype{n'}{\tch{m'}{\beta'}}
+    \inferrule[P-IF ]{(\itau,\itau')\models_{\qmode} (T,s,T'):\zeta'\triangleright \ttype{n'}{\tch{m'}{\beta'}}
       \\\Omega\vdash b(@x[v]): \zeta\uplus[(x,v,v+1)] \\ \itau(\zeta\uplus[(x,v,v+1)])= \ttype{n}{\tch{2m}{(\beta_1\cdot 0 \cup \beta_2\cdot 1)}}
        }{\Omega\vdash_{g}\fivepule{T}{P[(\zeta\uplus 0 \uplus \zeta')\texttt{++}(\zeta\uplus 1 \uplus \llbracket s \rrbracket\zeta') /\zeta\uplus[(x,v,v+1)]\uplus\zeta'] }
       {\sifq{b(@x[v])}{s}}{T'}{P}}
