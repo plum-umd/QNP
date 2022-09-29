@@ -289,8 +289,9 @@
 \newcommand{\sifq}[2]{\texttt{if}~{(#1)}~{\{#2\}}}
 \newcommand{\sifb}[3]{\texttt{if}~{(#1)}~{#2}~\texttt{else}~{#3}}
 \newcommand{\swhile}[3]{\texttt{while}~{(#1)}~{#2}~{\{#3\}}}
-\newcommand{\sqwhile}[7]{\texttt{for}~{(#1~;~#2~;~#3~;~#4)}~{#5}~{#6}~{\{#7\}}}
-\newcommand{\sinit}[2]{\texttt{int}~{#1}~=~{#2}}
+\newcommand{\sqwhile}[5]{\texttt{for}~{(#1;~#2~\&\&~#3~;~#4)}~{\{#5\}}}
+\newcommand{\sinit}[1]{\texttt{init}~{#1}}
+\newcommand{\sint}[2]{\texttt{int}~{#1}:={#2}}
 \newcommand{\sincr}[1]{{#1}\texttt{++}}
 \newcommand{\tnor}[1]{\texttt{Nor}~{#1}}
 \newcommand{\thad}[1]{\texttt{Had}~{#1}}
@@ -314,10 +315,13 @@
 \newcommand{\sassign}[4]{{#1} \leftarrow {#3}~{#2}~{#4}}
 \newcommand{\ssassign}[3]{{#1} \xleftarrow{#2} {#3}}
 \newcommand{\sand}[2]{{#1}~{\&\&}~{#2}}
-\newcommand{\samplify}[1]{\texttt{amplify}\{#1\}}
+\newcommand{\samp}[1]{\texttt{amp}(#1)}
 \newcommand{\sreflect}[1]{\texttt{reflect}\{#1\}}
+\newcommand{\sdis}{\texttt{dis}}
+\newcommand{\samplify}[1]{\texttt{amplify}\{#1\}}
 \newcommand{\sdistr}[1]{\texttt{diffuse}(#1)}
 \newcommand{\smea}[1]{\texttt{measure}(#1)}
+\newcommand{\sret}[1]{\texttt{ret}(#1)}
 \newcommand{\size}[1]{\texttt{size}(#1)}
 
 \newcommand{\sfor}[3]{\texttt{for}~{#1}~{#2}~{#3}}
@@ -348,6 +352,7 @@
 \newcommand{\ihval}[3]{\instthree{Hval}{#1}{#2}{#3}}
 \newcommand{\iqval}[2]{\insttwo{Qval}{#1}{#2}}
 \newcommand{\itext}[1]{\texttt{#1}}
+
 
 \newcommand{\iassign}[2]{{#1}\leftarrow{#2}}
 \newcommand{\iread}[1]{\texttt{read}{(#1)}}
@@ -405,7 +410,8 @@
 \newcommand{\dabs}[1]{|\!| #1 |\!|}
 \newcommand{\tos}[1]{(\!| #1 |\!)}
 \newcommand{\pdenote}[1]{\{\hspace{-0.2em}| #1 |\hspace{-0.2em}\}}
-\newcommand{\plusplus}{\mathbin{+\hspace{-0.08em}+}}
+\newcommand{\dplus}[1]{\texttt{++}#1}
+\newcommand{\dminus}[1]{\texttt{-\hspace{0.1em}-}#1}
 \newcommand{\lift}[1]{\ensuremath{\lceil #1 \rceil}\xspace} 
 \newcommand{\opsem}[3]{\ensuremath{#1 \; / \; #2 \Downarrow#3}\xspace}
 \newcommand{\unit}[1]{\ensuremath{\keyfont{Unit} \; #1}\xspace} 

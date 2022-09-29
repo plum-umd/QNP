@@ -45,7 +45,7 @@ and can be found at \url{https://github.com/inQWIRE/VQO/blob/naturalproof/Q-Dafn
   \tnor{\infty} &\sqsubseteq_n& \tch{\infty}\\
   \tnor{c} &\sqsubseteq_n& \tch{\{c\}}\\
   \tch{\overline{c}(1)} &\sqsubseteq_n& \tnor{\overline{c}[0]}\\
-  \thad{p} &\sqsubseteq_n& \tch{\{c(i)|i\in[0,2^n)\}(2^n)}\\
+  \thad{p} &\sqsubseteq_n& \tch{\{\tos{j}|j\in[0,2^n)\}(2^n)}\\
   \tch{\{0,1\}} &\sqsubseteq_1& \thad{\infty}\\
   \tch{p} &\sqsubseteq_n& \tch{\infty}
     \end{array}
@@ -70,7 +70,7 @@ and can be found at \url{https://github.com/inQWIRE/VQO/blob/naturalproof/Q-Dafn
 \subcaption{State Equivalence}
   \label{fig:qafny-sequiv}
 \end{minipage}
-  \caption{\qafny type/state relations. $\overline{c}[n]$ produces the $n$-th element in set $\overline{c}$. $\{c(i)|i\in[0,2^n)\}(2^n)$ defines a set $\{c(i)|i\in[0,2^n)\}$ with the emphasis that it has $2^n$ elements. $\{0,1\}$ is a set of two single element bitstrings $0$ and $1$. $\cdot$ is the multiplication operation, $\tos{j}$ turns a number $j$ to a bitstring, $\tos{j}[k]$ takes the $k$-th element in the bitstring $\tos{j}$, and $\ket{j}$ is an abbreviation of $\ket{\tos{j}}$.}
+  \caption{\qafny type/state relations. $\overline{c}[n]$ produces the $n$-th element in set $\overline{c}$. $\{\tos{j}|j\in[0,2^n)\}(2^n)$ defines a set $\{\tos{j}|j\in[0,2^n)\}$ with the emphasis that it has $2^n$ elements. $\{0,1\}$ is a set of two single element bitstrings $0$ and $1$. $\cdot$ is the multiplication operation, $\tos{j}$ turns a number $j$ to a bitstring, $\tos{j}[k]$ takes the $k$-th element in the bitstring $\tos{j}$, and $\ket{j}$ is an abbreviation of $\ket{\tos{j}}$.}
   \label{fig:qafny-eq}
 }
 }
@@ -86,7 +86,7 @@ Each session consists of different disjoint ranges represented as $x[n..m]$ that
 For simplicity, we assume that different variable names referring to different quantum arrays without aliasing.
 Each length-$n$ session is associated to a quantum state that can be one of the three forms ($q$ in \Cref{fig:qafny-state}) that are corresponding to three different types ($\tau$ in \Cref{fig:qafny-state}). The first kind of state is of \texttt{Nor} type ($\tnor{(\topt{c})}$), having the state form $\ket{c}$, which is a computational basis value. $c$ is of length $n$ and represents a tensor product of qubits, all being $0$ or $1$. The second kind of state is of \texttt{Had} type ($\thad{(\topt{\bigcirc})}$),  meaning that qubits in such session are in superposition but not entangled.
 The state form is $\shad{2^n}{n}{\alpha(r_j)}$, where $\alpha(r_j)$ is a local phase for the $j$-th qubit in the session. If $r_j=0$ for all $j$, the state can be represented by  type $\thad{\bigcirc}$ representing a uniformly distributed superposition; otherwise, we represent the type as $\thad{\infty}$. The third kind of state is of $\texttt{CH}$ type ($\tch{(\topt{\overline{c}(m)})}$), having the state form $\sch{m}{z_j}{c_j}$, referring to that qubits in such session are possibly entangled. The state $\sch{m}{z_j}{c_j}$ can be viewed as an $m$ element set of pairs $z_j\ket{c_j}$, where $z_j$ and $c_j$ are the $j$-th amplitude and basis.
-The well-formed restrictions for the state are three: 1) $\sum_{j=0}^{m}|z_j|^2=1$ ($z_j$ is a complex number); 2) length of $c_j$ is $n$ for all $j$ and $m \le 2^n$; 3) any two bases $c_j$ and $c_k$ are distinct.
+The well-formed restrictions for the state are three: 1) $\sum_{j=0}^{m}|z_j|^2=1$ ($z_j$ is a complex number); 2) length of $c_j$ is $n$ for all $j$ and $m \le 2^n$; 3) any two bases $c_j$ and $c_k$ are distinct if $j \neq k$.
 
 In \qafny, the quantum types and states are associated through bases and equational properties.
 For each quantum state $q$, especially for \texttt{Nor} type state $\ket{c}$ and \texttt{CH} type state $\sch{m}{z_j}{c_j}$, the type factors are either $\infty$ meaning no bases can be tracked, or having the form $c$ and $\overline{c}(m)$ that track the bases of the state $\ket{c}$ and $\sch{m}{z_j}{c_j}$, respectively. For \texttt{Nor} type, this means that the type factor $c$ (in $\tnor{c}$) and the state qubit format $\ket{c}$ must be equal; for \texttt{CH} type ($\tch{\overline{c}(m)}$), if the state is $\sch{m}{z_j}{c_j}$, the $j$-th element $\overline{c}[j]$ is equal to $c_j$.
@@ -96,71 +96,68 @@ $\sqsubseteq_n$ in \Cref{fig:qafny-subtype} describes a type term on the left ca
 Correspondingly, state equivalence relation $\equiv_n$ describes the two state forms to be equivalent; specifically, the left state term can be used as the right one, e.g., a single element entanglement state $\sch{1}{z_j}{c_j}$ can be used as a \texttt{Nor} type state $\ket{c_0}$ with the fact that $z_0$ is now a global phase that can be neglected.
 
 \subsection{Syntax}
-\sloppy
-QWhile is a high-level language for describing quantum programs,
-which permits quantum control and for-loop statements.
-\Cref{fig:vqimp} introduces the QWhile syntax. 
 
 \begin{figure}[t]
 {
   \small
   \[\begin{array}{llcl} 
-      \text{Nat. Num} & m, n & \in & \mathbb{N}       \\
-      \text{Real} & r & \in & \mathbb{R}\\
-      \text{Variable} & x,y \\
-      \text{\cmode-Mode Value} & n\\
-      \text{\qmode-Mode Value} & (r,n)\\
       \text{\oqasm Expr} & \mu\\
-      \text{Session} & \zeta & ::= & \overline{(x,n,m)} \\
-      \text{Type Predicate} & T & ::= & x:\tau  \mid x:\{\zeta:\tau\} \mid ...\\
-      \text{State Predicate} & P,Q & ::= & x=n\mid x=(r,n)  \mid \zeta=\rho \mid ...\\
-      \text{Mode} & g & ::= & \cmode  \mid \qmode\\
-      \text{Mode Check Result} & q & ::= & g  \mid \zeta\\
-      \text{Factor} & l & ::= & x \mid x[a] \\
-      \text{Arith Expr} & p,a & ::= & l \mid a + a \mid a * a \mid ... \\
-      \text{Bool Expr} & b & ::= & x[a] \mid (a = a) @ x[a] \mid (a < a) @ x[a] \mid \neg b  ... \\
+      \text{Parameter} & l & ::= & x \mid x[a] \\
+      \text{Arith Expr} & a & ::= & x \mid n \mid (r,n) \mid a + a \mid a * a \mid ... \\
+      \text{Bool Expr} & b & ::= & x[a] \mid (a = a) @ x[a] \mid (a < a) @ x[a] \mid \neg b \mid ... \\
       \text{Gate Expr} & op & ::= & \texttt{H} \mid \iqft[\lbrack -1 \rbrack]{}{} \\
-      \text{C/M Moded Expr}& e & ::= & a \mid \smea{y}  \\
-      \text{Statement} & s & ::= & \sskip \mid \sexp{x}{e}{s} \mid  \ssassign{l}{}{op} \mid \ssassign{\overline{l}}{}{a(\mu)} 
+      \text{C/M Moded Expr}& e & ::= & a \mid \sinit{a} \mid \smea{y}  \\
+                           && \mid & \textcolor{red}{\sret{(y,(r,n))}} \\
+      \text{Statement} & s & ::= & \sskip \mid \sexp{x}{e}{s} \mid  \ssassign{l}{}{op} \mid \ssassign{\lambda}{}{\mu} 
                                  \\ & & \mid & \sseq{s}{s} \mid \sifq{b}{s} \mid
-                                     \sqwhile{\sinit{i}{a_1}}{i<a_2}{b(i)}{f(i)}{T(i)}{P(i)}{s}
-                     \\&&\mid & \samplify{\ssassign{x}{}{a}}
-                      \mid \sdistr{l}
+                                     \sqwhile{\sint{i}{a_1}}{i<a_2}{b}{\odot \;i}{s}
+                     \\&&\mid & \ssassign{x}{}{\samp{a}}
+                      \mid \ssassign{l}{}{\sdis}
     \end{array}
   \]
 }
-{\footnotesize
-\[
-\begin{array}{l}
-\rho \text{: Quantum States see \Cref{fig:vqir-state}}
-\end{array}
-\]
-}
-  \caption{Core QWhile Syntax, \oqasm Syntax is in \Cref{fig:vqir}}
+  \caption{Core \qafny syntax. \oqasm is in \Cref{sec:vqir}. For an operator \texttt{OP}, $\texttt{OP}^{\lbrack -1 \rbrack}$ indicates that the operator has a built-in inverse available. Arithmetic expressions are only used for classical operations, while Boolean expressions are used for both classical and quantum operations. $\odot \;i$ is either $\dplus{i}$ or $\dminus{i}$. $x[a]$ represents the $a$-th element in the qubit array $x$, while a quantum variable $x$ represents the whole qubit array. }
   \label{fig:vqimp}
 \end{figure}
 
-\begin{figure}[t]
-  \small
-  \[\hspace*{-0.5em}
-\begin{array}{l>{$} p{1.2cm} <{$} c l}
-      \text{Bit} & d & ::= & 0 \mid 1 \\
-      \text{BitString} & \overline{d} & ::= & \mathbb{N} \to d \\
-      \text{BitString Indexed Set} & \beta & ::= & \{\overline{d} \} \mid \infty \\
-      \text{Phase Type} & w & ::= & \bigcirc \mid \infty \\
-      \text{Type Element} & t & ::= & \tnor{\overline{d}} \mid \thad{w} \mid \tch{n}{\beta}\\
-      \text{Type} & \tau & ::= & \ttype{n}{t}\\
-      \text{Phase} & \alpha(n) & := & e^{2\pi i \frac{1}{n}} \\
-      \text{Amplitude} & \theta & := & r \\
-      \text{Phi State} & \qket{n} & := & \frac{1}{\sqrt{2}} (\ket{0}+\alpha(n)\ket{1}) \\
-      \text{Quantum State} & \rho & ::= & \alpha\ket{\overline{d}}\mid \Motimes_{k=0}^{m}\ket{\Phi(n_k)}
-                                         \mid \sum_{k=0}^{m}\theta_k\ket{\overline{d_k}}
-    \end{array}
-  \]
-  \caption{QWhile Sessions and Types and Quantum States}
-  \label{fig:vqir-state}
-\end{figure}
+The \qafny program operations in \Cref{fig:vqimp} are designed based on separations of different functionality instead of quantum gates in many other languages. A program consists of a sequence of C-like statements $s$.
+The first row in \Cref{fig:vqimp} are the classical and quantum data-flow operations.
+$\sskip$ is a SKIP operation. The let operation ($\sexp{x}{e}{s}$) introduces a new variable $x$ with its initial value defined $e$ and used in $s$. If $e$ is an arithmetic expression ($a$), it introduces a $\cmode$ or $\qmode$ classical variable. For simplicity, we assume that we only interacts a $\qmode$ value with a $\cmode$ one in a binary arithmetic operation, i.e., the $(r_1,n_1)+(r_2,n_2)$ is disallowed in \qafny. $\sexp{x}{\sinit{a}}{s}$ initializes an $a$-length qubit array named $x$ with the value $\ket{0}^{\otimes a}$ \footnote{$\ket{0}^{\otimes n}$ means $\ket{\underbrace{00...0}_\text{n}}$.}, and is used in statement $s$, while
+$\sexp{x}{\smea{y}}{s}$ measures quantum qubit array $y$, stores the result in $x$ an $a$-length qubit array named $x$ and is used in $s$.
+The measurement turns the expression $\smea{y}$ to a ghost expression $\sret{(y,(r,n))}$, which does not appear in a \qafny source program but appears during semantic evaluation, and it records the intermediate measurement result of qubit array $y$ as $(r,n)$.
+$\ssassign{l}{}{op}$ is a quantum state preparation operation that prepares superposition of quantum qubits $l$ through Hadamard gates $\texttt{H}$ or $\texttt{QFT}$ gates. It is also used to transform quantum qubit states by a $\texttt{QFT}^{-1}$ gate in the end of the quantum phase estimation algorithm. 
+We only permit $op$ to be \texttt{H} and $\iqft[\lbrack -1 \rbrack]{}{}$ gates.
+The other gate applications are done through $\ssassign{\lambda}{}{\mu}$ that performs quantum oracle computation, such as quantum arithmetic operation. While let operation only performs classical arithmetic computation, quantum oracle arithmetic operation is performed through \oqasm expressions \cite{oracleoopsla}, which can be used to define most reversible arithmetic operations such as the ones in \Cref{fig:vqimp}. 
+For example, the Shor's algorithm implementation in \Cref{fig:shorexample} utilizes the modulo multiplication operation $a^(2^i) * y mod N$ on qubit array $y$, which can be expressed as an \oqasm circuit.
+A syntactic restriction is placed on $\ssassign{\lambda}{}{\mu}$, such that the session $\lambda$ represents the exact quantum qubits mentioned in expression $\mu$. 
 
+The second row of statements in \Cref{fig:vqimp} are control-flow operations.
+$\sseq{s_1}{s_2}$ is a sequential operation.
+$\sifq{b}{s}$ is a conditional and $b$ might contain quantum parameter.
+Every quantum parameter $l$ appearing in $b$ must not appear in $s$.
+In the \qafny type system, we define a \texttt{well\_formed} predicate to check such property.
+Apparently, quantum gate applications are essentially reversible. The reversibility requires that a Boolean equality and inequality expression to be written as $(a_1 = a_2) @ x[a]$ and $(a_1 < a_2) @ x[a]$, respectively; where we have an additional bit $x[a]$ to hold the result of computing $a_1=a_2$ or $a_1<a_2$.
+$\sqwhile{\sint{i}{a_1}}{i<a_2}{b}{\odot \;i}{s}$ is a possibly quantum for-loop depending on if the Boolean guard $b$ contains quantum parameters.
+A classical variable $i$ is introduced and it is initialized as the lower bound $a_1$, increments/decrements in each loop step defined by 
+a monotonic function $\odot \;i$, and ends at the upper bound $a_2$.
+For simplicity, we require $\odot \;i$ to be either $\dplus{i}$ or $\dminus{i}$.
+
+The last row contains quantum reflection operations, including quantum amplifier ($\ssassign{x}{}{\samp{a}}$) and diffusion operation ($\ssassign{l}{}{\sdis}$), which are used to increase and average the occurrence likelihood of some quantum bases in a quantum state, respectively. For example, if a session $x[0,n]\uplus \lambda$ \footnote{$\uplus$ is the session and bitstring concatenation operation.} has a \texttt{CH} type state $\sch{m}{z_j}{c_j}$, $c_k=\tos{a}\uplus c$, and $\slen(\tos{a})=n$; $\ssassign{x}{}{\samp{a}}$ then increases the amplitude $z_k$ for $c_k$.
+%For example, in Grover's search algorithm \cite{grover1996},
+%the Grover's diffusion operation is a quantum reflection
+%that increases the occurrence probability of a target quantum state in a qubit array being in superposition.
+%We identify two kinds of quantum reflections that previous works tent to combine together.
+%The first one is an amplifier ($\samplify{\ssassign{x}{}{a}}$)
+%that amplifies the occurrence probability of the target state,
+%which is represented by a classical value $a$,
+%in a quantum qubit array $x$.
+%The second one is a diffusion operator ($\sdistr{x}$)
+%that diffuses the state of a qubit array $x$ to a superposition of 
+%all possible bases in $x$ with possibly different amplitudes \footnote{The possible bases do not depend on $x$'s state, and it is only related to the qubit size of $x$; i.e., if $x$ is a two qubit array, then the operation reflects the superposition of all possible two qubit states as: $\frac{1}{2}(\ket{00}+\ket{01}+\ket{10}+\ket{11})$.  }.
+%For example, applying the diffusion operator on a two-qubit array $x$ having state $\ket{00}$
+%results in a superposition of $-\frac{1}{2}\ket{00}+\frac{1}{2}\ket{01}+\frac{1}{2}\ket{10}+\frac{1}{2}\ket{11}$.
+%In general, if an $n$-qubit array $x$ has the state $\sum_{j=0}\alpha_j\ket{x_j}$,
+%the result of applying a diffusion operator is $\frac{1}{2^{n}}(2\sum_{i=0}^{2^n}(\sum_{j=0}\alpha_j)\ket{i} - %\sum_{j=0}\alpha_j\ket{x_j})$.
 
 \begin{figure}[t]
 {\Small
@@ -218,86 +215,6 @@ l \uplus \bot = l
   \caption{Arith, Bool, Gate Mode Checking}
   \label{fig:exp-well-typed}
 \end{figure}
-
-A QWhile program consists of a sequence of C-like statements $s$.
-Values and variables (ranged by $x$ and $y$) in a statement
-are classified as three different categories: compilation time classical values, 
-classical values generated from quantum measurement, and quantum state registers.
-We use variable \textit{modes} to classify the first two kinds as \cmode and \qmode modes.
-We represent \cmode-mode values as natural numbers, while $M$-mode values are represented as pairs of reals and natural numbers.
-The reals represent the conceptual occurrence probability of the result measurement,
-and the natural numbers are the measurement results.
-Any further arithmetic operations on $M$-mode values are applied on the measurement results,
-such as $(r,n_1)+n_2=(r,n_1+n_2)$.
-
-Quantum registers refer to quantum qubit arrays in QWhile.
-They are always associated with disjoint sets of qubit array fragments, named \textit{sessions}.
-We represent a qubit array fragment as $(x,n,m)$, where $x$ is a variable representing a qubit array, $n$ is the start position in $x$ for the array fragment and $m$ is the exclusive ending point.
-In \Cref{fig:shorexample}, an example array fragment for \code{x} is \code{x[0..i]}.
-\code{y} is an abbreviation of array fragment \code{y[0..n]} where \code{n} is the ending point of array \code{y}.
-\code{(y,x[0..i])} is a session containing two array fragments.
-It is worth noting that the ordering of fragments in a session only 
-serves for recording the qubit positions in a quantum register.
-The swapping of fragment ordering does not affect the register state.
-In Q-Dafny, the fragment ordering might affect the property proof automation.
-In \Cref{fig:shorexample}, we fix fragment order as \code{(y,x[0..i])}
-to enhance the Shor's algorithm proof automation. 
-
-We use $x[a]$ to represent the $a$-th position qubit in $x$.
-It is worth noting that the variable $x$ in $x[a]$ must represent quantum registers. 
-We name a variable $x$ or an array index $x[a]$ as a factor.
-In a QWhile program, \cmode and \qmode mode variables act like stack variables
-and they must be bounded by variables introduced by \texttt{let} statements;
-while quantum registers represent arrays in a "quantum heap" and are bounded by $\Sigma$.
-
-The statements $s$ in the first row in \Cref{fig:vqimp} are \sskip (SKIP) and assignment operations.
-Classic assignment (\sexp{x}{e}{s}) evaluates $e$ and assigns the value to \cmode or \qmode mode variable $x$ that is used in $s$.
-Expressions $e$ can be an arithmetic or a measurement operation.
-$\sexp{x}{\smea{y}}{...}$ assigns the measurement result of qubit array $y$ to $x$.
-$\ssassign{l}{}{op}$ and $\ssassign{\overline{l}}{}{a(\mu)}$ are quantum assignments.
-The former applies a simple quantum gate ($\texttt{H}$ or $\texttt{QFT}$)
-to a single qubit ($x[a]$) or a qubit array ($x$) \footnote{$\texttt{QFT}$ gate must apply to a variable $x$}.
-$\ssassign{\overline{l}}{}{a(\mu)}$ is a generalized quantum assignment that implements quantum oracle circuits $a$ and applies an \oqasm/\sourcelang operation on a list of qubit array $\overline{l}$.
-We assume all arithmetic ($a$) and Boolean ($b$) expressions are reversible.
-For example, the operation $(a_1 < a_2) @ x[a]$ compares $a_1$ and $a_2$ and stores the value in $x[a]$.
-$\mu$ is the circuit implementation of the expression $a$ in \oqasm, whose syntax is given in \Cref{sec:vqir}.
-One can utilize \oqasm expressions ($\mu$) to implement singleton $\texttt{X}$ and $\irz[\lbrack -1 \rbrack]{n}{}$ gates,
-thus, the QWhile syntax is universal with respect to quantum gates.
-In addition, \sourcelang is a C-like reversible arithmetic language built on \oqasm.
-The reversible expression $a$ in \Cref{fig:vqimp} is based on \sourcelang operations.
-For simplicity, we write $\ssassign{\overline{l}}{}{a}$ in examples here to
-mean that it applies a \sourcelang circuit that computes $a$ to $\overline{l}$.
-
-The second row of statements in \Cref{fig:vqimp} are control-flow operations.
-$\sseq{s_1}{s_2}$ is a sequential operation.
-$\sifq{b}{s}$ is a conditional and $b$ might contain quantum factors.
-Every quantum factor $l$ appearing in $b$ must not appear in $s$.
-In QWhile, we define a \texttt{well\_formed} predicate to check such property.
-$\sqwhile{\sinit{i}{a_1}}{i<a_2}{b(i)}{f(i)}{T(i)}{P(i)}{s}$ is a possibly quantum for-loop depending on if the Boolean guard $b(i)$ ($b(i)$ is a Boolean expression that contains variable $i$) contains quantum factors (also needing to be \texttt{well\_formed}).
-A classical variable $i$ is introduced and it is initialized as the lower bound $a_1$, increments in each loop step by the monotonic increment function $f(i)$, and ends at the upper bound $a_2$.
-$T(i)$ is the type predicate (type predicate syntax in \cref{fig:vqimp}) where for $i$-th loop step,
-$T(i)$ is true in the beginning and $T(f(i))$ is maintained after the execution.
-Similarly, $P(i)$ is the loop-invariant (state predicate in \cref{fig:vqimp}) for the for-loop structure, where for $i$-th loop step,
-$P(i)$ is true in the beginning and $P(f(i))$ is maintained after the execution. 
-
-The last row contains quantum reflection operations,
-which are used to adjust the occurrence probability of
-some quantum states in a quantum qubit array.
-For example, in Grover's search algorithm \cite{grover1996},
-the Grover's diffusion operation is a quantum reflection
-that increases the occurrence probability of a target quantum state in a qubit array being in superposition.
-We identify two kinds of quantum reflections that previous works tent to combine together.
-The first one is an amplifier ($\samplify{\ssassign{x}{}{a}}$)
-that amplifies the occurrence probability of the target state,
-which is represented by a classical value $a$,
-in a quantum qubit array $x$.
-The second one is a diffusion operator ($\sdistr{x}$)
-that diffuses the state of a qubit array $x$ to a superposition of 
-all possible bases in $x$ with possibly different amplitudes \footnote{The possible bases do not depend on $x$'s state, and it is only related to the qubit size of $x$; i.e., if $x$ is a two qubit array, then the operation reflects the superposition of all possible two qubit states as: $\frac{1}{2}(\ket{00}+\ket{01}+\ket{10}+\ket{11})$.  }.
-For example, applying the diffusion operator on a two-qubit array $x$ having state $\ket{00}$
-results in a superposition of $-\frac{1}{2}\ket{00}+\frac{1}{2}\ket{01}+\frac{1}{2}\ket{10}+\frac{1}{2}\ket{11}$.
-In general, if an $n$-qubit array $x$ has the state $\sum_{j=0}\alpha_j\ket{x_j}$,
-the result of applying a diffusion operator is $\frac{1}{2^{n}}(2\sum_{i=0}^{2^n}(\sum_{j=0}\alpha_j)\ket{i} - \sum_{j=0}\alpha_j\ket{x_j})$.
 
 \subsection{Type Checking: A Quantum Session Type System}\label{sec:typesystem}
 
