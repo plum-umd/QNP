@@ -277,7 +277,11 @@ The typing judgment is written as $\Omega; \sigma\vdash_{g} s \triangleright \si
 which states that statements $s$ is well-typed under the context mode $g$ and environments $\Omega$ and $\sigma$,
 the sessions representing $s$ is exactly the domain of $\sigma'$ as $\dom{\sigma'}$,
 and $s$ transforms types for the sessions in $\sigma$ to types in $\sigma'$.
-$\Omega$ describes the kinds for all program variables, while $\sigma$ and $\sigma'$ describe types for sessions referring to possibly entangled quantum clusters pointed to by quantum variables in $s$. 
+$\Omega$ describes the kinds for all program variables.
+$\Omega$ is populated through \texttt{let} expressions that introduce variables,
+and the \qafny type system enforces variable scope; such enforcement is neglected in \Cref{fig:exp-sessiontype} for simplicity.
+We also assume that variables introduced in \texttt{let} expressions are all distinct through proper alpha conversions.
+$\sigma$ and $\sigma'$ describe types for sessions referring to possibly entangled quantum clusters pointed to by quantum variables in $s$. 
 $\sigma$ and $\sigma'$ are both finite and the domain of them contain sessions that do not overlap with each other; $\dom{\sigma}$ is large enough to describe all sessions pointed to by quantum variables in $s$,
 while $\dom{\sigma'}$ should be the exact sessions containing quantum variables in $s$.
 We have partial order relations defined for type environments in \Cref{fig:env-equiv}, which will be explained shortly.
