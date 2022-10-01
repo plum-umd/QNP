@@ -649,3 +649,222 @@ The inversion function satisfies the following properties:
  \begin{theorem}\label{thm:reversibility}\rm[Type reversibility]
     For any well-typed program $\instr$, such that $\Sigma; \Omega \vdash \instr \triangleright \Omega'$, its inverse $\instr'$, where $\instr \xrightarrow{\text{inv}} \instr'$, is also well-typed and we have $\Sigma;\Omega' \vdash \instr' \triangleright \Omega$. Moreover, $\llbracket \instr ; \instr' \rrbracket \varphi=\varphi$.
  \end{theorem}
+
+
+
+\section{The full definitions of \qafny}
+\label{sec:qafny-app}
+
+
+\subsection{\qafny Session Generation}
+
+\begin{figure}[t]
+{\Small
+  \begin{mathpar}
+    \inferrule[ ]{ }{\Omega \vdash x : \Omega(x)}
+
+    \inferrule[ ]{\Omega(x)=(x,0,\Sigma(x)) }{\Omega \vdash x[n] : [(x,n,n+1)]}
+
+    \inferrule[ ]{ \Omega \vdash a_1 : q_1 \\ \Omega \vdash a_2 : q_2 }{\Omega \vdash a_1 + a_2 : q_1 \sqcup q_2}   
+
+    \inferrule[ ]{ \Omega \vdash a_1 : q_1 \\ \Omega \vdash a_2 : q_2 }{\Omega \vdash a_1 * a_2 : q_1 \sqcup q_2}   
+ 
+
+    \inferrule[ ]{ \Omega \vdash a_1 : q_1 \\ \Omega \vdash a_2 : q_2 \Omega \vdash a_3 : q_3  }{\Omega \vdash (a_1 = a_2)@x[n] : q_1 \sqcup q_2\sqcup q_3}   
+
+    \inferrule[ ]{ \Omega \vdash a_1 : q_1 \\ \Omega \vdash a_2 : q_2 \Omega \vdash a_3 : q_3  }{\Omega \vdash (a_1 < a_2)@x[n] : q_1 \sqcup q_2\sqcup q_3}
+
+    \inferrule[ ]{ \Omega \vdash b : q}{\Omega \vdash \neg b : q}  
+
+    \inferrule[ ]{ \Omega \vdash e : \zeta_2 \sqcup \zeta_1 }{\Omega \vdash e : \zeta_1 \sqcup \zeta_2}   
+
+  \end{mathpar}
+}
+{\footnotesize
+\[
+\begin{array}{l}
+\zeta_1 \sqcup \zeta_2 = \zeta_1 \uplus \zeta_2
+\zeta \sqcup g = \zeta
+\qquad 
+g \sqcup \zeta = \zeta
+\qquad
+\cmode \sqcup \cmode = \cmode
+\qquad
+\qmode \sqcup \cmode = \qmode
+\qquad
+\cmode \sqcup \qmode = \qmode
+\qquad
+\cmode \le \qmode \le \zeta
+\\[0.2em]
+\bot \uplus l = l
+\qquad 
+l \uplus \bot = l
+
+\qquad
+
+[(x,v_1,v_2)] \uplus [(y,v_3,v_4)] = [(x,v_1,v_2), (y,v_3,v_4)]
+
+\\
+
+[v_2,v_2] \cap [v_3,v_4] \neq \emptyset \Rightarrow [(x,v_1,v_2)] \uplus [(x,v_3,v_4)] = [(x,\texttt{min}(v_1,v_3),\texttt{max}(v_2,v_4))]
+
+\end{array}
+\]
+}
+  \caption{Arith, Bool, Gate Mode Checking}
+  \label{fig:exp-well-typed}
+\end{figure}
+
+
+A type is written as $\ttype{n}{t}$, where $n$ refers to the total number of qubits in a session,
+and $t$ describes the qubit state form. 
+A session being type $\ttype{n}{\tnor{\overline{d}}}$
+means that every qubit is in normal basis (either $\ket{0}$ or $\ket{1}$),
+and $\overline{d}$ describes basis states for the qubits.
+The type corresponds to a single qubit basis state $\alpha(n)\ket{\overline{d}}$,
+where the global phase $\alpha(n)$ has the form $e^{2 \pi i \frac{1}{n}}$ and $\overline{d}$ is a list of bit values.
+Global phases for \texttt{Nor} type are usually ignored in many semantic definitions.
+In QWhile, we record it because in quantum conditionals, such global phases might be turned to local phases.
+
+$\ttype{n}{\thad{w}}$ means that every qubit in the session has the state: $(\alpha_1\ket{0} + \alpha_2\ket{1})$;
+the qubits are in superposition but they are not entangled.
+$\bigcirc$ represents the state is a uniform superposition,
+while $\infty$ means the phase amplitude for each qubit is unknown.
+If a session has such type, it then has the value form $\Motimes_{k=0}^{m}\ket{\Phi(n_k)}$,
+where $\ket{\Phi(n_k)}=\frac{1}{\sqrt{2}}(\ket{0}+\alpha(n_k)\ket{1})$.
+
+All qubits in a session that has type $\ttype{n}{\tch{m}{\beta}}$ are supposedly entangled (eventual entanglement below).
+$m$ refers to the number of possible different entangled states in the session,
+and the bitstring indexed set $\beta$ describes each of these states, while every element in $\beta$ is indexed by $i\in [0,m)$.
+$\beta$ can also be $\infty$ meaning that the entanglement structure is unknown.
+For example, in quantum phase estimation, after applying the $\texttt{QFT}^{-1}$ operation, the state has type $\ttype{n}{\tch{m}{\infty}}$. In such case, the only quantum operation to apply is a measurement.
+If a session has type $\ttype{n}{\tch{m}{\beta}}$ and the entanglement is a uniform superposition,
+we can describe its state as $\sum_{i=0}^{m}{\frac{1}{\sqrt{m}}\beta(i)}$, and the length of bitstring $\beta(i)$ is $n$.
+For example, in a $n$-length GHZ application, the final state is: $\ket{0}^{\otimes n}+\ket{1}^{\otimes n}$. 
+Thus, its type is $\ttype{n}{\tch{2}{\{\overline{0}^n,\overline{1}^n\}}}$, where $\overline{d}^n$ is a $n$-bit string having bit $d$.
+
+The type $\ttype{n}{\tch{m}{\beta}}$ corresponds to the value form $\sum_{k=0}^{m}\theta_k\ket{\overline{d_k}}$.
+$\theta_k$ is an amplitude real number, and $\overline{d_k}$ is the basis.
+Basically, $\sum_{k=0}^{m}\theta_k\ket{\overline{d_k}}$ represents a size $m$ array of basis states
+that are pairs of $\theta_k$ and $\overline{d_k}$. For a session $\zeta$ of type $\texttt{CH}$,
+one can use $\zeta[i]$ to access the $i$-th basis state in the above summation, and the length is $m$.
+In the Q-Dafny implementation section, we show how we can represent $\theta_k$ for effective automatic theorem proving.
+
+The QWhile type system has the type judgment: $\Omega,\itau\vdash_g s : \zeta\triangleright \tau$, where $g$ is the context mode, mode environment $\Omega$ maps variables to modes or sessions ($q$ in \Cref{fig:vqimp}), type environment $\itau$ maps a session to its type, $s$ is the statement being typed, $\zeta$ is the session of $s$, and $\tau$ is $\zeta$'s type. 
+The QWhile type system in \Cref{fig:exp-sessiontype} has several tasks. First, it enforces context mode restrictions.
+Context mode $g$ is either \cmode or \qmode.
+$Q$ represents the current expression lives inside a quantum conditional or loop, while \cmode refers to other cases.
+In a $Q$ context, one cannot perform $M$-mode operations, i.e., no measurement is allowed.
+There are other well-formedness enforcement. For example,
+the session of the Boolean guard $b$ in a conditional/loop is disjoint with the session in the conditional/loop body,
+i.e., qubits used in a Boolean guard cannot appear in its conditional/loop body.
+
+Second, the type system enforces mode checking for variables and expressions in \Cref{fig:exp-well-typed}.
+In QWhile, \cmode-mode variables are evaluated to values during type checking.
+In a \texttt{let} statement (\Cref{fig:exp-sessiontype}),
+\cmode-mode expression is evaluated to a value $n$, and the variable $x$ is replaced by $n$ in $s$.
+The expression mode checking (\Cref{fig:exp-well-typed}) has the judgment: $\Omega \vdash (a\mid b) : q$. It takes a mode environment $\Omega$, and an expression ($a$, $b$), and judges if the expression has the mode $g$ if it contains only classical values, or a quantum session $\zeta$ if it contains some quantum values. 
+All the supposedly \cmode-mode locations in an expression are assumed
+to be evaluated to values in the type checking step,
+such as the index value $x[n]$ in difference expressions in \Cref{fig:exp-well-typed}.
+It is worth noting that the session computation ($\uplus$)
+is also commutative as the last rule in \Cref{fig:exp-well-typed}.
+
+Third, by generating the session of an expression, the QWhile type system assigns a type $\tau$ for the session indicating its state format, which will be discussed shortly below. Recall that a session is a list of quantum qubit fragments.
+In quantum computation, qubits can entangled with each other.
+We utilize type $\tau$ (\Cref{fig:vqir-state}) to state entanglement properties appearing in a group of qubits.
+It is worth noting that the entanglement property refers to \textit{eventual entanglement}, .i.e. a group of qubits that are eventually entangled. Entanglement classification is tough and might not be necessary. In most near term quantum algorithms, such as Shor's algorithm \cite{shors} and Childs' Boolean equation algorithm (BEA) \cite{ChildsNAND}, programmers care about if qubits eventually become entangled during a quantum loop execution. This is why the normal basis type ($\ttype{n}{\tnor{\overline{d}}}$) can also be a subtype of a entanglement type ($\ttype{n}{\tch{1}{\{\overline{d}\}}}$) in our system (\Cref{fig:exp-subtyping}).
+
+\myparagraph{Entanglement Types}
+We first investigate the relationship between the types and entanglement states.
+It is well-known that every single quantum gate application
+does not create entanglement ($\texttt{X}$, $\texttt{H}$, and $\texttt{RZ}$).
+It is enough to classify entanglement effects through a control gate application, i.e., 
+$\sifq{x[i]}{e(y)}$, where the control node is $x[i]$ and $e$ is an operation applying on $y$.
+
+A qubit can be described as $\alpha_1\ket{b_1}+\alpha_2\ket{b_2}$,
+where $\alpha_1$/$\alpha_2$ are phase amplitudes, and $b_1$/$b_2$ are bases.
+For simplicity, we assume that
+when we applying a quantum operation on a qubit array $y$, we either solely change the qubit amplitudes or bases.
+We identify the former one as $\mathpzc{R}$ kind, referring to its similarity of applying an \texttt{RZ} gate;
+and the latter as $\mathpzc{X}$ kind, referring to its similarity of applying an \texttt{X} gate.
+The entanglement situation between $x[i]$ and $y$ after applying a control statement $\sifq{x[i]}{e(y)}$ is described in \Cref{fig:control-entanglement}.
+
+\begin{figure*}[t]
+{\footnotesize
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
+\hline                           
+&  Case 1 & Case 2 & Case 3 & Case 4 & Case 5 & Case 6 & Case 7 & Case 8 & Case 9 \\
+\hline
+$x[i]$ & \texttt{Nor} & \texttt{Had} & \texttt{Had} & \texttt{Had} & \texttt{Had} & \texttt{Had} & \texttt{Had} & \texttt{CH} & \texttt{CH} \\
+$y$  & any & \texttt{Nor} & \texttt{Nor} & \texttt{Had} & \texttt{Had} & \texttt{CH} & \texttt{CH} & \texttt{CH} & \texttt{CH}   \\\hline
+$y$'s operation type  & any & $\mathpzc{X}$ & $\mathpzc{R}$ & $\mathpzc{X}$ & $\mathpzc{R}$ & $\mathpzc{X}$ & $\mathpzc{R}$ &  $\mathpzc{X}$ & $\mathpzc{R}$ \\\hline
+Output Type Entangled?  & N & Y & N & N & Y & Y & Y & Y & Y  \\
+\hline                           
+\end{tabular}
+  \caption{Control Gate Entanglement Situation}
+  \label{fig:control-entanglement}
+}
+\end{figure*}
+
+If $x[i]$ has input type \texttt{Nor}, the control operation acts as a classical conditional, i.e., no entanglement is possible.
+In most quantum algorithms, $x[i]$ will be in superposition (type \texttt{Had}) to enable entanglement creation.
+When $y$ has type $\texttt{Nor}$, if $y$'s operation is of $\mathpzc{X}$ kind, an entanglement between $x[i]$ and $y$ is created, such as the GHZ algorithm; 
+if the operation is of $\mathpzc{R}$ kind, there is not entanglement after the control application, such as the Quantum Phase Estimation (QPE) algorithm.
+
+When $x[i]$ and $y$ are both of type \texttt{Had}, if we apply an $\mathpzc{X}$ kind operation on $y$,
+it does not create entanglement. An example application is the phase kickback pattern.
+If we apply a $\mathpzc{R}$ operation on $y$, this does create entanglement.
+This kind of operations appears in state preparations, such as preparing a register $x$ to have state $\sum_{t=0}^N i^{-t}\ket{t}$ in Childs' Boolean equation algorithm \cite{ChildsNAND}. 
+The main goal for preparing such state is not to entanglement qubits, but to prepare a state with phases related to its bases.
+
+\begin{figure}[t]
+{\small
+$
+\begin{array}{l}
+\ttype{n}{\tnor{\overline{d}}} \sqsubseteq \ttype{n}{\tch{1}{\{\overline{d}\}}}
+\qquad 
+\ttype{n}{\tch{2^n}{\beta}} \sqsubseteq \ttype{n}{\tch{2^n}{\infty}}
+\qquad 
+\ttype{n}{\thad{\bigcirc}} \sqsubseteq \ttype{n}{\tch{2^n}{\tpower{n}}}
+\end{array}
+$
+}
+  \caption{Session Type Subtyping}
+  \label{fig:exp-subtyping}
+\end{figure}
+
+The case when $x[i]$ and $y$ has type \texttt{Had} and \texttt{CH}, respectively,
+happens in the middle of executing a quantum loop, such as in the Shor's algorithm and BEA.
+Applying both $\mathpzc{X}$ and $\mathpzc{R}$ kind operations result in entanglement.
+In this narrative, algorithm designers intend to
+merge an additional qubit $x[i]$ into an existing entanglement session $y$.
+$x[i]$ is commonly in uniform superposition,
+but there can be some additional local phases attached with some bases,
+which we named this situation as saturation, i.e.,
+In an entanglement session written as $\sum_{i=0}^n \ket{x_l,y,x_r}$,
+for any fixing $x_l$ and $x_r$ bases, if $y$ covers all possible bases,
+we then say that the part $y$ in the entanglement is in saturation.
+This concept is important for generating auto-proof, which will be discussed in \Cref{sec:logical}.
+
+
+When $x[i]$ and $y$ are both of type \texttt{CH}, there are two situations.
+When the two parties belong to the same entanglement session,
+it is possible that an $\mathpzc{X}$ or $\mathpzc{R}$ operation de-entangles the session.
+Since QWhile tracks eventual entanglement.
+In many cases, \texttt{HAD} type can be viewed as a kind of entanglement.
+In addition, the QWhile type system make sure that most de-entanglements happen
+at the end of the algorithm by turning the qubit type to $\tch{m}{\infty}$,
+so that after the possible de-entanglement, the only possible application is a measurement.
+
+If $x[i]$ and $y$ are in different entanglement sessions,
+the situation is similar to when $x[i]$ having \texttt{Had} and $y$ having \texttt{CH} type.
+It merges the two sessions together through the saturation $x[i]$.
+For example, in BEA, The quantum Boolean guard computes the following operation $(z < i) @ x[i]$
+on a \texttt{Had} type variable $z$ (state: $\sum_{k=0}^{2^n}\ket{k}$)
+and a $\texttt{Nor}$ type factor $x[i]$ (state: $\ket{0}$).
+The result is an entanglement $\sum_{k=0}^{2^n}\ket{k,k < i}$,
+where the $x[i]$ position stores the Boolean bit result $k < i$. \footnote{When $k<i$, $x[i]=1$ while $\neg (k<i)$, $x[i]=0$.}
+The algorithm further merges the $\ket{z,x[i]}$ session with a loop body entanglement session $y$. 
+In this cases, both $\ket{z,x[i]}$ and $y$ are of \texttt{CH} type. 
+
