@@ -29,7 +29,7 @@ and can be found at \url{https://github.com/inQWIRE/VQO/blob/naturalproof/Q-Dafn
       \text{Uniform Distribution} & \bigcirc \\
       \text{Type} & \tau & ::= & \tnor{(\topt{c})}\mid \thad{(\topt{\bigcirc})}
                     \mid \tch{(\topt{\overline{c}(m)})} \\
-      \text{Quantum States} & q & ::= & \ket{c}\mid \shad{2^n}{n}{\alpha(r_j)} \mid \sch{m}{z_j}{c_j} \\
+      \text{Quantum State} & q & ::= & \ket{c}\mid \shad{2^n}{n}{\alpha(r_j)} \mid \sch{m}{z_j}{c_j} \\
     \end{array}
   \]
 }
@@ -336,10 +336,10 @@ Finally, the type system extracts the result type environment of a for-loop as $
 \begin{center}
  \[
   \begin{array}{r@{~}c@{~}l@{~}cl}
-  &&\{\bot:\tau\} \cup \sigma &\preceq& \sigma\\
-  \tau\sqsubseteq_{\slen{\lambda}}\tau' &\Rightarrow& \{\lambda:\tau\} \cup \sigma &\preceq& \{\lambda:\tau'\} \cup \sigma\\
-  &&\{\lambda_1\uplus l_1 \uplus l_2 \uplus \lambda_2 :\tau\} \cup \sigma &\preceq& \{\lambda_1\uplus l_2 \uplus l_1 \uplus \lambda_2 : \texttt{mut}(\tau,\slen{\lambda_1})\} \cup \sigma\\
-  &&\{\lambda_1 :\tau_1\} \cup \{\lambda_2 :\tau_2\} \cup \sigma &\preceq& \{\lambda_1 \uplus \lambda_2 :\texttt{mer}(\tau_1,\tau_2)\} \cup \sigma \\
+  &&\{\bot:q\} \cup \varphi &\equiv& \varphi\\
+  q\equiv_{\slen{\lambda}}q' &\Rightarrow& \{\lambda:q\} \cup \varphi &\equiv& \{\lambda:q'\} \cup \varphi\\
+  &&\{\lambda_1\uplus l_1 \uplus l_2 \uplus \lambda_2 :q\} \cup \varphi &\equiv& \{\lambda_1\uplus l_2 \uplus l_1 \uplus \lambda_2 : \texttt{mut}(q,\slen{\lambda_1})\} \cup \varphi\\
+  &&\{\lambda_1 :q_1\} \cup \{\lambda_2 :q_2\} \cup \varphi &\equiv& \{\lambda_1 \uplus \lambda_2 :\texttt{mer}(q_1,q_2)\} \cup \varphi \\
   \texttt{spt}(\tau,\slen{\lambda_1})=(\tau_1,\tau_2)&\Rightarrow&\{\lambda_1 \uplus \lambda_2 :\tau\} \cup \sigma &\preceq& \{\lambda_1 :\tau_1\} \cup \{\lambda_2 :\tau_2\} \cup \sigma
     \end{array}
   \]
@@ -349,30 +349,34 @@ Finally, the type system extracts the result type environment of a for-loop as $
 \begin{array}{l}
 \texttt{pmut}((c_1.i_1.i_2.c_2),n)=(c_1.i_2.i_1.c_2) \;\;\texttt{when}\;\slen{c_1}=n
 \\
-\texttt{mut}(\tnor{c},n)=\tnor{\texttt{pmut}(c,n)}
+\texttt{mut}(\ket{c},n)=\ket{\texttt{pmut}(c,n)}
 \qquad
-\texttt{mut}(\tch{\overline{c}(m)},n)=\tch{\{\texttt{pmut}(c,n)|c\in\overline{c}(m)\}(m)}
-\qquad
-\texttt{mut}(\tau,n)=\tau\;\;[\texttt{owise}]
+\texttt{mut}(\sch{m}{z_j}{c_j},n)=\sch{m}{z_j}{\texttt{pmut}(c_j,n)}
 \\
-\texttt{mer}(\tnor{c_1},\tnor{c_2})=\tnor{(c_1.c_2)}
-\qquad
-\texttt{mer}(\thad{\bigcirc},\thad{\bigcirc})=\thad{\bigcirc}
-\qquad
-\texttt{mer}(T\;\infty,T\;t)=T\;\infty
+\texttt{mut}(\frac{1}{\sqrt{2^m}}(q_1 \bigotimes (\ket{0}+\alpha(r_n)\ket{1}) \bigotimes (\ket{0}+\alpha(r_{n+1})\ket{1}) \bigotimes q_2),n)
 \\
-\texttt{mer}(\tch{\overline{c_1}(m_1)},\tch{\overline{c_2}(m_2)})=\tch{(\overline{c_1}\times \overline{c_2})(m_1*m_2)}
+\qquad\qquad
+=\frac{1}{\sqrt{2^m}}(q_1 \bigotimes (\ket{0}+\alpha(r_{n+1})\ket{1}) \bigotimes (\ket{0}+\alpha(r_n)\ket{1}) \bigotimes q_2)
+\quad\texttt{when\;}\slen{q_1}=n
 \\
-\texttt{spt}(\tnor{c_1.c_2},n)=(\tnor{c_1},\tnor{c_2}) \;\;\texttt{when}\;\slen{c_1}=n
+\texttt{mer}(\ket{c_1},\ket{c_2})=\ket{c_1.c_2}
+\quad
+\texttt{mer}(\shad{2^n}{n}{\alpha(r_j)},\shad{2^m}{m}{\alpha(r_j)})=\shad{2^{n+m}}{n+m}{\alpha(r_j)}
+\\
+\texttt{mer}(\sch{n}{z_j}{c_j},\schk{m}{z_k}{c_k})=\schi{n*m}{z_j\cdot z_k}{c_j.c_k}
+\\
+\texttt{spt}(\ket{c_1.c_2},n)=(\ket{c_1},\ket{c_2}) \;\;\texttt{when}\;\slen{c_1}=n
 \qquad
-\texttt{spt}(\thad{t},n)=(\thad{t},\thad{t})
+\texttt{spt}(q_1\bigotimes q_2,n)=(q_1,q_2) \;\;\texttt{when}\;\slen{q_1}=n
 \\
-\texttt{spt}(\tch{\{c_j.c|j\in [0,m)\wedge |c_j|=n\}(m)},n)=(\tch{\{c_j|j\in [0,m)\wedge |c_j|=n\}(m)},\tnor{c})
+\texttt{spt}(\sch{m}{z_j}{c_j.c},n)=(\sch{m}{z_j}{c_j},\ket{c})
 \end{array}
 \]
 }
-\caption{Semantic state equivalence. We use set union ($\cup$) to describe the type environment concatenation with the empty set operation $\emptyset$. $i$ is a single bit either $0$ or $1$. The $.$ operation is bitstring concatenation. $\times$ is the Cartesian product of two sets.
-$T$ is either $\texttt{Nor}$, $\texttt{Had}$ or $\texttt{CH}$. }
+\caption{Semantic state equivalence. We use set union ($\cup$) to describe the state concatenation with the empty set operation $\emptyset$. $i$ is a single bit either $0$ or $1$. The $.$ operation is bitstring concatenation. 
+Term $\Msum^{n*m}P$ is a summation formula that omits the indexing details.
+Term $(\frac{1}{\sqrt{2^{n}}}\Motimes_{j=0}^{n}q_j) \bigotimes(\frac{1}{\sqrt{2^{m}}}\Motimes_{j=0}^{m}q_j)$ is equivalent to $\frac{1}{\sqrt{2^{n+m}}}\Motimes_{j=0}^{n}q_j$.
+}
   \label{fig:state-equiv}
 }
 \end{figure}
@@ -381,57 +385,108 @@ $T$ is either $\texttt{Nor}$, $\texttt{Had}$ or $\texttt{CH}$. }
 {
 {\Small
   \begin{mathpar}
-    \inferrule[TPar]{\sigma \preceq \sigma' \\ \Omega,\sigma' \vdash_g s \triangleright \sigma''}{\Omega,\sigma \vdash_g s \triangleright \sigma'' }
+    \inferrule[SPar]{\varphi \equiv \varphi' }{(\varphi,s) \longrightarrow (\varphi',s) }
 
-    \inferrule[TEXP]{\Omega[x\mapsto \cmode],\sigma\vdash_g s[n/x] \triangleright \sigma'}{\Omega,\sigma \vdash_g \sexp{x}{n}{s} \triangleright \sigma' }
-
-    \inferrule[TMEA]{ \Omega(y)=\qmode{j} \\ \sigma(y) = \{y[0..j]\uplus\lambda\mapsto \tau \}
-     \\\\ \Omega[x\mapsto \mmode],\sigma[\lambda \mapsto \tch{\infty}]\vdash_{\cmode} s \triangleright  \sigma'}{\Omega,\sigma \vdash_{\cmode} \sexp{x}{\smea{y}}{s} \triangleright \sigma' }
-
-    \inferrule[TA-CH]{ FV(\mu)=\lambda\\ \sigma(\lambda\uplus\lambda') = \tch{\overline{c}(m)}\\\\
-  \overline{c'}=\{(\llbracket \mu \rrbracket c_1).c_2\;\bm{|}\;c_1.c_2\in\overline{c}\wedge\slen{c_1}=\slen{\lambda}\}}{\Omega,\sigma \vdash_g \ssassign{\lambda}{}{\mu} \triangleright \{\lambda\uplus\lambda':\tch{\overline{c'}(m)}\} }
-
-    \inferrule[TMEA-N]{ \Omega(y)=\qmode{j} \\ \overline{c'}=\{c_2\;\bm{|}\;\tos{n}.c_2\in\overline{c}\wedge\slen{\tos{n}}=j\}
-     \\\\ \Omega[x\mapsto \mmode],\sigma[\lambda \mapsto \tch{\overline{c'}(\slen{\overline{c'}})}]\vdash_{\cmode} s \triangleright  \sigma'}{\Omega,\sigma[y[0..j]\uplus\lambda\mapsto \tch{\overline{c}(m)}] \vdash_{\cmode} \sexp{x}{\sret{y,(r,n)}}{s} \triangleright \sigma' }
-
-    \inferrule[TSEQ]{\Omega,\sigma\vdash_g s_1 \triangleright\sigma_1
- \\\\\Omega,\sigma[\uparrow \sigma_1]\vdash_g s_2 \triangleright\sigma_2}{\Omega,\sigma \vdash_g \sseq{s_1}{s_2}\triangleright \;\sigma_2\cup\sigma_1|_{\not\in\dom{\sigma_2}} }
-
-    \inferrule[TLOOP]{ \forall j\in[n_1,n_2)\;.\;\Omega,\sigma[\uparrow \sigma'[j/x]]\vdash_g \sifq{b}{s} \triangleright \sigma'[\texttt{S}\;j/x] }
-                  {\Omega,\sigma \vdash_g \sqwhile{\sint{x}{n_1}}{x<n_2}{b}{\dplus{x}}{s} \triangleright \sigma'[n_2/x]}
+    \inferrule[SMEA]{\sigma(y) = y[0..k]\uplus\lambda\mapsto \sch{m}{z_j}{c_j} \\ r = \forall j\in[0,m).\;c_j=\tos{n}.c\Rightarrow \sum{\slen{z_j}^2}}{(\varphi,\sexp{x}{\smea{y}}{s} \longrightarrow (\varphi,\sexp{x}{\sret{(y,(r,n))}}{s}) }
 
 
-\inferrule[TIF]{ 
-FV(b@x[j])=\lambda\uplus x[j,\texttt{S}\;j]\\
-FV(b@x[j])\cap FV(s) =\emptyset \\\\
-\sigma(\lambda\uplus x[j,\texttt{S}\;j]\uplus \lambda_1)=\tch{\overline{c}(m)}
+    \inferrule[SSEQ-1]{(\varphi,s_1) \longrightarrow (\varphi',s'_1)}{(\varphi,\sseq{s_1}{s_2})\longrightarrow (\varphi',\sseq{s'_1}{s_2}) }
+
+    \inferrule[SMEA-N]{ \varphi(y) = \{y[0..k]\uplus \lambda : \sch{m}{z_j}{c_{j1}.c_{j2}}\} \\\overline{c}=\{c_{j2}|c_{j1}=\tos{n}\}\\c_j\in \overline{c}}{(\varphi,\sexp{x}{\sret{(y,(r,n))}}{s} \longrightarrow (\varphi[x\mapsto (r,n),\lambda \mapsto \sch{\slen{\overline{c}}}{\frac{1}{\sqrt{r}}z_j}{c_j}],s)}
+
+    \inferrule[SSEQ-2]{}{(\varphi,\sseq{\{\}}{s_2})\longrightarrow (\varphi,s_2) }
+
+    \inferrule[SEXP]{ }{(\varphi,\sexp{x}{n}{s}) \longrightarrow (\varphi,s[n/x]) }
+
+    \inferrule[SA-CH]{ \varphi(\lambda)=\{\lambda\uplus\lambda'\mapsto \sch{m}{z_j}{c_{j1}.c_{j2}}\} \\ \slen{c_{j1}}=\slen{\lambda}
+    \\\llbracket \mu \rrbracket c_{j1} = z'_j\ket{c'_{j1}} }{ (\varphi,\ssassign{\lambda}{}{\mu}) \longrightarrow (\varphi[\lambda\uplus\lambda'\mapsto \sch{m}{z'_j\cdot z_j}{c'_{j1}.c_{j2}}],\{\}) }
+
+    \inferrule[SLOOP]{ n_1 < n_2 }
+                  {(\varphi,\sqwhile{\sint{x}{n_1}}{x<n_2}{b}{\dplus{x}}{s}) \longrightarrow (\varphi,\sseq{\sifq{b}{s}}{\sqwhile{\sint{x}{\texttt{S}\;n_1}}{x<n_2}{b}{\dplus{x}}{s}})}
+
+
+\inferrule[SIF]{ \lambda=\lambda_1\uplus x[j,\texttt{S}\;j]\uplus \lambda_2 \\ FV(b@x[j]) = \lambda\uplus x[j,\texttt{S}\;j] \\ 
+  \varphi(\lambda)=\sch{m}{z_j}{c_{j1}.c_{j2}}]
 \\
-     \Omega,\sigma \vdash_{\mmode} s \triangleright \{\lambda\uplus x[j,\texttt{S}\;j]\uplus \lambda_1:\tch{\overline{c'}(m)}\}} 
-{\Omega,\sigma \vdash_g \sifq{b@x[j]}{s} \triangleright \{\lambda\uplus x[j,\texttt{S}\;j]\uplus \lambda_1:\tch{\overline{c''}(m)}\} }
+(\varphi,s) \longrightarrow^* (\varphi[\lambda\mapsto \sch{m}{z'_j}{c_{j1}.c'_{j2}}],\{\}) \\ \slen{c_{j1}}=\slen{\lambda} } 
+{(\varphi,\sifq{b@x[j]}{s}) \longrightarrow (\varphi[\lambda\mapsto \texttt{pmap}(m,z_j,z'_j,c_{j1},c'_{j1},c_{j2})],\{\}) }
 
   \end{mathpar}
 }
-{\footnotesize
-\[
-\begin{array}{l}
-\overline{c''}=\{\tos{n}.1.c_2\;\bm{|}\;\tos{n}.d.c_1 \in \overline{c} \wedge \tos{n}.d.c_2 \in \overline{c'} \wedge b[\tos{n}/\lambda] \oplus d \wedge \slen{\tos{n}}=\slen{\lambda} \}
-\\ \qquad\quad \cup \{\tos{n}.0.c_1\;\bm{|}\; \tos{n}.d.c_1 \in \overline{c} \wedge \neg (b[\tos{n}/\lambda] \oplus d) \wedge \slen{\tos{n}}=\slen{\lambda} \}
-\\
-\sigma[\uparrow \sigma'] = \sigma[\forall \lambda:\tau \in \sigma'\;.\;\tau/\lambda]
-\\
-\sigma|_{\not\in\dom{\sigma'}}=\{\lambda:\tau|\lambda \not\in \dom{\sigma'}\}
-
-\end{array}
-\]
 }
-}
-  \caption{\qafny type system. $\llbracket \mu \rrbracket c$ is the \oqasm semantics of interpreting reversible expression $\mu$ in \Cref{fig:deno-sem}. Boolean expression $b$ can be $a_1=a_2$, $a_1 < a_2$ or \texttt{true}. $b[\tos{n}/\lambda]$ means that we treat $b$ as a \oqasm $\mu$ expression, replace qubits in array $\lambda$ with bits in bitstring $\tos{n}$, and evaluate it to a Boolean value.
-$\sigma(y)=\{\lambda\mapsto \tau\}$ produces the map entry $\lambda\mapsto \tau$ and the range $y[0..\slen{y}]$ is in $\lambda$.
-$\sigma(\lambda)=\tau$ is an abbreviation of $\sigma(\lambda)=\{\lambda\mapsto \tau\}$. $FV(-)$ produces a session by union all qubits appearing in $-$.}
+  \caption{\qafny small step semantics. $\llbracket \mu \rrbracket c$ is the \oqasm semantics of interpreting reversible expression $\mu$ in \Cref{fig:deno-sem}. Boolean expression $b$ can be $a_1=a_2$, $a_1 < a_2$ or \texttt{true}.
+$\varphi(y)=\{\lambda\mapsto q\}$ produces the map entry $\lambda\mapsto q$ and the range $y[0..\slen{y}]$ is in $\lambda$.
+$\varphi(\lambda)=q$ is an abbreviation of $\varphi(\lambda)=\{\lambda\mapsto q\}$.}
   \label{fig:exp-semantics}
 \end{figure}
 
+We define the semantics of an \oqasm program as a partial function
+$\llbracket\rrbracket$ from
+an instruction $\instr$ and input state $\varphi$ to an output state
+$\varphi'$, written 
+$\llbracket \instr \rrbracket\varphi=\varphi'$, shown in \Cref{fig:deno-sem}.
+% The definition for $\llbracket\rrbracket$ is syntax-driven, meaning that it is defined in terms of the state syntax presented in \Cref{fig:vqir-state}.
 
+% defines the denotational semantics of \oqasm, which maps a \oqasm instruction $\instr \in \{\instr\}$ to its unitary operator on $\varphi \in \hsp{S}^d$.
+
+% The key takeaway of the \oqasm denotational semantics is that given an input $\varphi \in \hsp{S}^d$, a well typed instruction affects only one qubit (notation: $\varphi{(x,n)}$ or $q_{(x,n)}$) or qubit array (notation: $\varphi{(x)}$ or $q_x$), which means it \emph{does not create entanglement}.
+% The benefit of this is that we can completely describe the state $\varphi$ using $d$ terms, instead of considering a length $2^d$ vector, as would generally be required to analyze an $d$-qubit system.
+
+Recall that a state $\varphi$ is a tuple of $d$ qubit values,
+modeling the tensor product $q_1\otimes \cdots \otimes q_d$. 
+The rules implicitly map each variable $x$ to a
+range of qubits in the state, e.g., 
+$\varphi(x)$ corresponds to some sub-state $q_k\otimes \cdots \otimes q_{k+n-1}$
+where $\Omegasz(x)=n$.
+%
+Many of the rules in \Cref{fig:deno-sem} update a \emph{portion} of a
+state. We write $\app{q_{(x,i)}}{\varphi}{(x,i)}$ to update the $i$-th
+qubit of variable $x$ to be the (single-qubit) state $q_{(x,i)}$, and
+$\app{q_{x}}{\varphi}{x}$ to update variable $x$ according to
+the qubit \emph{tuple} $q_x$.
+$\app{\uparrow q_{(x,i)}}{\varphi}{(x,i)}$ and $\app{\uparrow q_{x}}{\varphi}{x}$ 
+are similar, except that they also accumulate the previous global phase of $\varphi(x,i)$ (or $\varphi(x)$).
+We use $\downarrow$ to convert a qubit $\alpha(b)\overline{q}$ to an unphased qubit $\overline{q}$.
+%Thus, we have $\downarrow \alpha(b)\overline{q}=\overline{q}$ 
+%and $\downarrow (q_1\otimes...\otimes q_n) = \downarrow q_1\otimes...\otimes \downarrow q_n$. 
+%$\app{\uparrow q_{(x,i))}}{\varphi}{(x,i)}$ means to put back the global phase to the result qubit assigning to $(x,i)$. 
+%%If $\varphi(x,i)=e^{2\pi i b}\overline{q}$ 
+%and the result $q_{(x,i)}=\overline{q_{(x,i)}}$, 
+%then we assign $e^{2\pi i b}\overline{q_{(x,i)}}$ to $(x,i)$;
+%if the result $q_{(x,i)}=e^{2\pi i b_1}\overline{q_{(x,i)}}$, then we assign $e^{2\pi i (b+b_1)}\overline{q_{(x,i)}}$ to $(x,i)$. $\app{\uparrow q_{x}}{\varphi}{x}$ applies the above scenario to a list of qubits $q_k\otimes ... \otimes q_{k+n-1}$
+%where $\Omegasz(x)=n$.
+
+Function $\xsem$ updates the state of a single
+qubit according to the rules for the standard quantum gate $X$.  
+\texttt{cu} is a conditional operation
+depending on the \texttt{Nor}-basis qubit $(x,i)$. 
+\texttt{SR} (or
+$\texttt{SR}^{-1}$) applies an $m+1$ series of \texttt{RZ} (or
+$\texttt{RZ}^{-1}$) rotations where the $i$-th rotation
+applies a phase of $\alpha({\frac{1}{2^{m-i+1}}})$
+(or $\alpha({-\frac{1}{2^{m-i+1}}})$).
+$\qsem$ applies an approximate quantum Fourier transform; $\ket{y}$ is an abbreviation of
+$\ket{b_1}\otimes \cdots \otimes \ket{b_i}$ (assuming $\Omegasz(y)=i$)
+and $n$ is the degree of approximation.
+If $n = i$, then the operation is the standard QFT\@.
+Otherwise, each qubit in the state is mapped to $\qket{\frac{y}{2^{n-k}}}$, which is equal to $\frac{1}{\sqrt{2}}(\ket{0} + \alpha(\frac{y}{2^{n-k}})\ket{1})$ when $k < n$ and $\frac{1}{\sqrt{2}}(\ket{0} + \ket{1}) = \ket{+}$ when $n \leq k$ (since $\alpha(n) = 1$ for any natural number $n$).
+$\qsem^{-1}$ is the inverse function of $\qsem$. 
+Note that the input state to $\qsem^{-1}$ is guaranteed to have the form $\bigotimes_{k=0}^{i-1}(\qket{\frac{y}{2^{n-k}}})$ because it has type $\tphi{n}$.
+$\psem_l$, $\psem_r$, and
+$\psem_a$ are the semantics for \itext{Lshift}, 
+\itext{Rshift}, and \itext{Rev}, respectively.   
+% Several takeaways about \oqasm denotational semantics.
+% For any operation application within the space domain $\hsp{S}^d$, the semantic application $U$ only has effect on the specific qubit ($\varphi_{(x,n)}$) / qubit array ($\varphi_{x}$) that it targets at, which does not create entanglement with other subsystems.
+% This clear separation only works for the domain $\hsp{S}^d$.
+% When we compile these operations to \sqir and see their effects on a general Hilbert space $\hsp{H}$, they might have entanglement effects.
+% \yxp{Even if we turn it into unitary over the Hilbert space, it still does not generate entanglement with other subsystems.}
+% \liyi{Can you have CNOT x y when you have x is Had and y is in Nor, then you will definitely have entanglement. }
+% However, the clear separation in $\hsp{S}^d$ provides us a decompositional and analytical way of verifying and validating quantum oracles; thus, each sub-oracle-component can be analyzed individually. The potential entanglements in a general Hilbert space becomes the naturally extended (additive) superposition effects.
+% In addition, all semantic functions in Fig.~\ref{fig:deno-sem} are carefully engineered to only target qubits in a register $\varphi$, and does not target on invidual vectors in the vector space $\varphi$ represents.
+% For example, $\xsem$ is defined for a basis phase space case $\ket{c}$, and we also define the case for superposition $\frac{1}{\sqrt{2}}(\ket{0}+(-1)^c\ket{1})$. We do not assume the the semantics of the basis phase space is automatically extended to dealing with individual elements in the superposition case.
+% By using the semantics to prove quantum oracle properties, we only need to consider $O(n)$ qubits instead of the possible $2^n$ expanded vector elements.
+% The semantics of a universal quantum assembly language like \sqir, by contrast, represents a quantum state as a unitary matrix whose size is \emph{exponential} in the number of vectors by expanding qubits to vectors in a register. \sqir's semantics also relies on the use of concrete qubits; using a unitary matrix and virtual positions would inject a virtual-to-physical mapping into the semantic definition, which can severely complicate proofs~\cite{PQPC}. This leads to the successful correctness proof of the QFT-adder for the first time (Sec.~\ref{sec:op-verification}).
+% We only define semantic functions for qubit forms when it is possible to apply. For example, we do not define $\xsem$ for the form $\frac{1}{\sqrt{2}}(\ket{0}+e^{2\pi{i} b}\ket{1})$, because the \oqasm type system does not allow it. 
 
 \ignore{
 \begin{figure*}[t]
