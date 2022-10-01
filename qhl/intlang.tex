@@ -331,6 +331,108 @@ Finally, the type system extracts the result type environment of a for-loop as $
 
 \subsection{\qafny Semantics and Type Soundness}\label{sec:semantics}
 
+\begin{figure}
+{\small
+\begin{center}
+ \[
+  \begin{array}{r@{~}c@{~}l@{~}cl}
+  &&\{\bot:\tau\} \cup \sigma &\preceq& \sigma\\
+  \tau\sqsubseteq_{\slen{\lambda}}\tau' &\Rightarrow& \{\lambda:\tau\} \cup \sigma &\preceq& \{\lambda:\tau'\} \cup \sigma\\
+  &&\{\lambda_1\uplus l_1 \uplus l_2 \uplus \lambda_2 :\tau\} \cup \sigma &\preceq& \{\lambda_1\uplus l_2 \uplus l_1 \uplus \lambda_2 : \texttt{mut}(\tau,\slen{\lambda_1})\} \cup \sigma\\
+  &&\{\lambda_1 :\tau_1\} \cup \{\lambda_2 :\tau_2\} \cup \sigma &\preceq& \{\lambda_1 \uplus \lambda_2 :\texttt{mer}(\tau_1,\tau_2)\} \cup \sigma \\
+  \texttt{spt}(\tau,\slen{\lambda_1})=(\tau_1,\tau_2)&\Rightarrow&\{\lambda_1 \uplus \lambda_2 :\tau\} \cup \sigma &\preceq& \{\lambda_1 :\tau_1\} \cup \{\lambda_2 :\tau_2\} \cup \sigma
+    \end{array}
+  \]
+\end{center}
+{\footnotesize
+\[
+\begin{array}{l}
+\texttt{pmut}((c_1.i_1.i_2.c_2),n)=(c_1.i_2.i_1.c_2) \;\;\texttt{when}\;\slen{c_1}=n
+\\
+\texttt{mut}(\tnor{c},n)=\tnor{\texttt{pmut}(c,n)}
+\qquad
+\texttt{mut}(\tch{\overline{c}(m)},n)=\tch{\{\texttt{pmut}(c,n)|c\in\overline{c}(m)\}(m)}
+\qquad
+\texttt{mut}(\tau,n)=\tau\;\;[\texttt{owise}]
+\\
+\texttt{mer}(\tnor{c_1},\tnor{c_2})=\tnor{(c_1.c_2)}
+\qquad
+\texttt{mer}(\thad{\bigcirc},\thad{\bigcirc})=\thad{\bigcirc}
+\qquad
+\texttt{mer}(T\;\infty,T\;t)=T\;\infty
+\\
+\texttt{mer}(\tch{\overline{c_1}(m_1)},\tch{\overline{c_2}(m_2)})=\tch{(\overline{c_1}\times \overline{c_2})(m_1*m_2)}
+\\
+\texttt{spt}(\tnor{c_1.c_2},n)=(\tnor{c_1},\tnor{c_2}) \;\;\texttt{when}\;\slen{c_1}=n
+\qquad
+\texttt{spt}(\thad{t},n)=(\thad{t},\thad{t})
+\\
+\texttt{spt}(\tch{\{c_j.c|j\in [0,m)\wedge |c_j|=n\}(m)},n)=(\tch{\{c_j|j\in [0,m)\wedge |c_j|=n\}(m)},\tnor{c})
+\end{array}
+\]
+}
+\caption{Semantic state equivalence. We use set union ($\cup$) to describe the type environment concatenation with the empty set operation $\emptyset$. $i$ is a single bit either $0$ or $1$. The $.$ operation is bitstring concatenation. $\times$ is the Cartesian product of two sets.
+$T$ is either $\texttt{Nor}$, $\texttt{Had}$ or $\texttt{CH}$. }
+  \label{fig:state-equiv}
+}
+\end{figure}
+
+\begin{figure}[t]
+{
+{\Small
+  \begin{mathpar}
+    \inferrule[TPar]{\sigma \preceq \sigma' \\ \Omega,\sigma' \vdash_g s \triangleright \sigma''}{\Omega,\sigma \vdash_g s \triangleright \sigma'' }
+
+    \inferrule[TEXP]{\Omega[x\mapsto \cmode],\sigma\vdash_g s[n/x] \triangleright \sigma'}{\Omega,\sigma \vdash_g \sexp{x}{n}{s} \triangleright \sigma' }
+
+    \inferrule[TMEA]{ \Omega(y)=\qmode{j} \\ \sigma(y) = \{y[0..j]\uplus\lambda\mapsto \tau \}
+     \\\\ \Omega[x\mapsto \mmode],\sigma[\lambda \mapsto \tch{\infty}]\vdash_{\cmode} s \triangleright  \sigma'}{\Omega,\sigma \vdash_{\cmode} \sexp{x}{\smea{y}}{s} \triangleright \sigma' }
+
+    \inferrule[TA-CH]{ FV(\mu)=\lambda\\ \sigma(\lambda\uplus\lambda') = \tch{\overline{c}(m)}\\\\
+  \overline{c'}=\{(\llbracket \mu \rrbracket c_1).c_2\;\bm{|}\;c_1.c_2\in\overline{c}\wedge\slen{c_1}=\slen{\lambda}\}}{\Omega,\sigma \vdash_g \ssassign{\lambda}{}{\mu} \triangleright \{\lambda\uplus\lambda':\tch{\overline{c'}(m)}\} }
+
+    \inferrule[TMEA-N]{ \Omega(y)=\qmode{j} \\ \overline{c'}=\{c_2\;\bm{|}\;\tos{n}.c_2\in\overline{c}\wedge\slen{\tos{n}}=j\}
+     \\\\ \Omega[x\mapsto \mmode],\sigma[\lambda \mapsto \tch{\overline{c'}(\slen{\overline{c'}})}]\vdash_{\cmode} s \triangleright  \sigma'}{\Omega,\sigma[y[0..j]\uplus\lambda\mapsto \tch{\overline{c}(m)}] \vdash_{\cmode} \sexp{x}{\sret{y,(r,n)}}{s} \triangleright \sigma' }
+
+    \inferrule[TSEQ]{\Omega,\sigma\vdash_g s_1 \triangleright\sigma_1
+ \\\\\Omega,\sigma[\uparrow \sigma_1]\vdash_g s_2 \triangleright\sigma_2}{\Omega,\sigma \vdash_g \sseq{s_1}{s_2}\triangleright \;\sigma_2\cup\sigma_1|_{\not\in\dom{\sigma_2}} }
+
+    \inferrule[TLOOP]{ \forall j\in[n_1,n_2)\;.\;\Omega,\sigma[\uparrow \sigma'[j/x]]\vdash_g \sifq{b}{s} \triangleright \sigma'[\texttt{S}\;j/x] }
+                  {\Omega,\sigma \vdash_g \sqwhile{\sint{x}{n_1}}{x<n_2}{b}{\dplus{x}}{s} \triangleright \sigma'[n_2/x]}
+
+
+\inferrule[TIF]{ 
+FV(b@x[j])=\lambda\uplus x[j,\texttt{S}\;j]\\
+FV(b@x[j])\cap FV(s) =\emptyset \\\\
+\sigma(\lambda\uplus x[j,\texttt{S}\;j]\uplus \lambda_1)=\tch{\overline{c}(m)}
+\\
+     \Omega,\sigma \vdash_{\mmode} s \triangleright \{\lambda\uplus x[j,\texttt{S}\;j]\uplus \lambda_1:\tch{\overline{c'}(m)}\}} 
+{\Omega,\sigma \vdash_g \sifq{b@x[j]}{s} \triangleright \{\lambda\uplus x[j,\texttt{S}\;j]\uplus \lambda_1:\tch{\overline{c''}(m)}\} }
+
+  \end{mathpar}
+}
+{\footnotesize
+\[
+\begin{array}{l}
+\overline{c''}=\{\tos{n}.1.c_2\;\bm{|}\;\tos{n}.d.c_1 \in \overline{c} \wedge \tos{n}.d.c_2 \in \overline{c'} \wedge b[\tos{n}/\lambda] \oplus d \wedge \slen{\tos{n}}=\slen{\lambda} \}
+\\ \qquad\quad \cup \{\tos{n}.0.c_1\;\bm{|}\; \tos{n}.d.c_1 \in \overline{c} \wedge \neg (b[\tos{n}/\lambda] \oplus d) \wedge \slen{\tos{n}}=\slen{\lambda} \}
+\\
+\sigma[\uparrow \sigma'] = \sigma[\forall \lambda:\tau \in \sigma'\;.\;\tau/\lambda]
+\\
+\sigma|_{\not\in\dom{\sigma'}}=\{\lambda:\tau|\lambda \not\in \dom{\sigma'}\}
+
+\end{array}
+\]
+}
+}
+  \caption{\qafny type system. $\llbracket \mu \rrbracket c$ is the \oqasm semantics of interpreting reversible expression $\mu$ in \Cref{fig:deno-sem}. Boolean expression $b$ can be $a_1=a_2$, $a_1 < a_2$ or \texttt{true}. $b[\tos{n}/\lambda]$ means that we treat $b$ as a \oqasm $\mu$ expression, replace qubits in array $\lambda$ with bits in bitstring $\tos{n}$, and evaluate it to a Boolean value.
+$\sigma(y)=\{\lambda\mapsto \tau\}$ produces the map entry $\lambda\mapsto \tau$ and the range $y[0..\slen{y}]$ is in $\lambda$.
+$\sigma(\lambda)=\tau$ is an abbreviation of $\sigma(\lambda)=\{\lambda\mapsto \tau\}$. $FV(-)$ produces a session by union all qubits appearing in $-$.}
+  \label{fig:exp-semantics}
+\end{figure}
+
+
+
 \ignore{
 \begin{figure*}[t]
 {\footnotesize

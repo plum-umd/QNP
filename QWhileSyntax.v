@@ -25,7 +25,7 @@ Local Open Scope nat_scope.
 (* Classical State including variable relations that may be quantum *)
 
 (* we want to include all the single qubit gates here in the U below. *)
-Inductive atype := CT : atype | MT :atype.
+Inductive atype := CT : atype | MT :atype | QT (n:nat).
 
 Definition aty_eq  (t1 t2:atype) : bool := 
    match t1 with CT => match t2 with CT  => true
@@ -33,6 +33,9 @@ Definition aty_eq  (t1 t2:atype) : bool :=
                         end
                | MT => match t2 with MT => true 
                            | _ => false
+                        end
+               | QT n => match t2 with QT m => (n =? m)
+                                     | _ => false
                         end
    end.
 
@@ -48,16 +51,18 @@ Notation "i '=a=' j" := (aty_eq i j) (at level 50).
 Lemma aty_eqb_eq : forall a b, a =a= b = true -> a = b.
 Proof.
  intros. unfold aty_eq in H.
- destruct a. destruct b. easy. easy.
- destruct b. 1-2:easy.
+ destruct a. destruct b. easy. easy. easy.
+ destruct b. 1-3:easy.
+ destruct b. 1-2: easy. apply Nat.eqb_eq in H. subst. easy.
 Qed.
 
 Lemma aty_eqb_neq : forall a b, a =a= b = false -> a <> b.
 Proof.
  intros. unfold aty_eq in H.
  destruct a. destruct b. easy.
- easy.
- destruct b. easy. easy.
+ easy. easy.
+ destruct b. easy. easy. easy.
+ destruct b. 1-2: easy. apply Nat.eqb_neq in H. intros R. inv R. easy.
 Qed.
 
 Lemma aty_eq_reflect : forall r1 r2, reflect (r1 = r2) (aty_eq r1 r2). 
@@ -73,8 +78,9 @@ Proof.
 Qed.
 
 Definition meet_atype (a1 a2: atype) := 
-       match a1 with CT => CT
-                | MT => a2
+       match a1 with CT => a2
+                | MT => match a2 with QT n => QT n | _ => MT end
+                | QT n => match a2 with QT m => QT (n+m) | _ => QT n end
         end.
 
 Definition session := list (var * nat * nat).
@@ -118,7 +124,7 @@ Inductive type_rotation := TV (b:aexp) | Infty.
 (* Ethan: I don't remember what is this tuple... *)
 
 
-Inductive maexp := AE (n:aexp) | Init (a:nat).
+Inductive maexp := AE (n:aexp) | Init (a:nat) | Meas (x:var).
 
 Coercion AE : aexp >-> maexp.
 
@@ -146,7 +152,6 @@ Inductive pexp := PSKIP
             | Let (x:var) (n:maexp) (e:pexp)
               (*| InitQubit (p:posi) *) 
               (* Ethan: Init = reset = trace out = measurement... commeneted out *)
-            | Meas (x:var) (y:var)
             | AppSU (e:single_u)
             | AppU (l:session) (e:exp) 
             | PSeq (s1:pexp) (s2:pexp)

@@ -423,13 +423,13 @@ Fixpoint subst_exp (e:exp) (x:var) (n:nat) :=
 Definition subst_mexp (e:maexp) (x:var) (n:nat) :=
    match e with AE a => AE (subst_aexp a x n)
               | Init y => Init y
+              | Meas y => Meas y
    end.
 
 Check List.fold_right.
 Fixpoint subst_pexp (e:pexp) (x:var) (n:nat) :=
         match e with PSKIP => PSKIP
                    | Let y a e' => if y =? x then Let y (subst_mexp a x n) e' else Let y (subst_mexp a x n) (subst_pexp e' x n)
-                   | Meas x y => Meas x y
                    | AppSU (RH v) => AppSU (RH (subst_varia v x n))
                    | AppSU p => AppSU p
                    | AppU l e' => AppU l (subst_exp e' x n)
@@ -442,15 +442,15 @@ Fixpoint subst_pexp (e:pexp) (x:var) (n:nat) :=
         end.
 
 (* Session Type. *)
-Inductive factor := AType (a:atype) | Ses (a:session).
+(*Inductive factor := AType (a:atype) | Ses (a:session).
 
 Coercion AType : atype >-> factor.
 
 Coercion Ses : session  >-> factor.
-
+*)
 Module AEnv := FMapList.Make Nat_as_OT.
 Module AEnvFacts := FMapFacts.Facts (AEnv).
-Definition aenv := AEnv.t factor.
+Definition aenv := AEnv.t atype.
 Definition empty_aenv := @AEnv.empty atype.
 
 Definition stack := AEnv.t (R * nat).
@@ -513,16 +513,9 @@ Fixpoint join_ses (l1 l2:list ((var * nat * nat))) :=
    end.
 
 
-Definition union_f (t1 t2:factor) :=
-   match t1 with AType a => match t2 with AType b => AType (meet_atype a b)
-                                       | Ses b => Ses b
-                            end
-              | Ses a => match t2 with AType b => Ses a
-                             | Ses b => Ses (join_ses a b)
-                         end
-   end.
+Definition union_f (t1 t2:atype) := meet_atype t1 t2.
 
-Inductive type_aexp : aenv -> aexp -> factor -> Prop :=
+Inductive type_aexp : aenv -> aexp -> atype -> Prop :=
    | ba_type : forall env b t, AEnv.MapsTo b t env -> type_aexp env b t
    | num_type : forall env n, type_aexp env n CT
    | plus_type : forall env e1 e2 t1 t2, 
@@ -536,7 +529,7 @@ Inductive type_aexp : aenv -> aexp -> factor -> Prop :=
                         type_aexp env (Select s a) MT.
 
 
-Inductive type_vari : aenv -> varia -> factor -> Prop :=
+Inductive type_vari : aenv -> varia -> atype -> Prop :=
    | aexp_type : forall env a t, type_aexp env a t -> type_vari env a t
    | index_type : forall env x a b v,
        AEnv.MapsTo x (Ses ([(x,a,b)])) env -> a <= v < b -> type_vari env (Index x (Num v)) (Ses ([(x,v,S v)]))
@@ -602,6 +595,9 @@ Inductive type_pexp (qenv : var -> nat) : aenv -> pexp -> factor -> Prop :=
   | let_fa_2 : forall env x y e t2, 
                    type_pexp qenv (AEnv.add x (Ses ([(x,0,y)])) env) e t2 
                      -> type_pexp qenv env (Let x (Init y) e) t2
+  | let_fa_3 : forall env x y e t2, 
+                   type_pexp qenv env e t2 
+                     -> type_pexp qenv env (Let x (Meas y) e) t2
   | appsu_fa_h: forall env a x lb rb,
           type_aexp env a (Ses ([(x,lb,rb)])) -> type_pexp qenv env (AppSU (RH a)) (Ses ([(x,lb,rb)]))
   | appsu_fa_qft: forall env x s, AEnv.MapsTo x (Ses s) env
