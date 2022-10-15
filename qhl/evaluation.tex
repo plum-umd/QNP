@@ -8,6 +8,73 @@ This section presents the arithmetic operators we have implemented in
 expressions implemented in \vqimp. The following section presents an
 end-to-end case study applying Grover's search.
 
+\begin{figure}[t]
+{\small
+\[
+\begin{array}{r l  l}
+\textcolor{blue}{11}
+&
+\sexp{z}{\smea{y}}{}
+&
+\textcolor{purple}{
+\big{\{}
+\begin{array}{l}
+x[0..n] \mapsto \smch{\frac{1}{\sqrt{s}}}{s}{t+jr} 
+\wedge
+\\
+\texttt{nat}(z)=a^{n}\;\%\;N
+\wedge
+s=\texttt{rnd}(\frac{2^n}{r}) \wedge B
+\end{array}
+\big{\}}
+}
+\\[0.4em]
+\textcolor{blue}{12}
+&
+\quad\ssassign{x}{}{\iqft[-1]{}{}}; 
+&
+\textcolor{teal}{
+\big{\{}
+x[0..n] \mapsto \smich{\frac{1}{\sqrt{s 2^n}}}{2^n}{(\omega^{tk}\Msum_{j=0}^{s}\omega^{tkj})}{k} 
+\wedge
+s=\texttt{rnd}(\frac{2^n}{r}) \wedge B
+\big{\}}
+}
+\\[0.4em]
+\textcolor{blue}{13}
+&
+\quad\sexp{u}{\smea{x}}{}
+&
+\textcolor{teal}{
+\big{\{}
+\texttt{nat}(u)=r \wedge \texttt{pos}(u)=\frac{4}{\pi ^ {2 r}}
+\wedge
+s=\texttt{rnd}(\frac{2^n}{r}) \wedge r = \texttt{ord}(a,N) \wedge B
+\big{\}}
+}
+\\[0.4em]
+\textcolor{blue}{14}
+&
+\quad\quad\texttt{post}(u)
+&
+\big{\{}
+\texttt{nat}(\texttt{post}(u))=r \wedge r = \texttt{ord}(a,N) \wedge \texttt{pos}(u)=\frac{4e^{-2}}{\pi^2 \texttt{log}_2^4 N \wedge B}
+\big{\}}
+\end{array}
+\]
+}
+{\footnotesize
+\[
+B=1 < a < N \wedge n > 0 \wedge N < 2^n \wedge \texttt{gcd}(a,N)=1
+\qquad
+\omega=e^{\frac{2\pi i}{2^n}}
+\]
+}
+\caption{Second half of the Shor's algorithm quantum part in Qafny.}
+\label{fig:shorqafny2}
+\end{figure}
+
+
 \subsection{Implemented Operators}
 
 \Cref{fig:circ-evaluation} and \Cref{fig:op-table} tabulate the

@@ -1,6 +1,43 @@
 \section{\oqasm: An Assembly Language for Quantum Oracles}
 \label{sec:vqir}
 
+\begin{figure}[t]
+{\small
+  \begin{lstlisting}[numbers=left,language=C++,xleftmargin=4 mm]
+method Shor ( a : int, N : int, n : int, m : int, x : Q[n], y : Q[n] )
+ requires (n > 0)
+ requires (1 < a < N)
+ requires (N < 2^(n-1))
+ requires (N^2 < 2^m <= 2 * N^2)
+ requires (gcd(a, N) == 1)
+ requires ( type(x) = Tensor n (Nor 0))
+ requires ( type(y) = Tensor n (Nor 0))
+ ensures (gcd(N, r) == 1)
+ ensures (p.pos >= 4 / (PI ^ 2))
+{
+  x *= H ;
+  y *= cl(y+1); //cl can be omitted.
+  for (int i = 0; i < n; x[i]; i ++)
+    invariant (0 <= i <= n)
+    invariant (saturation(x[0..i]))
+    invariant (type(y,x[0..i]) = Tensor n (ch (2^i) {k | j baseof x[0..i] && k = (a^j mod N,j)}))
+    //psum(k=b,M,p(k),b(k)) = sum_{k=b}^M p(k)*b(k)
+    invariant ((y,x[0..i]) == psum(k=0,2^i,1,(a^k mod N,k))) 
+  {
+    y *= cl(a^(2^i) * y mod N);
+  }
+
+ M z := measure(y);//partial measurement, actually measure(y,r) r is the period
+ x *= RQFT;
+ M p := measure(x); //p.pos and p.base
+ var r := post_period(m,p.base) // exists t. 2^m * t / r = p.base
+}
+  \end{lstlisting}
+}
+\caption{Shor's Algorithm in Q-Dafny}
+\label{fig:shorexample}
+\end{figure}
+
 We designed \oqasm to be able to express efficient quantum
 oracles that can be easily tested and, if desired, proved
 correct.
@@ -656,12 +693,14 @@ The inversion function satisfies the following properties:
 \label{sec:qafny-app}
 
 
-\subsection{\qafny Session Generation}
+\subsection{\qafny Session Generation}\label{sec:session-gen}
 
 \begin{figure}[t]
 {\Small
   \begin{mathpar}
     \inferrule[ ]{ }{\Omega \vdash x : \Omega(x)}
+
+
 
     \inferrule[ ]{\Omega(x)=(x,0,\Sigma(x)) }{\Omega \vdash x[n] : [(x,n,n+1)]}
 
@@ -867,4 +906,476 @@ The result is an entanglement $\sum_{k=0}^{2^n}\ket{k,k < i}$,
 where the $x[i]$ position stores the Boolean bit result $k < i$. \footnote{When $k<i$, $x[i]=1$ while $\neg (k<i)$, $x[i]=0$.}
 The algorithm further merges the $\ket{z,x[i]}$ session with a loop body entanglement session $y$. 
 In this cases, both $\ket{z,x[i]}$ and $y$ are of \texttt{CH} type. 
+
+
+\section{A Complicated Type System}\label{sec:newtype}
+
+\begin{figure}
+{\small
+{\hspace*{-6em}
+\begin{minipage}[t]{0.4\textwidth}
+\begin{center}
+ \[
+  \begin{array}{l@{~}cl}
+  \tnor{\infty} &\sqsubseteq_n& \tch{\infty}\\
+  \tnor{c} &\sqsubseteq_n& \tch{\{c\}}\\
+  \tch{\overline{c}(1)} &\sqsubseteq_n& \tnor{\overline{c}[0]}\\
+  \thad{p} &\sqsubseteq_n& \tch{\{\tos{j}|j\in[0,2^n)\}(2^n)}\\
+  \tch{\{0,1\}} &\sqsubseteq_1& \thad{\infty}\\
+  \tch{p} &\sqsubseteq_n& \tch{\infty}
+    \end{array}
+  \]
+\end{center}
+\subcaption{Subtyping}
+  \label{fig:qafny-subtype}
+\end{minipage}
+\qquad
+\begin{minipage}[t]{0.45\textwidth}
+\begin{center}
+   \[
+   \begin{array}{l@{~}cl}
+  \ket{c} &\equiv_n& \sch{1}{ }{c}\\
+  \sch{1}{z_j}{c_j} &\equiv_n& \ket{c_0}\\
+  \shad{2^n}{n}{\alpha(r_j)} &\equiv_n& \sch{2^n}{\frac{\alpha(\sum_{k=0}^{n} r_k \cdot \tos{j}[k])}{\sqrt{2^n}}}{j}\\
+  \sch{2}{z_j}{c_j} &\equiv_1& \shad{2}{1}{\frac{\sqrt{2}z_1}{z_0}}\\
+   &&\qquad\texttt{when }c_0=0\;\;c_1=1
+    \end{array}
+ \]
+\end{center}
+\subcaption{State Equivalence}
+  \label{fig:qafny-sequiv}
+\end{minipage}
+  \caption{\qafny type/state relations. $\overline{c}[n]$ produces the $n$-th element in set $\overline{c}$. $\{\tos{j}|j\in[0,2^n)\}(2^n)$ defines a set $\{\tos{j}|j\in[0,2^n)\}$ with the emphasis that it has $2^n$ elements. $\{0,1\}$ is a set of two single element bitstrings $0$ and $1$. $\cdot$ is the multiplication operation, $\tos{j}$ turns a number $j$ to a bitstring, $\tos{j}[k]$ takes the $k$-th element in the bitstring $\tos{j}$, and $\ket{j}$ is an abbreviation of $\ket{\tos{j}}$.}
+  \label{fig:qafny-eq}
+}
+}
+\end{figure}
+
+The \qafny element component syntax is represented according to the grammar in \Cref{fig:qafny-state}. 
+In \qafny, there are three kinds of values, two of which are classical ones represented by the two modes: $\cmode$ and $\mmode$.
+The former represents classical values, represented as a natural number $n$, that do not intervene with quantum measurements and are evaluated in the compilation time, the latter represents values, represented as a pair $(r,n)$, produced from a quantum measurement. The real number $r$ is a characteristic representing the theoretical probability of the measurement resulting in the value $n$.
+Any classical arithmetic operation does not change $r$, i.e., $(r,n)+m=(r,n+m)$. 
+
+Quantum variables are defined as kind $\qmode{n}$, where $n$ is the number of qubits in a variable representing as a qubit array. Quantum values are more often to be described as sessions ($\lambda$) that can be viewed as clusters of possibly entangled qubits, where the number of qubits is exactly the session length, i.e., $\slen{\overline{x[n..m]}}$.
+Each session consists of different disjoint ranges, connected by the $\uplus$ operation (meaning that different ranges are disjoint), represented as $x[n..m]$ that refers the number range $[n,m)$ in a quantum array named $x$. For simplicity, we assume that different variable names referring to different quantum arrays without aliasing. Sessions have associated equational properties. They are associative and identitive with the identity operation as $\bot$. There are another two equational properties for sessions below:
+
+{\small
+\[n \le j < m \Rightarrow x[n,m]\uplus\lambda \equiv_{\lambda} x[n,j]\uplus x[j,m] \uplus\lambda
+\qquad 
+x[n,n] \equiv_{\lambda} \bot
+\]
+}
+
+Each length-$n$ session is associated to a quantum state that can be one of the three forms ($q$ in \Cref{fig:qafny-state}) that are corresponding to three different types ($\tau$ in \Cref{fig:qafny-state}). The first kind of state is of \texttt{Nor} type ($\tnor{(\topt{c})}$), having the state form $\ket{c}$, which is a computational basis value. $c$ is of length $n$ and represents a tensor product of qubits, all being $0$ or $1$. The second kind of state is of \texttt{Had} type ($\thad{(\topt{\bigcirc})}$),  meaning that qubits in such session are in superposition but not entangled.
+The state form is $\shad{2^n}{n}{\alpha(r_j)}$, where $\alpha(r_j)$ is a local phase for the $j$-th qubit in the session. If $r_j=0$ for all $j$, the state can be represented by  type $\thad{\bigcirc}$ representing a uniformly distributed superposition; otherwise, we represent the type as $\thad{\infty}$. The third kind of state is of $\texttt{CH}$ type ($\tch{(\topt{\overline{c}(m)})}$), having the state form $\sch{m}{z_j}{c_j}$, referring to that qubits in such session are possibly entangled. The state $\sch{m}{z_j}{c_j}$ can be viewed as an $m$ element set of pairs $z_j\ket{c_j}$, where $z_j$ and $c_j$ are the $j$-th amplitude and basis.
+The well-formed restrictions for the state are three: 1) $\sum_{j=0}^{m}|z_j|^2=1$ ($z_j$ is a complex number); 2) length of $c_j$ is $n$ for all $j$ and $m \le 2^n$; 3) any two bases $c_j$ and $c_k$ are distinct if $j \neq k$.
+
+In \qafny, the quantum types and states are associated through bases and equational properties.
+For each quantum state $q$, especially for \texttt{Nor} type state $\ket{c}$ and \texttt{CH} type state $\sch{m}{z_j}{c_j}$, the type factors are either $\infty$ meaning no bases can be tracked, or having the form $c$ and $\overline{c}(m)$ that track the bases of the state $\ket{c}$ and $\sch{m}{z_j}{c_j}$, respectively. For \texttt{Nor} type, this means that the type factor $c$ (in $\tnor{c}$) and the state qubit format $\ket{c}$ must be equal; for \texttt{CH} type ($\tch{\overline{c}(m)}$), if the state is $\sch{m}{z_j}{c_j}$, the $j$-th element $\overline{c}[j]$ is equal to $c_j$.
+Additionally, \qafny types permit subtyping relations that correspond to state equivalent relations in \Cref{fig:qafny-eq}. 
+Both subtype relation $\sqsubseteq_n$ and state equivalence relation $\equiv_n$ are parameterized by a session length number $n$, such that they establish relations between two quantum states describing a session of length $n$.
+$\sqsubseteq_n$ in \Cref{fig:qafny-subtype} describes a type term on the left can be used as a type on the right. For example, a \texttt{Nor} type qubit array $\tnor{c}$ can be used as a single element entanglement type term $\tch{\{c\}}$ \footnote{If a qubit array only consists of $0$ and $1$, it can be viewed as an entanglement of unique possibility. }. 
+Correspondingly, state equivalence relation $\equiv_n$ describes the two state forms to be equivalent; specifically, the left state term can be used as the right one, e.g., a single element entanglement state $\sch{1}{z_j}{c_j}$ can be used as a \texttt{Nor} type state $\ket{c_0}$ with the fact that $z_0$ is now a global phase that can be neglected.
+
+
+\subsection{Type Checking: A Quantum Session Type System}\label{sec:typesystem}
+
+\begin{figure}
+{\small
+\begin{center}
+ \[
+  \begin{array}{r@{~}c@{~}l@{~}cl}
+  &&\{\bot:\tau\} \cup \sigma &\preceq& \sigma\\
+  \tau\sqsubseteq_{\slen{\lambda}}\tau' &\Rightarrow& \{\lambda:\tau\} \cup \sigma &\preceq& \{\lambda:\tau'\} \cup \sigma\\
+  &&\{\lambda_1\uplus l_1 \uplus l_2 \uplus \lambda_2 :\tau\} \cup \sigma &\preceq& \{\lambda_1\uplus l_2 \uplus l_1 \uplus \lambda_2 : \texttt{mut}(\tau,\slen{\lambda_1})\} \cup \sigma\\
+  &&\{\lambda_1 :\tau_1\} \cup \{\lambda_2 :\tau_2\} \cup \sigma &\preceq& \{\lambda_1 \uplus \lambda_2 :\texttt{mer}(\tau_1,\tau_2)\} \cup \sigma \\
+  \texttt{spt}(\tau,\slen{\lambda_1})=(\tau_1,\tau_2)&\Rightarrow&\{\lambda_1 \uplus \lambda_2 :\tau\} \cup \sigma &\preceq& \{\lambda_1 :\tau_1\} \cup \{\lambda_2 :\tau_2\} \cup \sigma
+    \end{array}
+  \]
+\end{center}
+{\footnotesize
+\[
+\begin{array}{l}
+\texttt{pmut}((c_1.i_1.i_2.c_2),n)=(c_1.i_2.i_1.c_2) \;\;\texttt{when}\;\slen{c_1}=n
+\\
+\texttt{mut}(\tnor{c},n)=\tnor{\texttt{pmut}(c,n)}
+\qquad
+\texttt{mut}(\tch{\overline{c}(m)},n)=\tch{\{\texttt{pmut}(c,n)|c\in\overline{c}(m)\}(m)}
+\qquad
+\texttt{mut}(\tau,n)=\tau\;\;[\texttt{owise}]
+\\
+\texttt{mer}(\tnor{c_1},\tnor{c_2})=\tnor{(c_1.c_2)}
+\qquad
+\texttt{mer}(\thad{\bigcirc},\thad{\bigcirc})=\thad{\bigcirc}
+\qquad
+\texttt{mer}(T\;\infty,T\;t)=T\;\infty
+\\
+\texttt{mer}(\tch{\overline{c_1}(m_1)},\tch{\overline{c_2}(m_2)})=\tch{(\overline{c_1}\times \overline{c_2})(m_1*m_2)}
+\\
+\texttt{spt}(\tnor{c_1.c_2},n)=(\tnor{c_1},\tnor{c_2}) \;\;\texttt{when}\;\slen{c_1}=n
+\qquad
+\texttt{spt}(\thad{t},n)=(\thad{t},\thad{t})
+\\
+\texttt{spt}(\tch{\{c_j.c|j\in [0,m)\wedge |c_j|=n\}(m)},n)=(\tch{\{c_j|j\in [0,m)\wedge |c_j|=n\}(m)},\tnor{c})
+\end{array}
+\]
+}
+\caption{Type environment partial order. We use set union ($\cup$) to describe the type environment concatenation with the empty set operation $\emptyset$. $i$ is a single bit either $0$ or $1$. The $.$ operation is bitstring concatenation. $\times$ is the Cartesian product of two sets.
+$T$ is either $\texttt{Nor}$, $\texttt{Had}$ or $\texttt{CH}$. }
+  \label{fig:env-equiv}
+}
+\end{figure}
+
+\begin{figure}[t]
+{
+{\Small
+  \begin{mathpar}
+    \inferrule[TPar]{\sigma \preceq \sigma' \\ \Omega,\sigma' \vdash_g s \triangleright \sigma''}{\Omega,\sigma \vdash_g s \triangleright \sigma'' }
+
+    \inferrule[TEXP]{\Omega[x\mapsto \cmode],\sigma\vdash_g s[n/x] \triangleright \sigma'}{\Omega,\sigma \vdash_g \sexp{x}{n}{s} \triangleright \sigma' }
+
+    \inferrule[TMEA]{ \Omega(y)=\qmode{j} \\ \sigma(y) = \{y[0..j]\uplus\lambda\mapsto \tau \}
+     \\\\ \Omega[x\mapsto \mmode],\sigma[\lambda \mapsto \tch{\infty}]\vdash_{\cmode} s \triangleright  \sigma'}{\Omega,\sigma \vdash_{\cmode} \sexp{x}{\smea{y}}{s} \triangleright \sigma' }
+
+    \inferrule[TA-CH]{ FV(\mu)=\lambda\\ \sigma(\lambda\uplus\lambda') = \tch{\overline{c}(m)}\\\\
+  \overline{c'}=\{(\llbracket \mu \rrbracket c_1).c_2\;\bm{|}\;c_1.c_2\in\overline{c}\wedge\slen{c_1}=\slen{\lambda}\}}{\Omega,\sigma \vdash_g \ssassign{\lambda}{}{\mu} \triangleright \{\lambda\uplus\lambda':\tch{\overline{c'}(m)}\} }
+
+    \inferrule[TMEA-N]{ \Omega(y)=\qmode{j} \\ \overline{c'}=\{c_2\;\bm{|}\;\tos{n}.c_2\in\overline{c}\wedge\slen{\tos{n}}=j\}
+     \\\\ \Omega[x\mapsto \mmode],\sigma[\lambda \mapsto \tch{\overline{c'}(\slen{\overline{c'}})}]\vdash_{\cmode} s \triangleright  \sigma'}{\Omega,\sigma[y[0..j]\uplus\lambda\mapsto \tch{\overline{c}(m)}] \vdash_{\cmode} \sexp{x}{\sret{y,(r,n)}}{s} \triangleright \sigma' }
+
+    \inferrule[TSEQ]{\Omega,\sigma\vdash_g s_1 \triangleright\sigma_1
+ \\\\\Omega,\sigma[\uparrow \sigma_1]\vdash_g s_2 \triangleright\sigma_2}{\Omega,\sigma \vdash_g \sseq{s_1}{s_2}\triangleright \;\sigma_2\cup\sigma_1|_{\not\in\dom{\sigma_2}} }
+
+    \inferrule[TLOOP]{ \forall j\in[n_1,n_2)\;.\;\Omega,\sigma[\uparrow \sigma'[j/x]]\vdash_g \sifq{b}{s} \triangleright \sigma'[\texttt{S}\;j/x] }
+                  {\Omega,\sigma \vdash_g \sqwhile{\sint{x}{n_1}}{x<n_2}{b}{\dplus{x}}{s} \triangleright \sigma'[n_2/x]}
+
+
+\inferrule[TIF]{ 
+FV(b@x[j])=\lambda\uplus x[j,\texttt{S}\;j]\\
+FV(b@x[j])\cap FV(s) =\emptyset \\\\
+\sigma(\lambda\uplus x[j,\texttt{S}\;j]\uplus \lambda_1)=\tch{\overline{c}(m)}
+\\
+     \Omega,\sigma \vdash_{\mmode} s \triangleright \{\lambda\uplus x[j,\texttt{S}\;j]\uplus \lambda_1:\tch{\overline{c'}(m)}\}} 
+{\Omega,\sigma \vdash_g \sifq{b@x[j]}{s} \triangleright \{\lambda\uplus x[j,\texttt{S}\;j]\uplus \lambda_1:\tch{\overline{c''}(m)}\} }
+
+\inferrule[SLOOP-N]{}{(\varphi,\sqwhile{j}{n_1}{n_2}{b}{s})\longrightarrow (\varphi,\{\})}
+
+  \end{mathpar}
+}
+{\footnotesize
+\[
+\begin{array}{l}
+\overline{c''}=\{\tos{n}.1.c_2\;\bm{|}\;\tos{n}.d.c_1 \in \overline{c} \wedge \tos{n}.d.c_2 \in \overline{c'} \wedge b[\tos{n}/\lambda] \oplus d \wedge \slen{\tos{n}}=\slen{\lambda} \}
+\\ \qquad\quad \cup \{\tos{n}.0.c_1\;\bm{|}\; \tos{n}.d.c_1 \in \overline{c} \wedge \neg (b[\tos{n}/\lambda] \oplus d) \wedge \slen{\tos{n}}=\slen{\lambda} \}
+\\
+\sigma[\uparrow \sigma'] = \sigma[\forall \lambda:\tau \in \sigma'\;.\;\tau/\lambda]
+\\
+\sigma|_{\not\in\dom{\sigma'}}=\{\lambda:\tau|\lambda \not\in \dom{\sigma'}\}
+
+\end{array}
+\]
+}
+}
+  \caption{\qafny type system. $\llbracket \mu \rrbracket c$ is the \oqasm semantics of interpreting reversible expression $\mu$ in \Cref{fig:deno-sem}. Boolean expression $b$ can be $a_1=a_2$, $a_1 < a_2$ or \texttt{true}. $b[\tos{n}/\lambda]$ means that we treat $b$ as a \oqasm $\mu$ expression, replace qubits in array $\lambda$ with bits in bitstring $\tos{n}$, and evaluate it to a Boolean value.
+$\sigma(y)=\{\lambda\mapsto \tau\}$ produces the map entry $\lambda\mapsto \tau$ and the range $y[0..\slen{y}]$ is in $\lambda$.
+$\sigma(\lambda)=\tau$ is an abbreviation of $\sigma(\lambda)=\{\lambda\mapsto \tau\}$. $FV(-)$ produces a session by union all qubits appearing in $-$.}
+  \label{fig:exp-sessiontype}
+\end{figure}
+
+In \qafny, typing is with respect to a \emph{kind environment} $\Omega$ and a \emph{finite type environment} $\sigma$,
+which map \qafny variables to kinds and map sessions to types, respectively.
+The typing judgment is written as $\Omega; \sigma\vdash_{g} s \triangleright \sigma'$,
+which states that statements $s$ is well-typed under the context mode $g$ and environments $\Omega$ and $\sigma$,
+the sessions representing $s$ is exactly the domain of $\sigma'$ as $\dom{\sigma'}$,
+and $s$ transforms types for the sessions in $\sigma$ to types in $\sigma'$.
+$\Omega$ describes the kinds for all program variables.
+$\Omega$ is populated through \texttt{let} expressions that introduce variables,
+and the \qafny type system enforces variable scope; such enforcement is neglected in \Cref{fig:exp-sessiontype} for simplicity.
+We also assume that variables introduced in \texttt{let} expressions are all distinct through proper alpha conversions.
+$\sigma$ and $\sigma'$ describe types for sessions referring to possibly entangled quantum clusters pointed to by quantum variables in $s$. 
+$\sigma$ and $\sigma'$ are both finite and the domain of them contain sessions that do not overlap with each other; $\dom{\sigma}$ is large enough to describe all sessions pointed to by quantum variables in $s$,
+while $\dom{\sigma'}$ should be the exact sessions containing quantum variables in $s$.
+We have partial order relations defined for type environments in \Cref{fig:env-equiv}, which will be explained shortly.
+Selected type rules are given in \Cref{fig:exp-sessiontype}; 
+the rules not mentioned are similar and listed in \Cref{sec:qafny-app}.
+
+The type system enforces five invariants.  First, well-formed and context restrictions for quantum programs.
+Well-formedness means that qubits mentioned in the Boolean guard of a quantum conditional cannot be accessed in the conditional body,
+while context restriction refers to the fact that the quantum conditional body cannot create (\texttt{init}) and measure (\texttt{measure}) qubits. 
+For example the $FV$ checks in rule \textsc{TIF} enforces that the session for the Boolean and the conditional body does not overlap.
+Coincidentally, we utilize the modes ($g$, either $\cmode$ or $\mmode$) as context modes for the type system. 
+Context mode $\cmode$ permits most \qafny operations. Once a type rule turns a mode to $\mmode$, such as in the conditional body in rule \textsc{TIF}, we disallow \texttt{init} and \texttt{measure} operations. For example, rules \textsc{TMEA} and \textsc{TMEA-N} are valid only if the input context mode is $\cmode$.
+
+Second, the type system tracks the basis state of every qubit in sessions. In rule \textsc{TA-CH}, we find that the oracle $\mu$ is applied on $\lambda$ belonging to a session $\lambda \uplus \lambda'$. Correspondingly, the session's type is $\tch{\overline{c}(m)}$, for each bitstring $c_1.c_2\in \overline{c}$, with $\slen{c_1}=\slen{\lambda}$, we apply $\mu$ on the $c_1$ and leave $c_2$ unchanged.
+Here, we utilize the \oqasm semantics that describes transitions from a $\texttt{Nor}$ state to another $\texttt{Nor}$ one, and we generalize it to apply the semantic function on every element in the \texttt{CH} type.
+During the transition, the number of elements $m$ does not change.
+Similarly, applying a partial measurement on range $y[0..j]$ of the session $y[0..j]\uplus\lambda$ in rule \textsc{TMEA-N}
+can be viewed as a array filter, i.e., for an element $c_1.c_2$ in set $\overline{c}$ of the type $\tch{\overline{c}(m)}$, with $\slen{c_1}=j$, we keep only the ones with $c_1=\tos{n}$ ($n$ is the measurement result) in the new set $\overline{c'}$ and recompute $\slen{\overline{c'}}$. In \qafny, the tracking procedure is to generate symbolic predicates that permit the production of the set $\overline{c'}(\slen{c'})$, not to actually produce such set. If the predicates are not not effectively trackable, we can always use $\infty$ to represent the set.
+
+
+\liyi{may be we can add a rule about turning NOR to HAD so that we can say that the subtyping casting is also useful. }
+Third, the type system enforces equational properties of 
+quantum qubit sessions through a partial order relation over type environments, including subtyping, qubit position mutation, merge and split quantum sessions.
+Essentially, we can view two qubit arrays be equivalent if there is a bijective permutation on the qubit positions of the two.
+To analyze a quantum application on a qubit array, if the array is arranged in a certain way, the semantic definition will be a lot more trivial than other arrangements. For example, in applying a quantum oracle to a session (rule \textsc{TMEA}), we fix the qubits that permits the $\mu$ operation to always live in the front part ($\lambda$ in $\lambda\uplus\lambda'$).
+This is achieved by a consecutive application of the mutation rule ($\texttt{mut}$) in the partial order ($\preceq$) in \Cref{fig:env-equiv}, which casts the left type environment to the format on the right through rule \textsc{TPar}.
+Similarly, split ($\texttt{spt}$) and combination ($\texttt{mer}$) of sessions in \Cref{fig:env-equiv} are useful to describe some quantum operation behaviors. the split of a quantum session into two represents the process of disentanglement of quantum qubits.
+For example, $\ket{00}+\ket{10}$ can be disentangled as $(\ket{0}+\ket{1})\otimes \ket{0}$.
+The \texttt{spt} function is a partial one since disentanglement is considered to be a hard problem and it is usually done through case analyses as the ones in \Cref{fig:env-equiv}.
+Merging two sessions is valuable for analyzing the behavior of quantum conditionals.
+In rule \textsc{TIF}, the session ($\lambda_1\uplus x[j,\texttt{S}\;j]$) for the Boolean guard ($b@x[j]$)
+ and the session for ($\lambda_2$) the body can be two separative sessions. 
+Here, we first merge the two session through the $\texttt{mer}$ rule in \Cref{fig:env-equiv} by computing the Cartesian product of the two type bases, such that if the two sessions are both \texttt{CH} types $\lambda_1\uplus x[j,\texttt{S}\;j]\mapsto\tch{\overline{c_1}(m_1)}$ and $\lambda_2\mapsto\tch{\overline{c_2}(m_2)}$, the result is of type $\tch{(\overline{c_1}\times \overline{c_2})(m_1*m_2)}$. 
+After that, the quantum conditional behavior can be understood as applying a partial map function on the size $m_1*m_2$ array of bitstrings, and we only apply the conditional body's effect on the second part (the $\overline{c_2}$ part) of some bitstrings whose first part is checked to be true by applying the Boolean guard $b$. 
+\liyi{see how to merge the following to above}
+Based on the new \texttt{CH} type with the set $\overline{c_1}\times \overline{c_2}$,
+the quantum conditional creates a new set based on $\overline{c_1}\times \overline{c_2}$, i.e., for each element $\tos{n}.d.c$ in the set, with $\slen{\tos{n}}=\slen{\lambda_1}$, we compute Boolean guard $b$ value by substituting qubit variables in $b$ with the bitstring $\tos{n}$, and the result $b[\tos{n} / \lambda_1] \oplus d$ is true or not ($d$ represents the bit value for the qubit at $x[j,\texttt{S}\;j]$); if it is true, we replace the $c$ bitstring by applying the conditional body on it; otherwise, we keep $c$ to be the same.
+In short, the quantum conditional behavior can be understood as applying a partial map function on an $m$ array of bitstrings, and we only apply the conditional body's effect on the second part of some bitstrings whose first part is checked to be true by applying the Boolean guard $b$.
+
+Fourth, the type system enforces that the $\cmode$ classical variables can be evaluated to values in the compilation time. \footnote{We consider all computation that only needs classical computer is done in the compilation time.}, while tracks $\mmode$ variables which represent the measurement results of quantum sessions. Rule \textsc{TEXP} enforces that a classical variable $x$ is replaced with its assignment value $n$ in $s$. The substitution statement $s[n/x]$ also evaluates classical expressions in $s$, which is described in \Cref{sec:qafny-app}.
+In measurement rules (\textsc{TMEA} and \textsc{TMEA-N}), we apply some gradual typing techniques.
+There is an ghost expression $\texttt{ret}$ generated from one step evaluation of the measurement.
+Before the step evaluation, rule \textsc{TMEA} types the partial measurement results as a classical $\mmode$ mode variable $x$ and a possible quantum leftover $\lambda$ as $\tch{\infty}$.
+After the step is transitioned, we know the exact value for $x$ as $(r,n)$, so that we carry the result to type $\lambda$ as $\tch{\overline{c'}(\slen{\overline{c'}})}$. This does not violate type preservation because we have the subtyping relation $\tch{\overline{c'}(\slen{\overline{c'}})} \sqsubseteq_{\slen{\lambda}} \tch{\infty}$.
+
+Finally, the type system extracts the result type environment of a for-loop as $\sigma'[n_2/x]$ based on the extraction of a type environment invariant on the $i$-th loop step of executing a conditional $\sifq{b}{s}$ in rule \textsc{TLOOP}, regardless if the conditional is classical or quantum. 
+
+
+
+\subsection{\qafny Semantics and Type Soundness}\label{sec:semantics}
+
+\begin{figure}[t]
+{
+{\Small
+  \begin{mathpar}
+    \inferrule[SPar]{\varphi \equiv \varphi' }{(\varphi,s) \longrightarrow (\varphi',s) }
+
+    \inferrule[SMEA]{\sigma(y) = y[0..k]\uplus\lambda\mapsto \sch{m}{z_j}{c_j} \\ r = \forall j\in[0,m).\;c_j=\tos{n}.c\Rightarrow \sum{\slen{z_j}^2}}{(\varphi,\sexp{x}{\smea{y}}{s} \longrightarrow (\varphi,\sexp{x}{\sret{(y,(r,n))}}{s}) }
+
+
+    \inferrule[SSEQ-1]{(\varphi,s_1) \longrightarrow (\varphi',s'_1)}{(\varphi,\sseq{s_1}{s_2})\longrightarrow (\varphi',\sseq{s'_1}{s_2}) }
+
+    \inferrule[SMEA-N]{ \varphi(y) = \{y[0..k]\uplus \lambda : \sch{m}{z_j}{c_{j1}.c_{j2}}\} \\\overline{c}=\{c_{j2}|c_{j1}=\tos{n}\}\\c_j\in \overline{c}}{(\varphi,\sexp{x}{\sret{(y,(r,n))}}{s} \longrightarrow (\varphi[x\mapsto (r,n),\lambda \mapsto \sch{\slen{\overline{c}}}{\frac{1}{\sqrt{r}}z_j}{c_j}],s)}
+
+    \inferrule[SSEQ-2]{}{(\varphi,\sseq{\{\}}{s_2})\longrightarrow (\varphi,s_2) }
+
+    \inferrule[SA-CH]{ \varphi(\lambda)=\{\lambda\uplus\lambda'\mapsto \sch{m}{z_j}{c_{j1}.c_{j2}}\} \\\\ \slen{c_{j1}}=\slen{\lambda}
+    \\\llbracket \mu \rrbracket c_{j1} = z'_j\ket{c'_{j1}} }{ (\varphi,\ssassign{\lambda}{}{\mu}) \longrightarrow (\varphi[\lambda\uplus\lambda'\mapsto \sch{m}{z'_j\cdot z_j}{c'_{j1}.c_{j2}}],\{\}) }
+
+    \inferrule[SEXP]{ }{(\varphi,\sexp{x}{n}{s}) \longrightarrow (\varphi,s[n/x]) }
+
+
+\inferrule[SIF]{ \lambda=\lambda_1\uplus x[j,\texttt{S}\;j]\uplus \lambda_2 \\ FV(b@x[j]) = \lambda\uplus x[j,\texttt{S}\;j] \\ 
+  \varphi(\lambda)=\sch{m}{z_j}{c_{j1}.c_{j2}}]
+\\
+(\varphi,s) \longrightarrow^* (\varphi[\lambda\mapsto \sch{m}{z'_j}{c_{j1}.c'_{j2}}],\{\}) \\ \slen{c_{j1}}=\slen{\lambda} } 
+{(\varphi,\sifq{b@x[j]}{s}) \longrightarrow (\varphi[\lambda\mapsto \texttt{pmap}(m,z_j,z'_j,c_{j1},c'_{j1},c_{j2})],\{\}) }
+
+  \end{mathpar}
+}
+}
+  \caption{\qafny small step semantics. $\llbracket \mu \rrbracket c$ is the \oqasm semantics of interpreting reversible expression $\mu$ in \Cref{fig:deno-sem}. Boolean expression $b$ can be $a_1=a_2$, $a_1 < a_2$ or \texttt{true}.
+$\varphi(y)=\{\lambda\mapsto q\}$ produces the map entry $\lambda\mapsto q$ and the range $y[0..\slen{y}]$ is in $\lambda$.
+$\varphi(\lambda)=q$ is an abbreviation of $\varphi(\lambda)=\{\lambda\mapsto q\}$.}
+  \label{fig:exp-semantics}
+\end{figure}
+
+We define the semantics of an \oqasm program as a partial function
+$\llbracket\rrbracket$ from
+an instruction $\instr$ and input state $\varphi$ to an output state
+$\varphi'$, written 
+$\llbracket \instr \rrbracket\varphi=\varphi'$, shown in \Cref{fig:deno-sem}.
+% The definition for $\llbracket\rrbracket$ is syntax-driven, meaning that it is defined in terms of the state syntax presented in \Cref{fig:vqir-state}.
+
+% defines the denotational semantics of \oqasm, which maps a \oqasm instruction $\instr \in \{\instr\}$ to its unitary operator on $\varphi \in \hsp{S}^d$.
+
+% The key takeaway of the \oqasm denotational semantics is that given an input $\varphi \in \hsp{S}^d$, a well typed instruction affects only one qubit (notation: $\varphi{(x,n)}$ or $q_{(x,n)}$) or qubit array (notation: $\varphi{(x)}$ or $q_x$), which means it \emph{does not create entanglement}.
+% The benefit of this is that we can completely describe the state $\varphi$ using $d$ terms, instead of considering a length $2^d$ vector, as would generally be required to analyze an $d$-qubit system.
+
+Recall that a state $\varphi$ is a tuple of $d$ qubit values,
+modeling the tensor product $q_1\otimes \cdots \otimes q_d$. 
+The rules implicitly map each variable $x$ to a
+range of qubits in the state, e.g., 
+$\varphi(x)$ corresponds to some sub-state $q_k\otimes \cdots \otimes q_{k+n-1}$
+where $\Omegasz(x)=n$.
+%
+Many of the rules in \Cref{fig:deno-sem} update a \emph{portion} of a
+state. We write $\app{q_{(x,i)}}{\varphi}{(x,i)}$ to update the $i$-th
+qubit of variable $x$ to be the (single-qubit) state $q_{(x,i)}$, and
+$\app{q_{x}}{\varphi}{x}$ to update variable $x$ according to
+the qubit \emph{tuple} $q_x$.
+$\app{\uparrow q_{(x,i)}}{\varphi}{(x,i)}$ and $\app{\uparrow q_{x}}{\varphi}{x}$ 
+are similar, except that they also accumulate the previous global phase of $\varphi(x,i)$ (or $\varphi(x)$).
+We use $\downarrow$ to convert a qubit $\alpha(b)\overline{q}$ to an unphased qubit $\overline{q}$.
+%Thus, we have $\downarrow \alpha(b)\overline{q}=\overline{q}$ 
+%and $\downarrow (q_1\otimes...\otimes q_n) = \downarrow q_1\otimes...\otimes \downarrow q_n$. 
+%$\app{\uparrow q_{(x,i))}}{\varphi}{(x,i)}$ means to put back the global phase to the result qubit assigning to $(x,i)$. 
+%%If $\varphi(x,i)=e^{2\pi i b}\overline{q}$ 
+%and the result $q_{(x,i)}=\overline{q_{(x,i)}}$, 
+%then we assign $e^{2\pi i b}\overline{q_{(x,i)}}$ to $(x,i)$;
+%if the result $q_{(x,i)}=e^{2\pi i b_1}\overline{q_{(x,i)}}$, then we assign $e^{2\pi i (b+b_1)}\overline{q_{(x,i)}}$ to $(x,i)$. $\app{\uparrow q_{x}}{\varphi}{x}$ applies the above scenario to a list of qubits $q_k\otimes ... \otimes q_{k+n-1}$
+%where $\Omegasz(x)=n$.
+
+Function $\xsem$ updates the state of a single
+qubit according to the rules for the standard quantum gate $X$.  
+\texttt{cu} is a conditional operation
+depending on the \texttt{Nor}-basis qubit $(x,i)$. 
+\texttt{SR} (or
+$\texttt{SR}^{-1}$) applies an $m+1$ series of \texttt{RZ} (or
+$\texttt{RZ}^{-1}$) rotations where the $i$-th rotation
+applies a phase of $\alpha({\frac{1}{2^{m-i+1}}})$
+(or $\alpha({-\frac{1}{2^{m-i+1}}})$).
+$\qsem$ applies an approximate quantum Fourier transform; $\ket{y}$ is an abbreviation of
+$\ket{b_1}\otimes \cdots \otimes \ket{b_i}$ (assuming $\Omegasz(y)=i$)
+and $n$ is the degree of approximation.
+If $n = i$, then the operation is the standard QFT\@.
+Otherwise, each qubit in the state is mapped to $\qket{\frac{y}{2^{n-k}}}$, which is equal to $\frac{1}{\sqrt{2}}(\ket{0} + \alpha(\frac{y}{2^{n-k}})\ket{1})$ when $k < n$ and $\frac{1}{\sqrt{2}}(\ket{0} + \ket{1}) = \ket{+}$ when $n \leq k$ (since $\alpha(n) = 1$ for any natural number $n$).
+$\qsem^{-1}$ is the inverse function of $\qsem$. 
+Note that the input state to $\qsem^{-1}$ is guaranteed to have the form $\bigotimes_{k=0}^{i-1}(\qket{\frac{y}{2^{n-k}}})$ because it has type $\tphi{n}$.
+$\psem_l$, $\psem_r$, and
+$\psem_a$ are the semantics for \itext{Lshift}, 
+\itext{Rshift}, and \itext{Rev}, respectively.   
+% Several takeaways about \oqasm denotational semantics.
+% For any operation application within the space domain $\hsp{S}^d$, the semantic application $U$ only has effect on the specific qubit ($\varphi_{(x,n)}$) / qubit array ($\varphi_{x}$) that it targets at, which does not create entanglement with other subsystems.
+% This clear separation only works for the domain $\hsp{S}^d$.
+% When we compile these operations to \sqir and see their effects on a general Hilbert space $\hsp{H}$, they might have entanglement effects.
+% \yxp{Even if we turn it into unitary over the Hilbert space, it still does not generate entanglement with other subsystems.}
+% \liyi{Can you have CNOT x y when you have x is Had and y is in Nor, then you will definitely have entanglement. }
+% However, the clear separation in $\hsp{S}^d$ provides us a decompositional and analytical way of verifying and validating quantum oracles; thus, each sub-oracle-component can be analyzed individually. The potential entanglements in a general Hilbert space becomes the naturally extended (additive) superposition effects.
+% In addition, all semantic functions in Fig.~\ref{fig:deno-sem} are carefully engineered to only target qubits in a register $\varphi$, and does not target on invidual vectors in the vector space $\varphi$ represents.
+% For example, $\xsem$ is defined for a basis phase space case $\ket{c}$, and we also define the case for superposition $\frac{1}{\sqrt{2}}(\ket{0}+(-1)^c\ket{1})$. We do not assume the the semantics of the basis phase space is automatically extended to dealing with individual elements in the superposition case.
+% By using the semantics to prove quantum oracle properties, we only need to consider $O(n)$ qubits instead of the possible $2^n$ expanded vector elements.
+% The semantics of a universal quantum assembly language like \sqir, by contrast, represents a quantum state as a unitary matrix whose size is \emph{exponential} in the number of vectors by expanding qubits to vectors in a register. \sqir's semantics also relies on the use of concrete qubits; using a unitary matrix and virtual positions would inject a virtual-to-physical mapping into the semantic definition, which can severely complicate proofs~\cite{PQPC}. This leads to the successful correctness proof of the QFT-adder for the first time (Sec.~\ref{sec:op-verification}).
+% We only define semantic functions for qubit forms when it is possible to apply. For example, we do not define $\xsem$ for the form $\frac{1}{\sqrt{2}}(\ket{0}+e^{2\pi{i} b}\ket{1})$, because the \oqasm type system does not allow it. 
+
+\ignore{
+\begin{figure*}[t]
+{\footnotesize
+  \begin{mathpar}
+
+    \inferrule[PA-NOR ]{(\itau ,\itau')\models_g (T,\ssassign{\overline{l}}{}{a},T'):\zeta\triangleright\ttype{n}{\tnor{\overline{d}}}}
+                {\Omega\vdash_g\fivepule{T}{P[\llbracket a \rrbracket \zeta /\zeta] } {\ssassign{\overline{l}}{}{a}} {T'}{P}}
+
+
+    \inferrule[PA-CH ]{(\itau,\itau')\models_g (T,\ssassign{\overline{l}}{}{a},T'):\zeta\uplus\zeta'\triangleright \ttype{n}{\tch{m}{\beta}}
+                 \\ \itau(\overline{l})=\zeta}
+       {\Omega\vdash_g\fivepule{T}{P[\forall k < m.\;\llbracket a \rrbracket(\zeta[k]) / \zeta[k]] } {\ssassign{\overline{l}}{}{a}}{T'}{P}}
+
+
+    \inferrule[P-MEA ]{ (\itau[\forall \zeta'\;.\;\zeta\uplus\zeta' \mapsto \ttype{n+n'}{\tch{(m\times m')}{(\beta\cdot\beta')}}],\itau'[\forall \zeta'\;.\;\zeta' \mapsto \ttype{n'}{\tch{m'}{\beta'}}])\models_{\cmode} (T,y,T''):\zeta\triangleright \ttype{n}{\tch{m}{\beta}}
+  \\ v < m \\
+   \Omega[x\mapsto M,y\mapsto \bot]\vdash_{\cmode} \fivepule{T''}{P[(\iasa{2}{\zeta[v]},\ibs{\zeta[v]}) /x, \bot / \zeta] } {s} {T'}{Q} } {\Omega\vdash_{\cmode}\fivepule{T}{P}{\sexp{x}{\smea{y}}{s}}{T'}{Q}}
+
+    \inferrule[P-IF ]{(\itau,\itau')\models_{\qmode} (T,s,T'):\zeta'\triangleright \ttype{n'}{\tch{m'}{\beta'}}
+      \\\Omega\vdash b(@x[v]): \zeta\uplus[(x,v,v+1)] \\ \itau(\zeta\uplus[(x,v,v+1)])= \ttype{n}{\tch{2m}{(\beta_1\cdot 0 \cup \beta_2\cdot 1)}}
+       }{\Omega\vdash_{g}\fivepule{T}{P[(\zeta\uplus 0 \uplus \zeta')\texttt{++}(\zeta\uplus 1 \uplus \llbracket s \rrbracket\zeta') /\zeta\uplus[(x,v,v+1)]\uplus\zeta'] }
+      {\sifq{b(@x[v])}{s}}{T'}{P}}
+    
+    \inferrule[P-DIS ]{(\itau,\itau')\models_g (T,\sdistr{x},T'):\zeta\triangleright \ttype{n'}{\tch{m'}{\beta'}}
+             \\ \itau(x)=\{\zeta:\ttype{n'}{\tch{m}{\beta}}\}
+    \\\zeta = \zeta' \uplus (x,0,\Sigma(x))
+    \\ \beta_1 \cdot \beta_2=\beta(\downarrow (x,0,\Sigma(x)))\cdot \beta(\downarrow \zeta') } 
+           {\Omega\vdash_g\fivepule{T}{P[\texttt{dis}(n',\zeta,\beta,\beta_1,\beta_2) /\zeta] }
+      {\sdistr{x}}{T'}{P}}
+
+
+  \end{mathpar}
+}
+{\footnotesize
+\[
+\begin{array}{l}
+\texttt{ln}(\zeta)\text{: length of }\zeta
+\qquad
+\texttt{as}(\zeta[v])\text{: the amplitude of }\zeta[v]
+\qquad
+\texttt{bs}(\zeta[v])\text{: the base of }\zeta[v]
+\qquad
+\texttt{++}\text{: array concatenation.}
+\\
+\texttt{dis}(n,\zeta,\beta,\beta_1,\beta_2)\equiv \{\frac{1}{2^{n-1}}(\sum_k \texttt{as}(\zeta[k])-\texttt{as}(\zeta[j]))\beta_1[j]
+                           \;|\; \beta_1[j]\in \tpower{n} \}
+\\
+\qquad\qquad\qquad\qquad\qquad
+\cup  \bigcup_{j\in \beta_2}\{\frac{1}{2^{n}}\sum_k \texttt{as}(\zeta[k])z
+                           \;|\; z\in \tpower{n} \wedge (\forall k.\;z \cdot \beta_2[j] \neq \beta[k]) \}
+\end{array}
+\]
+}
+\caption{Selected Proof System Rules}
+\label{fig:exp-proofsystem}
+\end{figure*}
+}
+\subsection{Logic Proof System}\label{sec:logical}
+
+
+The reason of having the session type system in \Cref{fig:exp-sessiontype}
+is to enable the proof system given in \Cref{fig:exp-proofsystem}.
+Every proof rule is a structure as $\Omega\vdash_g \fivepule{T}{P}{s}{T'}{Q}$,
+where $g$ and $\Omega$ are the type entities mentioned in \Cref{sec:typesystem}.
+$T$ and $T'$ are the pre- and post- type predicates for the statement $s$, 
+meaning that there is type environments $\itau$ and $\itau'$, such that $\itau\models T$,
+$\itau'\models T'$, $g,\Omega,\itau \vdash s : \zeta\triangleright \tau$, and $(\zeta\mapsto \tau) \in \itau'$.
+We denote $(\itau,\itau')\models (T,s,T'):\zeta\triangleright\tau$ as the property described above.
+$P$ and $Q$ are the pre- and post- Hoare conditions for statement $s$.
+
+The proof system is an imitation of the classical Hoare Logic array theory.
+We view the three different quantum state forms in \Cref{fig:vqir-state} as arrays with elements in different forms,
+and use the session types to guide the occurrence of a specific form at a time.
+Sessions, like the array variables in the classical Hoare Logic theory,
+represent the stores of quantum states.
+The state changes are implemented by the substitutions of sessions
+with expressions containing operation's semantic transitions.
+The substitutions can happen for a single index session element or the whole session.
+
+Rule \text{PA-NOR} and \text{PA-CH} specify the assignment rules.
+If a session $\zeta$ has type \texttt{Nor}, it is a singleton array,
+so the substitution $\llbracket a \rrbracket \zeta /\zeta$ means
+that we substitute the singleton array by a term with the $a$'s application.
+When $\zeta$ has type \texttt{CH}, term $\zeta[k]$ refers to each basis state in the entanglement.
+The assignment is an array map operation that applies $a$ to every element in the array.
+For example, in \Cref{fig:shorexample} line 12,
+we apply a series of \code{H} gates to array $x$.
+Its post-condition is $[(x,0,n)]=\Motimes_{k=0}^{n}\ket{\Phi(0)}$,
+where $[(x,0,n)]$ is the session representing register variable $x$.
+Thus, replacing the session $[(x,0,n)]$ with the \code{H} application
+results in a pre-condition as $\code{H}[(x,0,n)]=\Motimes_{k=0}^{n}\ket{\Phi(0)}$,
+which means that $[(x,0,n)]$ has the state $\ket{0}^n$.
+
+Rule \text{P-MEA} is the rule for partial/complete measurement.
+$y$'s session is $\zeta$, but it might be a part of an entangled session $\zeta\uplus\zeta'$.
+After the measurement, $M$-mode $x$ has the measurement result $(\ias{\zeta[v]}^2,\ibs{\zeta[v]})$ coming
+from one possible basis state of $y$ (picking a random index $v$ in $\zeta$), 
+$\ias{\zeta[v]}$ is the amplitude and $\ibs{\zeta[v]}$ is the base.
+We also remove $y$ and its session $\zeta$ ($\bot/\zeta$) in the new pre-condition because it is measured away.
+The removal means that the entangled session $\zeta\uplus\zeta'$ is replaced by $\zeta'$ 
+with the re-computation of the amplitudes and bases for each term.
+
+Rule \text{P-IF} deals with a quantum conditional where the Boolean guard $b(@x[v])$ is of type $\ttype{n}{\tch{2m}{(\beta_1\cdot 0 \cup \beta_2\cdot 1)}}$. The bases are split into two sets $\beta_1\cdot 0$ and $\beta_2\cdot 1$, where the last bit represents the base state for the $x[v]$ position.
+In quantum computing, a conditional is more similar to an assignment, where we create a new array to substitute 
+the current state represented by the session $\zeta\uplus[(x,v,v+1)]\uplus\zeta'$.
+Here, the new array is given as $(\zeta\uplus 0 \uplus \zeta')\texttt{++}(\zeta\uplus 1 \uplus \llbracket s \rrbracket\zeta')$,
+where we double the array: if the $x[v]$ position is $0$, we concatenate the current session $\zeta'$ for the conditional body,
+if $x[v]=1$, we apply $\llbracket s \rrbracket$ on the array $\zeta'$ and concatenate it to $(\zeta\uplus 1)$.
+
+Rule \text{P-Loop} is an initiation of the classical while rule in Hoare Logic with the loop guard possibly having quantum variables.
+In QWhile, we only has \texttt{for-loop} structure and we believe it is enough to specify any current quantum algorithms.
+For any $i$, if we can maintain the loop invariant $P(i)$ and $T(i)$ with the post-state $P(f(i))$ and $T(f(i))$
+for a single conditional $\sifq{x[i]}{s}$, the invariant is maintained for multiple steps
+for $i$ from the lower-bound $a_1$ to the upper bound $a_2$.
+
+Rule \text{P-DIS} proves a diffusion operator $\sdistr{x}$.
+The quantum semantics for $\sdistr{x}$ is $\frac{1}{2^{n}}(2\sum_{i=0}^{2^n}(\sum_{j=0}\alpha_j)\ket{i} - \sum_{j=0}\alpha_j\ket{x_j})$.
+As an array operation, $\sdistr{x}$ with the session $\zeta$ is an array operation as follows:
+assume that $\zeta=(x,0,\Sigma(x))\uplus\zeta_1$, for every $k$,
+if $\zeta[k]$'s value is $\theta_k(\overline{d_x}\cdot \overline{d_1})$,
+for any bitstring $z$ in $\tpower{\Sigma(x)}$, if $z\cdot \overline{d_1}$
+is not a base for $\zeta[j]$ for any $j$, then the state is
+$\frac{1}{2^{n-1}}\sum_{k=0}\theta_k(z\cdot \overline{d_1})$;
+if the base of $\zeta[j]$ is $z\cdot \overline{d_1}$,
+then the state for $\zeta[j]$ is $\frac{1}{2^{n-1}}(\sum_{k=0}\theta_k)-\theta_j(z\cdot \overline{d_1})$.
+
+
+
+
+
 

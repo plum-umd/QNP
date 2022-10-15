@@ -18,7 +18,11 @@
 \usepackage{textcomp} %just for a vertical quote
 
 \usepackage{changepage}
-\usepackage{array}
+\usepackage{array,etoolbox}
+
+\preto\tabular{\setcounter{magicrownumbers}{0}}
+\newcounter{magicrownumbers}
+\newcommand\rownumber{\stepcounter{magicrownumbers}\arabic{magicrownumbers}}
 
 
 % References
@@ -260,6 +264,7 @@
 \definecolor{dkviolet}{rgb}{0.3,0,0.5}
 \definecolor{dkred}{rgb}{0.5,0,0}
 \lstset{language=Coq}
+\usepackage[export]{adjustbox}
 
 \newcommand{\code}[1]{{\small\texttt{#1}}}
 %\newcommand{\mcode}[1]{{\small\mathtt{#1}}}
@@ -287,24 +292,35 @@
 \newcommand{\eindex}[2]{{#1}\texttt{[}{#2}\texttt{]}}
 
 \newcommand{\sexp}[3]{\texttt{let}~{#1}~=~{#2}~\texttt{in}~{#3}}
+\newcommand{\sexph}[2]{\texttt{let}~{#1}~=~{#2}~\texttt{in}}
 \newcommand{\sskip}{\texttt{\{\}}}
-\newcommand{\sifq}[2]{\texttt{if}~{(#1)}~{\{#2\}}}
+\newcommand{\sifq}[2]{\texttt{if}~{(#1)}~{#2}}
 \newcommand{\sifb}[3]{\texttt{if}~{(#1)}~{#2}~\texttt{else}~{#3}}
 \newcommand{\swhile}[3]{\texttt{while}~{(#1)}~{#2}~{\{#3\}}}
-\newcommand{\sqwhile}[5]{\texttt{for}~{(#1;~#2~\&\&~#3~;~#4)}~{\{#5\}}}
+\newcommand{\sqwhile}[5]{\texttt{for}~{(\texttt{int}~#1 \in [#2,#3)~\&\&~#4)}~#5}
+\newcommand{\sqforh}[4]{\texttt{for}~{(#1;~#2~\&\&~#3~;~#4)}}
 \newcommand{\sinit}[1]{\texttt{init}~{#1}}
-\newcommand{\sint}[2]{\texttt{int}~{#1}:={#2}}
+\newcommand{\sint}[2]{\texttt{int}~{#1}\texttt{:=}\,{#2}}
 \newcommand{\sincr}[1]{{#1}\texttt{++}}
 \newcommand{\tnor}[1]{\texttt{Nor}~{#1}}
+\newcommand{\tnort}{\texttt{Nor}}
 \newcommand{\thad}[1]{\texttt{Had}~{#1}}
+\newcommand{\thadt}{\texttt{Had}}
 \newcommand{\tch}[1]{\texttt{CH}~{#1}}
+\newcommand{\tcht}{\texttt{CH}}
 \newcommand{\shad}[3]{\frac{1}{\sqrt{#1}}\Motimes_{j=0}^{#2}{(\ket{0}+#3\ket{1})}}
 \newcommand{\sch}[3]{\Msum_{j=0}^{#1}{#2\ket{#3}}}
+\newcommand{\smch}[3]{#1\Msum_{k=0}^{#2}{\ket{#3}}}
+\newcommand{\smich}[4]{#1\Msum_{k=0}^{#2}{#3\ket{#4}}}
 \newcommand{\schk}[3]{\Msum_{k=0}^{#1}{#2\ket{#3}}}
+\newcommand{\schii}[3]{\Msum_{i=0}^{#1}{#2\ket{#3}}}
 \newcommand{\schi}[3]{\Msum^{#1}{#2\ket{#3}}}
 \newcommand{\tpower}[1]{\mathcal{P}(#1)}
 \newcommand{\iev}[1]{\texttt{ev}(#1)}
 \newcommand{\itau}{\mathcal{T}}
+\newcommand{\snat}[1]{\texttt{nat}({#1})}
+\newcommand{\sord}[1]{\texttt{ord}({#1})}
+\newcommand{\srnd}[1]{\texttt{rnd}({#1})}
 \DeclareMathOperator*{\Motimes}{\text{\raisebox{0.25ex}{\scalebox{0.8}{$\bigotimes$}}}}
 \DeclareMathOperator*{\Msum}{\text{\raisebox{0.25ex}{\scalebox{0.8}{$\sum$}}}}
 
@@ -314,7 +330,7 @@
 \newcommand{\iasa}[2]{\texttt{as}^{#1}(#2)}
 \newcommand{\ibs}[1]{\texttt{bs}(#1)}
 \newcommand{\ips}[1]{\texttt{ps}(#1)}
-\newcommand{\fivepule}[5]{\{#1\}~\{#2\}~#3~\{#4\}~\{#5\}}
+\newcommand{\fivepule}[6]{#1;#2\vdash_{#3}\{#4\}\, #5 \,\{#6\}}
 
 \newcommand{\sassign}[4]{{#1} \leftarrow {#3}~{#2}~{#4}}
 \newcommand{\ssassign}[3]{{#1} \xleftarrow{#2} {#3}}
@@ -327,6 +343,10 @@
 \newcommand{\smea}[1]{\texttt{measure}(#1)}
 \newcommand{\sret}[1]{\texttt{ret}(#1)}
 \newcommand{\size}[1]{\texttt{size}(#1)}
+\newcommand{\snext}[1]{\texttt{S}\;#1}
+\newcommand{\sminus}{\texttt{-}}
+\newcommand{\splus}{\texttt{+}}
+\newcommand{\slt}{\texttt{<}}
 
 \newcommand{\sfor}[3]{\texttt{for}~{#1}~{#2}~{#3}}
 \newcommand{\scall}[3]{{#1}\leftarrow {#2}~{#3}}
@@ -346,9 +366,11 @@
 \newcommand{\irshift}[1]{\inst{Rshift}{#1}}
 \newcommand{\irev}[1]{\inst{Rev}{#1}}
 \newcommand{\iqft}[3][ ]{\insttwo[#1]{QFT}{#2}{#3}}
+\newcommand{\iqfth}[1][ ]{\texttt{QFT}^[#1]}
 \newcommand{\tphi}[1]{\texttt{Phi}~{#1}}
 %\newcommand{\thad}[1]{\texttt{Had}~{#1}}
 \newcommand{\ihad}[1]{\inst{H}{#1}}
+\newcommand{\ihadh}{\texttt{H}}
 \newcommand{\isp}[2]{\mathcal{#1}_{#2}}
 \newcommand{\hsp}[1]{\mathcal{#1}}
 \newcommand{\iseq}[2]{{#1}\,\texttt{;}\,{#2}}
@@ -413,6 +435,7 @@
 %\newcommand{\pdenote}[1]{(\!| #1 |\!)}
 \newcommand{\dabs}[1]{|\!| #1 |\!|}
 \newcommand{\tos}[1]{(\!| #1 |\!)}
+\newcommand{\tov}[1]{\{\hspace{-0.2em}| #1 |\hspace{-0.2em}\}}
 \newcommand{\pdenote}[1]{\{\hspace{-0.2em}| #1 |\hspace{-0.2em}\}}
 \newcommand{\dplus}[1]{\texttt{++}#1}
 \newcommand{\dminus}[1]{\texttt{-\hspace{0.1em}-}#1}

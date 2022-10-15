@@ -8,7 +8,6 @@ Require Import QPE.
 Require Import BasicUtility.
 Require Import Classical_Prop.
 Require Import MathSpec.
-Require Import QWhileSyntax.
 (**********************)
 (** Session Definitions **)
 (**********************)
@@ -17,6 +16,8 @@ Require Import Coq.FSets.FMapList.
 Require Import Coq.FSets.FMapFacts.
 Require Import Coq.Structures.OrderedTypeEx.
 Local Open Scope nat_scope.
+
+Check exp.
 
 Definition in_ses (a: (var* nat*nat)) (b: (var*nat*nat)) :=
    match b with (x,lb,rb) =>

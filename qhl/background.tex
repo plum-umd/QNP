@@ -82,43 +82,6 @@ Failing to uncompute this information leaves it entangled with the rest of the s
 To make this uncomputation more efficient and less error-prone, recent programming languages such as Silq \cite{sliqlanguage} have developed notions of \emph{implicit} uncomputation.
 We have similar motivations in developing \name: we aim to make it easier for programmers to write efficient quantum oracles, and to assure, through verification and randomized testing, that they are correct.
 
-\begin{figure}[t]
-{\small
-  \begin{lstlisting}[numbers=left,language=C++,xleftmargin=4 mm]
-method Shor ( a : int, N : int, n : int, m : int, x : Q[n], y : Q[n] )
- requires (n > 0)
- requires (1 < a < N)
- requires (N < 2^(n-1))
- requires (N^2 < 2^m <= 2 * N^2)
- requires (gcd(a, N) == 1)
- requires ( type(x) = Tensor n (Nor 0))
- requires ( type(y) = Tensor n (Nor 0))
- ensures (gcd(N, r) == 1)
- ensures (p.pos >= 4 / (PI ^ 2))
-{
-  x *= H ;
-  y *= cl(y+1); //cl can be omitted.
-  for (int i = 0; i < n; x[i]; i ++)
-    invariant (0 <= i <= n)
-    invariant (saturation(x[0..i]))
-    invariant (type(y,x[0..i]) = Tensor n (ch (2^i) {k | j baseof x[0..i] && k = (a^j mod N,j)}))
-    //psum(k=b,M,p(k),b(k)) = sum_{k=b}^M p(k)*b(k)
-    invariant ((y,x[0..i]) == psum(k=0,2^i,1,(a^k mod N,k))) 
-  {
-    y *= cl(a^(2^i) * y mod N);
-  }
-
- M z := measure(y);//partial measurement, actually measure(y,r) r is the period
- x *= RQFT;
- M p := measure(x); //p.pos and p.base
- var r := post_period(m,p.base) // exists t. 2^m * t / r = p.base
-}
-  \end{lstlisting}
-}
-\caption{Shor's Algorithm in Q-Dafny}
-\label{fig:shorexample}
-\end{figure}
-
 % Writing a quantum algorithm now, with SQIR (but likewise with Quipper, Pyquil, Circ, etc.). Example: Shor’s
 % Write quantum parts (QPE) 
 % Classical parts via library functions in meta-language (Modular multiplier)
