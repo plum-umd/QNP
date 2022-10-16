@@ -191,6 +191,23 @@ location = {Madrid, Spain},
 series = {POPL '10}
 }
 
+@InProceedings{dafnyref,
+author="Leino, K. Rustan M.
+and Moskal, Micha{\l}",
+editor="Jones, Cliff
+and Pihlajasaari, Pekka
+and Sun, Jun",
+title="Co-induction Simply",
+booktitle="FM 2014: Formal Methods",
+year="2014",
+publisher="Springer International Publishing",
+address="Cham",
+pages="382--398",
+abstract="This paper shows that an SMT-based program verifier can support reasoning about co-induction---handling infinite data structures, lazy function calls, and user-defined properties defined as greatest fix-points, as well as letting users write co-inductive proofs. Moreover, the support can be packaged to provide a simple user experience. The paper describes the features for co-induction in the language and verifier Dafny, defines their translation into input for a first-order SMT solver, and reports on some encouraging initial experience.",
+isbn="978-3-319-06410-9"
+}
+
+
 @inproceedings{DBLP:conf/pldi/Qiu0SM13,
   author    = {Xiaokang Qiu and
                Pranav Garg and
@@ -333,7 +350,8 @@ url="https://doi.org/10.1007/978-1-4419-5906-5_615"
   doi={10.1109/LICS.2002.1029817}}
 
 
-@misc{oracleoopsla,
+@INPROCEEDINGS{oracleoopsla,
+  booktitle={OOPSLA 2022}, 
   doi = {10.48550/ARXIV.2112.06700},
   
   url = {https://arxiv.org/abs/2112.06700},
@@ -344,13 +362,8 @@ url="https://doi.org/10.1007/978-1-4419-5906-5_615"
   
   title = {Verified Compilation of Quantum Oracles},
   
-  publisher = {arXiv},
-  
-  year = {2021},
-  
-  copyright = {Creative Commons Attribution 4.0 International}
+  year = {2022}
 }
-
 
 @misc{Giovannetti2008,
    title={{Quantum Random Access Memory}},
@@ -1723,6 +1736,28 @@ Note = {Previous versions published as technical reports UIUCDCS-R-2006-2802 in 
  address = {Secaucus, NJ, USA},
  keywords = {Lambda-calculus, Nominal logic work, Theorem provers},
 } 
+
+@InProceedings{qhoreusage,
+author="Liu, Junyi
+and Zhan, Bohua
+and Wang, Shuling
+and Ying, Shenggang
+and Liu, Tao
+and Li, Yangjia
+and Ying, Mingsheng
+and Zhan, Naijun",
+editor="Dillig, Isil
+and Tasiran, Serdar",
+title="Formal Verification of Quantum Algorithms Using Quantum Hoare Logic",
+booktitle="Computer Aided Verification",
+year="2019",
+publisher="Springer International Publishing",
+address="Cham",
+pages="187--207",
+abstract="We formalize the theory of quantum Hoare logic (QHL) [TOPLAS 33(6),19], an extension of Hoare logic for reasoning about quantum programs. In particular, we formalize the syntax and semantics of quantum programs in Isabelle/HOL, write down the rules of quantum Hoare logic, and verify the soundness and completeness of the deduction system for partial correctness of quantum programs. As preliminary work, we formalize some necessary mathematical background in linear algebra, and define tensor products of vectors and matrices on quantum variables. As an application, we verify the correctness of Grover's search algorithm. To our best knowledge, this is the first time a Hoare logic for quantum programs is formalized in an interactive theorem prover, and used to verify the correctness of a nontrivial quantum algorithm.",
+isbn="978-3-030-25543-5"
+}
+
 
 @article{qhoare,
 author = {Ying, Mingsheng},

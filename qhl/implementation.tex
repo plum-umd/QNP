@@ -229,7 +229,7 @@ In this procedure, the elements $\tcht$ state are doubled, which will be explain
     \end{array}
   \]
 }
-  \caption{Core \qafny syntax. \oqasm is in \Cref{sec:vqir}. For an operator \texttt{OP}, $\texttt{OP}^{\lbrack -1 \rbrack}$ indicates that the operator has a built-in inverse available. Arithmetic expressions in $e$ are only used for classical operations, while Boolean expressions are used for both classical and quantum operations. $x[a]$ represents the $a$-th element in the qubit array $x$, while a quantum variable $x$ represents the qubit group $x[0..n]$ and $n$ is the length of $x$. }
+  \caption{Core \qafny syntax. \oqasm is in \Cref{sec:qafny}. For an operator \texttt{OP}, $\texttt{OP}^{\lbrack -1 \rbrack}$ indicates that the operator has a built-in inverse available. Arithmetic expressions in $e$ are only used for classical operations, while Boolean expressions are used for both classical and quantum operations. $x[a]$ represents the $a$-th element in the qubit array $x$, while a quantum variable $x$ represents the qubit group $x[0..n]$ and $n$ is the length of $x$. }
   \label{fig:vqimp}
 \end{figure}
 
@@ -243,10 +243,10 @@ The measurement semantic definition relies on a ghost expression $\texttt{ret}$,
 The last three operations in first row are the quantum data-flow operations.
 $\ssassign{l}{}{op}$ is a quantum state preparation operation that prepares superposition of quantum qubits $l$ through Hadamard gates $\texttt{H}$ or $\texttt{QFT}$ gates. It is also used to transform quantum qubit states by a $\texttt{QFT}^{-1}$ gate in the end of the quantum phase estimation algorithm. 
 We only permit $op$ to be state preparation gates such as \texttt{H} and $\iqft[\lbrack -1 \rbrack]{}{}$ gates.
-The other gate applications are done through $\ssassign{\lambda}{}{\mu}$ that performs quantum oracle computation $\mu$ on each basis state of a $\tcht$ type session $\lambda$, such as quantum arithmetic operation. While let operation only performs classical arithmetic computation, quantum oracle arithmetic operation is performed through \oqasm expressions \cite{oracleoopsla} (also in \Cref{sec:vqir}), which can be used to define almost all reversible arithmetic operations such as the ones in \Cref{fig:vqimp}. 
+The other gate applications are done through $\ssassign{\lambda}{}{\mu}$ that performs quantum oracle computation $\mu$ on each basis state of a $\tcht$ type session $\lambda$, such as quantum arithmetic operation. While let operation only performs classical arithmetic computation, quantum oracle arithmetic operation is performed through \oqasm expressions \cite{oracleoopsla} (also in \Cref{sec:qafny}), which can be used to define almost all reversible arithmetic operations such as the ones in \Cref{fig:vqimp}. 
 For example, the Shor's algorithm implementation in \Cref{fig:shorqafny} utilizes the addition (line 5) and modulo multiplication (line 8) on qubit group $y$, which can be expressed as an \oqasm circuit.
 $\ssassign{l}{}{\sdis}$ is a quantum diffusion operation applying on the parameter $l$, where $l$ may be part of a session.
-The main functionality is to increase and average the occurrence likelihood of some quantum bases in a quantum state. Details are in \Cref{sec:vqir}.
+The main functionality is to increase and average the occurrence likelihood of some quantum bases in a quantum state. Details are in \Cref{sec:qafny}.
 
 The second row of statements in \Cref{fig:vqimp} are control-flow operations.
 $\sseq{s_1}{s_2}$ is a sequential operation.
@@ -290,7 +290,7 @@ The right hand side formula is a typical superposition state preparation by a Ha
 In \qafny, we are using the separating conjunction operation $*$ from separation logic \cite{separationlogic}, where $\varphi \cup \varphi' \models P * Q$ iff $\varphi \bot \varphi'$ and $\varphi \models P$ and $\varphi' \models Q$. Here, $\varphi$ and $\varphi'$ are finite quantum states mapping from sessions to the three forms above.
 
 In mapping \qafny rules to classical array proof rules, there are three subtleties. First, sessions are both indicators, which are viewed as array structures that record qubit positions, for entangled qubit groups; as well as variables, which are viewed as names, representing qubit states in pre- and post-conditions.
-In preserving the two session roles, we design a type system in \Cref{sec:vqir} 
+In preserving the two session roles, we design a type system in \Cref{sec:qafny} 
 to track transitions of sessions and require that 
 a well-formed pre-condition only mentions the sessions defined in a given type environment.
 Second, we also define equational properties, representing the permutation symmetries of quantum states, for 

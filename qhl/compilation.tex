@@ -1,6 +1,93 @@
 \section{\qafny Proof System and Program Compilation}
 
-We discuss the \qafny compilation to the Dafny proof system and the compilation of quantum programs to \sqir, a quantum circuit language.
+We discuss the two dimensions of compilation in QNP. First the \qafny proof system is compiled to Dafny and utilizes its facilities for automated verification. Second, the \qafny language is compiled to \sqir, a quantum circuit language so that \qafny programs can be executed in a quantum machine.
+
+\subsection{Translation from \qafny to Dafny}\label{sec:dafny-compilation}
+
+The implementation of \qafny on Dafny in QNP is a compilation process from the \qafny proof system to the Dafny proof system, a separation logic proof system. The \qafny proof rules utilize extra session types to track the qubits in terms of sessions as well as state representation formats. However, there is no different kinds of state representations in Dafny, neither does Dafny support automatic equational rewrites of state forms. Additionally, Dafny predicate variables do not permit structures as sessions. All these entities require additional constructs and annotations to be inserted to the compiled predicates and programs when translating \qafny programs and specifications to Dafny.
+
+This section shows how additional constructs and annotations are inserted in compiling $\qafny$ programs and specifications to Dafny ones, with no loss of expressiveness.
+We present a compilation algorithm that converts from
+\qafny to Dafny. Our compilation algorithm is evidence that proofs in \qafny essentially utilize the classical Hoare logic style automated system and we build the connection between quantum computation and classical ones through the view of quantum computation as some classical aggregate operations that can be much more efficiently done in a quantum computer.
+
+Compilation is defined by extending \qafny's
+typing judgment thusly: $\Xi;\Omega;\sigma\vdash_g (P,Q,s) \triangleright (P',Q',s',\sigma')$.
+We now add the input of pre-condition $P$ and post-condition $Q$, as well as the compilation result of the Dafny pre-condition $P'$, post-condition $Q'$ and program $s'$, such that the proof $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$ is valid in \qafny, we have $\{P'\} s' \{Q'\}$ being valid in Dafny. $\Xi$ is an additional map from sessions to predicate variables in Dafny, such that we use variables in $P'$ and $Q'$ to represent sessions in $P$ and $Q$. We formalize rules for this judgment in Coq and prove the compilation correctness, i.e., every \qafny quantum program verification can be correctly expressed and proved in a separation logic framework. We also faithfully implement the compiler in Dafny and verify many quantum programs in \Cref{sec:arith-oqasm}.
+
+
+\begin{figure}[t]
+{\footnotesize
+\[
+\begin{array}{l}
+\begin{array}{l}
+\{x:\qmode{n},y:\qmode{1}\};\{x[0..n]:\thadt,y[0..1]:\tnort\}\vdash_g \\
+\qquad
+\textcolor{teal}{\{x[0..n]\mapsto\shad{2^n}{n}{} * y[0..1]\mapsto\ket{0}\}}
+\\
+\qquad\qquad\ssassign{\{x[0..n],y[0..1]\}}{}{x\,\slt\,5@y[0]}
+\\
+\qquad
+\textcolor{teal}{\{\{x[0..n],y[0..1]\}\mapsto\sch{2^n}{}{\tos{j}.\tos{j\,\slt\,5}} \}}
+\end{array}
+\\[0.5em]
+\begin{frame}
+
+\tikz\draw[-Latex,line width=2pt,color=orange] (0,0) -- (1,0);
+
+\end{frame}
+\\[0.5em]
+\begin{array}{l}
+\textcolor{teal}{\{\texttt{name}(u_1)=x[0..n] \wedge \texttt{name}(u_2)=y[0..1]
+\wedge \texttt{type}(u_1)=\thadt\wedge\texttt{type}(u_2)=\tnort}\\
+\qquad\qquad\qquad
+\textcolor{teal}{*\; u_1 \mapsto\shad{2^n}{n}{} * u_2\mapsto\ket{0}\}}
+\\[0.2em]
+\qquad\qquad
+\sseq{\texttt{lift}(y[0..1])}{\sseq{\texttt{lift}(x[0..n)}{\sseq{\texttt{join}(x[0..n],y[0..1])}{\ssassign{\{x[0..n],y[0..1]\}}{}{x\,\slt\,5@y[0]}}}}
+\\[0.2em]
+\textcolor{teal}{\{\texttt{name}(u_1)=x[0..n] \wedge \texttt{name}(u_2)=y[0..1]
+\wedge \texttt{name}(u_3)=\{x[0..n],y[0..1]\}
+\wedge \texttt{type}(u_1)=\tcht}\\
+\qquad\qquad\qquad
+\textcolor{teal}{
+\wedge\texttt{type}(u_2)=\tcht
+\wedge \texttt{type}(u_3)=\tcht * 
+u_1\mapsto \texttt{fst}(u_3) * u_2 \mapsto \texttt{snd}(u_3) * u_3\mapsto\sch{2^n}{}{\tos{j}.\tos{j\,\slt\,5}} \}}
+\end{array}
+\end{array}
+\]
+}
+  \caption{\qafny to Dafny Compilation Example}
+  \label{fig:exp-compileex}
+\end{figure}
+
+Conceptually, the compilation procedure does three items. First, every time there is a change in a session, such as qubit position permutation and split/join of sessions, we generate additional variables representing sessions, which reflect such change. Second, for a program $s$, if there is a change of state forms, we insert an additional construct to reflect the change so that the Dafny proof system can capture the state form transformation. Third, we generate additional Dafny axioms and inference rules for types and state transitions. Essentially, for a \qafny proof $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$ with the type judgment $\Omega;\sigma\vdash_g \sigma'$, a compiled Dafny proof has the form:
+
+{\small
+\begin{center}
+$\{A\wedge T\wedge \overline{P}\} s' \{A\wedge T'\wedge \overline{Q}\}$
+\end{center}
+}
+
+where $s'$ is the compiled Dafny program with the additional construct insertions; $\overline{P}$ and $\overline{Q}$ are the compiled conditions of $P$ and $Q$, respectively; $T$ and $T'$ are predicates representing session types in $\sigma$ and $\sigma'$, respectively; and $A$ is a set of axioms for capturing the type and state equations as well as quantum semantic rewrite rules.
+As a highlight of the compilation, we first see how to compile a simple proof of a statement $\ssassign{\{x[0..n],y[0..1]\}}{}{x\,\slt\,5@y[0]}$ that computes the Boolean comparison of $x\,\slt\,5$ and stores the value to $y[0]$ in \Cref{fig:exp-compileex} \footnote{The Boolean equation is a \qafny Boolean guard which unveils that \qafny Boolean guards for conditionals are compiled to oracle applications.}, where $x$ and $y$ are of type $\thadt$ and $\tnort$, respectively. The result of the application is an entanglement state having $2^n$ basis states, where for any basis state, the $y[0]$ bit position stores the the result of computing $x<5$.
+Since variables $x$ and $y$ initially are of type $\thadt$ and $\tnort$, their types are turned to $\tcht$, and the two sessions join together after the application, the compiler notices this and inserts two $\texttt{lift}$ statements to turn $x$ and $y$ to $\tcht$ type and then insert a $\texttt{join}$ statement to join the two $\tcht$ type states. Notice that we use variables $u_1$, $u_2$ and $u_3$ to refer to the sessions $x[0..n]$, $y[0..1]$, and $\{x[0..n],y[0..1]\}$, respectively, and connect variables with sessions by using the $\texttt{name}$ function that takes a variable and outputs its pointed-to session.
+In addition, the compiled result has no type environment, therefore, we use the $\texttt{type}$ function to track the session types.
+
+In compiling quantum conditionals, not only we need to do the above type conversion, will we also explicitly insert mask ($\mathpzc{M}$) and unmask ($\mathpzc{U}$) functions. For example, in computing the conditional $\sifq{x[0]}{y[0]}$ with $x[0]$ and $y[0]$ being types of $\thadt$ and $\tnort$, respectively,  $\texttt{lift}$ and $\texttt{join}$ functions are added first, then we also need to add the $\mathpzc{M}$ and $\mathpzc{U}$ before and after the conditional as:
+
+{\footnotesize
+\begin{center}
+$\sseq{\texttt{lift}(y[0..1])}{\sseq{\texttt{lift}(x[0..1)}{\sseq{\texttt{join}(x[0..1],y[0..1])}{\sseq{\sseq{\mathpzc{M}(x[0],y[0..1])}{\sifq{x[0]}{y[0]}}}{\mathpzc{U}(x[0],\{x[0..1],y[0..1]\})}}}}$
+\end{center}
+}
+
+The mask ($\mathpzc{M}$) and unmask ($\mathpzc{U}$) functions will mask the qubits in the Boolean predicate, e.g. $x[0]$, in the conditional body and assemble the conditional result back to the unmasked state after the conditional computation.
+We implemented the compiler in Dafny as well as formalize it in Coq and prove the correctness theorem below. The target Dafny formalism is a classical separation logic framework \cite{separationlogic} with the \qafny programs syntax and predicate functions mentioned in \Cref{sec:qafny} and \Cref{sec:dafny-compilation}.
+
+\begin{theorem}[\qafny to Dafny compilation correctness]\label{thm:proof-compile-dafny}\rm 
+If a proof $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$ is valid to derive in \qafny, and through the compilation process $\Xi;\Omega;\sigma\vdash_g (P,Q,s) \triangleright (P',Q',s',\sigma')$, the proof $\{P'\} \, s' \,\{Q'\}$ is valid in Dafny.
+\end{theorem}
 
 \subsection{Translation from \qafny to \sqir}\label{sec:vqir-compilation}
 
@@ -15,9 +102,7 @@ We discuss the \qafny compilation to the Dafny proof system and the compilation 
 \newcommand{\tlet}{\texttt{let}}
 \newcommand{\tin}{\texttt{in}}
 
-\name translates \oqasm to \sqir by mapping \oqasm positions to \sqir 
-concrete qubit indices and expanding \oqasm instructions to sequences
-of \sqir gates.
+QNP translates \qafny to \sqir by mapping \qafny qubit arrays to \sqir concrete qubit indices and expanding \qafny instructions to sequences of \sqir gates.
 %
 % Most \oqasm instructions are easily mapped to operations in \sqir, with the exception of the position shifting instructions.  
 % The difficulty there is the virtual-to-physical qubit compilation.
@@ -26,251 +111,57 @@ of \sqir gates.
 % from each \oqasm position to a concrete \sqir qubit index.
 %
 Translation is expressed as the judgment
-$\Sigma\vdash (\gamma,\instr) \steps
-(\gamma',\epsilon)$ where $\Sigma$ maps \oqasm variables to their sizes, 
-$\epsilon$ is the output \sqir circuit, and $\gamma$ maps an \oqasm 
-position $p$ to a \sqir concrete qubit index (i.e., offset into a 
-global qubit register).  At the start of translation, for every
-variable $x$ and $i < \Sigma(x)$, $\gamma$ maps $(x,i)$ to a unique
-concrete index chosen from 0 to $\sum_{x}(\Sigma(x))$.
+$\Omega;\gamma;n\vdash s \steps \epsilon$ where $\Omega$ maps \qafny variables to their sizes, 
+$\epsilon$ is the output \sqir circuit, $\gamma$ maps a \qafny range variable
+position $x[i]$, in the range $x[j..k]$ where $i \in [j,k)$, to a \sqir concrete qubit index (i.e., offset into a 
+global qubit register), and $n$ is the current qubit index bound.  
+At the start of translation, for every
+variable $x$ and $i < \texttt{nat}(\Omega(x))$ ($\Omega(x)=\qmode{m}$ and $\texttt{nat}(\qmode{m}=m$), $\gamma$ maps $x[i]$ to a unique
+concrete index chosen from 0 to $n$.
+$\Omega$ is populated through the \qafny type checking in \Cref{fig:exp-sessiontype},
+while $\gamma$ and $n$ are populated when hitting an $\texttt{init}$ operation as shown in \Cref{fig:compile-vqir}.
 
 \begin{figure}[t]
 {\Small
 
   \begin{mathpar}
-    \inferrule{ }{\Sigma\vdash(\gamma,\inot{p}) \to (\gamma,\textcolor{blue}{\inot{\gamma(p)}})}
-          
-    \inferrule{\gamma'=\gamma[\forall i.\; i < \Sigma(x) \Rightarrow (x,i)\mapsto \gamma(x,(i+1)\%\Sigma(x))]}{\Sigma\vdash(\gamma,\ilshift{x}) \to (\gamma',\textcolor{blue}{\iskip{(\gamma'(x,0))}})}
+
+    \inferrule{x\not\in \dom{\Omega} \\\\ \Omega[x\mapsto \qmode{m}];\gamma[x[0..n]\mapsto [n,n+m)];n+m\vdash s \to \textcolor{blue}{\epsilon}}
+           {\Omega;\gamma;n\vdash \sexp{x}{\sinit{m}}{s} \to \textcolor{blue}{\epsilon}}
+
+    \inferrule{x\not\in \dom{\Omega} \\\\ \Omega[x\mapsto \mmode];\gamma;n\vdash s[(r,n)/x] \to\textcolor{blue}{\epsilon}}
+           {\Omega;\gamma;n\vdash \sexp{x}{(r,n)}{s} \to \textcolor{blue}{\epsilon}}
+
+    \inferrule{\Omega;\gamma;n\vdash \mu \to \textcolor{blue}{\epsilon} }
+         {\Omega;\gamma;n\vdash \ssassign{\lambda}{}{\mu} \to \textcolor{blue}{\epsilon}}
+         
     
-    \inferrule{\Sigma\vdash(\gamma,\instr) \to (\gamma,\textcolor{blue}{\epsilon})\\
-      \textcolor{blue}{\epsilon' = \texttt{ctrl}(\gamma(p),\epsilon)}}{\Sigma\vdash(\gamma,\ictrl{p}{\instr}) \to (\gamma,\textcolor{blue}{\epsilon')}}    
+    \inferrule{\Omega;\gamma;n\vdash b@x[i] \to \textcolor{blue}{\epsilon}\\
+                \Omega;\gamma;n\vdash s \to \textcolor{blue}{\epsilon'}}
+        {\Omega;\gamma;n\vdash \sifq{b@x[i]}{s} \to \textcolor{blue}{\sseq{\epsilon}{\texttt{ctrl}(\gamma(x[i]),\epsilon')}}}    
      
-    \inferrule{ \Sigma\vdash (\gamma,\instr_1) \to (\gamma',\textcolor{blue}{\epsilon_1}) \\ \Sigma\vdash(\gamma',\instr_2) \to (\gamma'',\textcolor{blue}{\epsilon_2})}{\Sigma\vdash(\gamma,\sseq{\instr_1}{\instr_2}) \to (\gamma'',\textcolor{blue}{\sseq{\epsilon_1}{\epsilon_2}})}             
+    \inferrule{\Omega;\gamma;n\vdash \sifq{b[i/x]}{s[i/x]} \to \textcolor{blue}{\epsilon_{i}} \quad ... \quad
+                \Omega;\gamma;n\vdash \sifq{b[j\,\sminus\,1/x]}{s[j\,\sminus\,1/x]} \to \textcolor{blue}{\epsilon_{j\,\sminus\,1}}}
+        {\Omega;\gamma;n\vdash \sqwhile{x}{i}{j}{b}{s} \to \textcolor{blue}{\epsilon_{i}\,;...;\,\epsilon_{j\,\sminus\,1}}}  
   
   \end{mathpar}
 }
-\vspace*{-1em}
-\caption{Select \oqasm to \sqir translation rules (\sqir circuits are marked blue)}
+\caption{Select \qafny to \sqir translation rules (\sqir circuits are marked blue)}
 \label{fig:compile-vqir}
 \end{figure}
 
 \Cref{fig:compile-vqir} depicts a selection of translation rules.\footnote{Translation in fact threads through the typing judgment, but we elide that for simplicity.}
-The first rule shows how to translate
-$\inot{p}$, which has a directly corresponding gate in \sqir.
-The second rule left-shifts the qubits of the target variable in the
-map $\gamma$, and produces an identity gate (which will be removed in a subsequent optimization pass).
-For example, say we have variables $x$ and $y$ in the map $\gamma$ and variable $x$ has three qubits so $\gamma$ is $\{(x,0)\mapsto 0,(x,1)\mapsto 1, (x,2)\mapsto 2,(y,0)\mapsto 3,...\}$.
-Then after $\ilshift{x}$ the $\gamma$ map becomes $\{(x,0)\mapsto 1,(x,1)\mapsto 2, (x,2)\mapsto 0,(y,0)\mapsto 3,...\}$. 
-%
-The last two rules translate the \texttt{CU} and sequencing instructions. In the \texttt{CU} translation, the rule assumes that $\instr$'s translation does not affect the $\gamma$ position map. This requirement is assured for well-typed programs per rule \rulelab{CU} in \Cref{fig:exp-well-typed}. \texttt{ctrl} generates the controlled version of an arbitrary \sqir program using standard decompositions \cite[Chapter 4.3]{mike-and-ike}.
+The two rules in the first line show how a $\texttt{let}$-binding is handled for a $\qmodename$ and $\mmode$ mode variable, while $\cmode$-mode $\texttt{let}$-binding is handled by a similar manner.
+Similar to the type system, we assume that \texttt{let}-binding introduces new variables probably with proper variable renaming.
+The first rule in the second line describes an oracle application compilation, which is handled by the \oqasm compiler \cite{oracleoopsla}. The \qafny type system ensures that the qubits mentioned in $\mu$ are the same as qubits in session $\lambda$, so that the translation does not rely on $\lambda$ itself.
+The next rule describes the translation of a conditional to a controlled operation in \sqir.
+In the conditional translation, the rule assumes that $\instr$'s translation does not affect the $\gamma$ position map.
+This requirement is assured for well-typed programs per rule \rulelab{TIF} in \Cref{fig:exp-well-typed}.
+Here, we first translate the Boolean guard $b@x[i]$, and sequentially we translate the conditional body as an \sqir expression controlled on the $x[i]$ position. \texttt{ctrl} generates the controlled version of an arbitrary \sqir program using standard decompositions \cite[Chapter 4.3]{mike-and-ike}.
+The last rule translate \qafny for-loops. Essentially, a for-loop is compiled to a series of conditionals with each step differs in the loop step value for $x$. 
 
-\newcommand{\transs}[3]{[\!|{#1}|\!]^{#2}_{#3}}
-
-We have proved \oqasm-to-\sqir translation correct. To formally state
-the correctness property we relate $d$-qubit \oqasm states to \sqir states, which are vectors of $2^d$ complex numbers, via a function $\transs{-}{d}{\gamma}$, where $\gamma$ is the virtual-to-physical qubit map.
-%
-For example, say that our program uses two variables, $x$ and $y$, and both have two qubits.
-The qubit states are $\ket{0}$ and $\ket{1}$ (meaning that $x$ has type \texttt{Nor}), and $\qket{r_1}$ and $\qket{r_2}$ (meaning that $y$ has type \texttt{Phi}).
-Furthermore, say that $\gamma = \{(x,0)\mapsto 0,(x,1)\mapsto 1, (y,0)\mapsto 2, (y,1)\mapsto 3\}$. 
-This \oqasm program state will be mapped to the $2^4$-element vector $\ket{0}\otimes \ket{1}\otimes (\ket{0}+e^{2\pi i r_1}\ket{1})\otimes (\ket{0}+e^{2\pi i r_2}\ket{1})$.
+The compiler is implemented in Coq and validated through testing. We extract both the $\qafny$ semantics and the \qafny to \sqir compiler to Ocaml and compile compiled \sqir programs to OpenQASM \cite{cross2021openqasm} via the \sqir compiler. Then, we run test programs in the \qafny Ocaml interpreter and compiler and see if the results are matched. Overall, we run 135 unit test programs to test individual operations and small composed programs, and all the results from the \qafny interpreter and compiler are matched.
 
 
-\begin{theorem}\label{thm:vqir-compile}\rm[\oqasm translation correctness]
-  Suppose $\Sigma; \Omega \vdash \instr \triangleright \Omega'$ and
-  $\Sigma \vdash(\gamma,\instr) \to (\gamma',\epsilon)$. %, and $\overline{\gamma}$ and $\overline{\gamma'}$ are the inverse functions of $\gamma$ and $\gamma'$, respectively.\footnote{$\gamma$ and $\overline{\gamma}$ form a finite bijection. I.e., for every $k<d$, $\overline{\gamma}(k)$ is defined, $\gamma(\overline{\gamma}(k))=k$, and for every $p$ that appears in $\instr$, $\gamma(p)$ is defined, $\gamma(p)< d$, and $\overline{\gamma}(\gamma(p)) = p$.} 
-Then for $\Sigma; \Omega \vdash \varphi$ and $\llbracket \instr \rrbracket\varphi=\varphi'$, we have 
-$\llbracket \epsilon \rrbracket \times \transs{\varphi}{d}{\gamma} = \transs{\varphi'}{d}{\gamma'}$ where $\llbracket \epsilon \rrbracket$ is the matrix interpretation of $\epsilon$ per \sqir's semantics.
-\end{theorem}
 
-The proof of translation correctness is by induction on the \oqasm program $\instr$. 
-Most of the proof simply shows the correspondence of operations in $\instr$ to their translated-to gates $\epsilon$ in \sqir, except for shifting operations, which update the virtual-to-physical map.
-% Notice that a \oqasm shifting operation on variable $x$ changes the virtual to physical map from $\gamma$ to $\gamma'$ while generating only \texttt{ID} gates. The map shifting changes the ``world view'' of later operations on $x$, because the qubit physical positions are different between $\gamma$ and $\gamma'$.
-% To prove the correctness, for physical positions in $x$, we compare their virtual positions before and after the shifting by using the inverse maps of $\gamma$ and $\gamma'$. Then, we show that difference implements the shifting operation semantics.
 
-Note that to link a complete, translated oracle $\instr$ into a larger \sqir program may require that $\gamma = \gamma'$, i.e., $\texttt{neutral}(\instr)$, so that logical inputs match logical outputs. This requirement is naturally met for programs written to be reversible, as is the case for all arithmetic circuits in this paper, e.g., \coqe{rz_adder} from \Cref{fig:circuit-example}. % If necessary, the programmer could add dynamic swap instructions manually (encodable in \oqasm).
-
-Compilation for \vqimp statements is a partial function of the form $\Xi;\Gamma;\Theta\vdash (n * \sigma * s) \rightsquigarrow \kappa$, where:
-
-\begin{itemize}
-  \item $\Xi$ is a map from function variables to their definitions;
-  \item $\Gamma$ is the standard type environment;
-  \item $\Theta$ is a map from \vqimp variables to \vqir variables;
-  \item $n$ is the current amount of scratch space (i.e., number of ancilla qubits) needed;
-  \item $\sigma$ is a dynamic store that records the values for all $C$-mode variables;
-  \item $s$ is an \vqimp statement;
-  \item and $\kappa$ is the result of compilation, which is either \texttt{Error} or a value $(n,\sigma,u)$, where $n$ is the final amount of scratch space, $\sigma$ is the resulting store for $C$-mode variables, and $u$ is the generated \oqasm circuit.
-\end{itemize}
-$\Xi$ and $\Gamma$ are generated during type checking and the amount of scratch space ($n$) is initialized to 0.
-
-% We generate $\Theta$ as a finitely bijective relation between \vqimp \text{LValue} and \vqir variables. Global and local variable names are in two different categories. $\chi$ is an extra \vqir variable that does not show up in $\Theta$. Even though $\Theta$ is bijective, to save space, we do optimizations to reuse \vqir variables mapped in $\Theta$. In mechanism, we keep a variable counter in generating mapping variables for \vqimp variables, so that mapping variables used in one function call can be reused. 
-
-% {\small
-% \hspace*{-2em}
-% \begin{tabular}{ll}
-% \begin{coq}
-%    g(int b){
-%      int a,b;
-%      a = 10;
-%    }
-% \end{coq}
-% \quad
-% \begin{coq}
-%    f(){
-%     int a,b;
-%     a = call g(b);
-%    }
-% \end{coq}
-% \quad
-% \begin{coq}
-%    f'(){
-%    int c,d;
-%    c = call g();
-%    d = call g();
-%   }
-% \end{coq}
-% \end{tabular}
-% }
-
-% In the above example, let's assume that variable counter is $0$, in the function \texttt{f}, \texttt{a} and \texttt{b} are mapped to $0$ and $1$ in $\Theta$, and inside the function $g$, the two variables \texttt{a} and \texttt{b} are first renamed to $a_1$ and $b_1$, then their mappings in $\Theta$ are $2$ and $3$. In the right code, the mappings of $c$ and $d$ are mapped to $0$ and $1$, but the two consecutive function calls \texttt{g} actually generate the same mappings for \texttt{a} and \texttt{b} in \texttt{g}. In this case, they are both $2$ and $3$, because the variable mappings used in the first \texttt{g} are reused in the second one.
-
-Compilation assumes (correct) \vqir implementations of primitive arithmetic operators. 
-An addition operation $\ssassign{l}{+}{v}$ in \vqimp will be compiled to an \vqir program $\texttt{add}(l,v)$ that will either apply a constant or general adder from \Cref{sec:arith-oqasm}, depending on whether $v$ has mode $C$ or $Q$ (if both $l$ and $v$ have mode $C$, then the result is precomputed).
-Compilation expects two global settings: flag $fl \in \{\texttt{Classical}, \texttt{QFT}\}$ indicates whether \vqir operators should use Toffoli-based or QFT-based arithmetic, and size $sz \in \mathbb{N}$ fixes the bit size of operations.
-
-% When we compile a value to \vqir, we compile bits $0$ and $1$ to qubit states $\ket{0}$ and $\ket{1}$, which are represented as $\inval{0}{[0]}$ and $\inval{0}{[1]}$, where $[0]$ is the bitstring of $0$.
-
-\begin{figure*}[t]
-{\small\centering
-$
-\begin{array}{c}
-\AxiomC{$ 
-\Gamma\vdash l : \omega^Q
-\quad
-\Gamma\vdash v : \omega^Q
-\quad
-u=\texttt{get\_op}(op)(fl,\Theta(l),\Theta(v),sz)
-$}
-\UnaryInfC{$\Xi;\Gamma;\Theta\vdash (n,\sigma,\ssassign{l}{op}{v})\rightsquigarrow (n,\sigma,u) $}
-\DisplayProof
-\texttt{(bin\_q)}
-\\[2em]
-\AxiomC{$ 
-\Gamma\vdash l : \omega^C
-\quad
-\Gamma\vdash v : \omega^C
-\quad
-\Xi \vdash_s \sigma;\ssassign{l}{op}{v} \steps \sigma'
-$}
-\UnaryInfC{$\Xi;\Gamma;\Theta\vdash (n,\sigma,\ssassign{l}{op}{v}) \rightsquigarrow (n,\sigma',\iskip{(\Theta(l),0)}) $}
-\DisplayProof
-\texttt{(bin\_c)}
-\\[2em]
-\AxiomC{$ 
-\begin{array}{c}
-\Gamma\vdash e : \tbool^C
-\quad
-\Xi\vdash \sigma;e \steps (\tbool)\texttt{true}
-\\
-\Xi;\Gamma;\Theta\vdash (n,\sigma,s_1) \rightsquigarrow (n',\sigma',u)
-\end{array}
-$}
-\UnaryInfC{$\Xi;\Gamma;\Theta;\vdash (n,\sigma,\sif{e}{s_1}{s_2}) \rightsquigarrow (n',\sigma',u) $}
-\DisplayProof
-\texttt{(if\_c)}
-\\[2em]
-\AxiomC{$ 
-\begin{array}{c}
-\Gamma\vdash e : \tbool^Q
-\quad
-\Xi;\Gamma;\Theta\vdash (n,\sigma,e) \rightsquigarrow (n_e,\sigma_e,u_e)
-\quad
-\Xi;\Gamma;\Theta\vdash (n_e,\sigma_e,s_1) \rightsquigarrow (n_1,\sigma_1,u_1)
-\\
-\Xi;\Gamma;\Theta\vdash (n_1,\sigma_e,s_2) \rightsquigarrow (n_2,\sigma_2,u_2)
-\quad
-u'=\sseq{u_e}{\sseq{\ictrl{(\chi,n)}{u_1}}{\sseq{\inot{(\chi,n)}}{\ictrl{(\chi,n)}{u_2}}}}
-\end{array}
-$}
-\UnaryInfC{$
-\Xi;\Gamma;\Theta\vdash (n,\sigma,\sif{e}{s_1}{s_2}) \rightsquigarrow (n_2,\sigma_e,u') $}
-\DisplayProof
-\texttt{(if\_q)}
-\\[2.5em]
-\AxiomC{$
-\begin{array}{c}
-\Xi(f)=(\overline{\tau\;x},\overline{\tau\;y},s,l',\Gamma')
-\quad
-\Theta'=\texttt{add\_}\Theta^Q(\Theta,\Gamma',\overline{\tau\;y})
-\quad
-\Gamma' \vdash l' :\omega^{Q}
-\quad
-\Gamma \vdash l :\omega^{Q}
-\\[0.5em]
-\sigma'=\texttt{init\_}\sigma^C(\overline{\tau\;x},\overline{v},\overline{\tau\;y})
-\qquad
-\Xi;\Gamma';\Theta'\vdash (n,\sigma',s) \rightsquigarrow (n',\sigma'',u)
-\\[0.5em]
-u'=\sseq{u}{\sseq{\texttt{copy}(\Theta'(l'),\Theta(l))}{\texttt{qinv}(u)}}
-\end{array}
-$}
-\UnaryInfC{$
-\Xi;\Gamma;\Theta \vdash (n,\sigma,\scall{l}{f}{\overline{v}}) \rightsquigarrow (n,\sigma,u') $}
-\DisplayProof
-\texttt{(call)}
-% \\[2.5em]
-% \AxiomC{$
-% \begin{array}{c}
-% \sseq{\emptyset}{\texttt{gen\_}\Gamma}(\overline{\tau}@[\tau\;x])\vdash \overline{d}@[\texttt{def}\;\texttt{main}\;\emptyset\;e]\triangleright\Xi
-% \\[0.5em]
-% \Xi(\texttt{main})=(\overline{\tau\;y'},\overline{\tau\;y},s,l,\Gamma)
-% \quad
-% \Theta=\texttt{gen\_}\Theta^Q(\overline{\tau}@[\tau\;x]@\overline{\tau\;y'}@\overline{\tau\;y})
-% \quad
-% \Gamma\vdash l : \omega^{Q}
-% \\[0.5em]
-% \sigma=\texttt{init\_}\sigma^C(\overline{\tau\;y'}@\overline{\tau\;y})
-% \quad
-% \Xi;\Gamma;\Theta\vdash (0,\sigma,s) \rightsquigarrow (n,\sigma',u)
-% \quad
-% u'=\sseq{u}{\sseq{\texttt{copy}(\Theta(l),\Theta(x))}{\texttt{qinv}(u)}}
-% \end{array}
-% $}
-% \UnaryInfC{$ p \rightsquigarrow (n,u') $}
-% \DisplayProof
-\end{array}
-$
-}
-\caption{Select \vqimp to \vqir compilation rules}
-\label{fig:compile-vqimp}
-\end{figure*}
-
-\Cref{fig:compile-vqimp} provides a select set of compilation rules from \vqimp to \vqir.
-The first two rules compile an assignment operation. 
-If $l$ and $v$ are both typed as $Q$-mode, we compile the assignment to a pre-defined \vqir program, which we look up using \texttt{get\_op}. 
-For example, if $op$ is an addition, $\texttt{get\_op}(op)$ produces the \vqir program \texttt{add}, described above.
-The rule for the case where one variable has mode $Q$ and the other variables has mode $C$ is similar.
-On the other hand, if $l$ and $v$ are both typed as $C$-mode, we update the store $\sigma$ by computing the addition directly using the \vqimp semantics (\Cref{sec:source-semantics}) and generate the trivial \oqasm program \texttt{ID}.
-
-The rules \texttt{(if\_c)} and \texttt{(if\_q)} are for branching operations. If the Boolean guard has mode $C$, we evaluate the expression to its value and choose one of the branches for further compilation; \texttt{(if\_c)} shows the case where $e$ evaluates to \texttt{true}. 
-If the Boolean guard has mode $Q$, we generate an \vqir expression to compute the guard and store the result in $(\chi,n)$, where $\chi$ is the scratch space variable and $n$ is the current scratch space index.
-We then compile the two branches conditioned on $(\chi,n)$, as shown in rule \texttt{(if\_q)}. 
-
-Rule \texttt{(call)} compiles a function call.
-$\texttt{add\_}\Theta^Q$ extends the \vqimp-to-\vqir variable map with the new $Q$-mode variables in the local declaration list $\overline{\tau~y}$.
-The \vqimp type system requires that all function arguments ($\overline{\tau~x}$) have mode $C$. 
-$\texttt{init\_}\sigma^C$ initializes the values of all variables in $\overline{\tau~x}$ to their corresponding values in $\overline{v}$ and all $C$-mode variables in $\overline{\tau~y}$ to 0.
-$\texttt{copy}(x,y)$ is an \vqir program that copies the states of all qubits in $x$ to $y$ using a series of $\ictrl{p_x}{\inot{p_y}}$ operations. 
-In the case where $l'$ (the return value of $f$) has mode $C$, we do not need to generate a circuit for the function $f$; instead, we just generate a circuit to set $l$ to the value of $l'$.
-If $l$ also has mode $C$, we just update $l$'s in $\sigma$ without generating any circuit.
-
-% The last rule in \Cref{fig:compile-vqimp} compiles an \vqimp program. 
-% The $@$ operation is a list concatenation operation.
-% An execution of an \vqimp program means to execute the \texttt{main} function (the last function in the function list $\overline{d}$), and assigns its return value to the last variable in the global variable list ($\overline{\tau}$).
-% In compiling a program $P$, we uses the type checking in \vqimp to generate a function map $\Xi$. 
-% $\texttt{gen\_}\Theta^Q$ and $\texttt{gen\_}\Sigma^Q$ have similar feature as the $\texttt{add\_}\Theta^Q$ and $\texttt{add\_}\Sigma^Q$ in rule \texttt{(call)}. We use $\texttt{init\_S}^C$ to initialize a $C$-mode store for the \texttt{main} function arguments and local variable declaration list, and scratch space number is initialized to $0$. This is half of the story for a program compilation when the return value mode for \texttt{main} is $Q$; otherwise, we then just get its result in the final store, and initializes $x$ with the result.
-
-We prove that compilation is correct: Given an \vqimp program $P$ that compiles to an \oqasm circuit $C$, evaluating $P$ according to the \vqimp semantics will produce a value consistent with evaluating $C$ according to the \oqasm semantics. 
-The proof is mechanized in Coq and proceeds by
-induction on the compilation judgment, relying on proofs of
-correctness for \vqir arithmetic operators, as discussed in
-\Cref{sec:vqir-compilation}.

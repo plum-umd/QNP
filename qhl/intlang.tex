@@ -1,5 +1,5 @@
 \section{Qafny: A High-level Quantum Language Admitted a Proof System}
-\label{sec:vqir}
+\label{sec:qafny}
 
 Here, we first introduce \qafny state equational properties and type system. Then, we discuss its semantics and proof system.
 
@@ -671,11 +671,11 @@ We begin by defining the session domain and state well-formedness.
 
 The \qafny type soundness is stated as two theorems, type progress and preservation theorems. The proofs are done by induction on \qafny statements $s$ and mechanized in Coq. Type progress states that any well-typed \qafny program can take a move, while type preservation states that for any such move, the transitioned type and state are preserved and well-typed, respectively.
 
-\begin{theorem}\label{thm:type-progress-oqasm}[\qafny type progress]\rm 
+\begin{theorem}[\qafny type progress]\label{thm:type-progress-oqasm}\rm 
 If $\Omega;\sigma \vdash_g s \triangleright \sigma'$ and $\Omega;\sigma \vdash \varphi$, then either $s=\{\}$, or there exists $\varphi'$ and $s'$ such that $(\varphi,s)\longrightarrow (\varphi',s')$.
 \end{theorem}
 
-\begin{theorem}\label{thm:type-preservation-oqasm}[\qafny type preservation]\rm 
+\begin{theorem}[\qafny type preservation]\label{thm:type-preservation-oqasm}\rm 
 If $\Omega;\sigma \vdash_g s \triangleright \sigma'$, $\Omega;\sigma \vdash \varphi$, and $(\varphi,s)\longrightarrow (\varphi',s')$, then 
 there exists $\Omega'$ and $\sigma''$, $\Omega';\sigma'' \vdash_g s' \triangleright \sigma'$ and $\Omega';\sigma'' \vdash \varphi'$.
 \end{theorem}
@@ -692,11 +692,11 @@ However, any $\tnort$ and $\thadt$ type state can be represented as a $\tcht$ ty
 
 The \qafny proof system correctness is defined by the soundness and relatively completeness theorems below, which has been formalized and proved in Coq. The \qafny proof system only describes the quantum portion of the whole Qafny+Dafny system, and the quantum portion contains non-terminated programs. Hence, the soundness and completeness essentially refers to the partial correctness of the \qafny proof system and the total correctness is achieved by the Qafny+Dafny system through mapping \qafny to Dafny, i.e., a separation logic proof system. Essentially, the \qafny proof system correctness is defined in terms of programs being well-typed. The type soundness theorem suggests that any intermediate transitions of evaluating a well-typed \qafny program is also well-typed. Thus, we can conclude that the pre- and post- conditions of a program are modeled properly through the above modeling rules that rely on well-typed transition states.
 
-\begin{theorem}\label{thm:proof-soundness}[proof system soundness]\rm 
+\begin{theorem}[proof system soundness]\label{thm:proof-soundness}\rm 
 For a well-typed program $s$, such that $\Omega;\sigma\vdash_g s \triangleright \sigma'$, $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$, $\Omega;\sigma;\varphi\models P$, then there exists a state representation $\varphi'$, such that $(\varphi,s)\longrightarrow (\varphi',\{\})$ and $\Omega;\sigma[\uparrow\sigma'];\varphi'\models Q$, and there is a most general state representation $\varphi^*$ of evaluating $(\varphi,s)$ as $(\varphi,s)\longrightarrow (\varphi^*,\{\})$ and $\varphi' \equiv \varphi*$.
 \end{theorem}
 
-\begin{theorem}\label{thm:proof-completeness}[proof system relative completeness]\rm 
+\begin{theorem}[proof system relative completeness]\label{thm:proof-completeness}\rm 
 For a well-typed program $s$, such that $\Omega;\sigma\vdash_g s \triangleright \sigma'$, $(\varphi,s)\longrightarrow (\varphi',\{\})$ and $\Omega;\sigma\vdash \varphi$, there is most general state representation $\varphi^*$, such that $(\varphi,s)\longrightarrow (\varphi',\{\})$ and $\varphi' \equiv \varphi^*$ and $\Omega;\sigma\vdash_g s \triangleright \sigma^*$ and $\Omega;\sigma[\uparrow \sigma^*]\vdash \varphi^*$, and there are predicates $P$ and $Q$, such that $\Omega;\sigma;\varphi\models P$ and $\Omega;\sigma[\uparrow\sigma^*];\varphi^* \models Q$ and $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$.
 \end{theorem}
 
