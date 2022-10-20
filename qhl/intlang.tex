@@ -74,7 +74,7 @@ C = \shad{2^n}{n}{}
 }
 \;\;
 \texttt{where}\;\;
-\textcolor{teal}{E(k) =}
+\textcolor{teal}{E(t) =}
 &
 \textcolor{teal}{
 \{x[0..n]: \thadt, \{x[0..0],y[0..n]\}: \tcht\}
@@ -84,9 +84,9 @@ C = \shad{2^n}{n}{}
 \qquad\qquad\quad\;
 \textcolor{teal}{
 \begin{array}{l}
-x[k..n] \mapsto \shad{2^{n \,\sminus\,  k}}{n \,\sminus\, k}{}\;*
+x[t..n] \mapsto \shadi{2^{n \,\sminus\,  t}}{n \,\sminus\, t}{}\;*
 \\[0.2em]
-\{x[0..k],y[0..n]\} \mapsto \scha{2^k}{\frac{1}{\sqrt{2^k}}}{j}{a^{j}\;\%\;N}
+\{x[0..t],y[0..n]\} \mapsto \schai{2^t}{\frac{1}{\sqrt{2^t}}}{i}{\ket{a^{i}\;\%\;N}}
 \end{array}
 }
 \\[0.5em]
@@ -117,7 +117,7 @@ x[k..n] \mapsto \shad{2^{n \,\sminus\,  k}}{n \,\sminus\, k}{}\;*
 &
 \textcolor{teal}{
 \Rightarrow
-\{\{x[0..n],y[0..n]\} \mapsto \scha{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{j}{a^{j}\;\%\;N} \}
+\{\{x[0..n],y[0..n]\} \mapsto \schai{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{i}{\ket{a^{i}\;\%\;N}} \}
 }
 &
 \textcolor{teal}{
@@ -150,8 +150,8 @@ s=\texttt{rnd}(\frac{2^n}{p})
 \end{array}
 \]
 }
-\caption{Pre-measurement quantum steps of the Shor's algorithm. $\sord{a,N}$ gets the order of $a$ and $N$. $\srnd{r}$ rounds $r$ to the nearest integer. The right-hand-side contains the types for the sessions involved. $\ket{j}$ is an abbreviation of $\ket{\tos{j}}$.
-$\tos{j}$ turns a number $j$ to a bitstring. $\overline{0}.1$ is a bitstring concatenation operation. }
+\caption{Pre-measurement quantum steps of the Shor's algorithm. $\sord{a,N}$ gets the order of $a$ and $N$. $\srnd{r}$ rounds $r$ to the nearest integer. The right-hand-side contains the types for the sessions involved. $\ket{i}$ is an abbreviation of $\ket{\tos{i}}$.
+$\tos{i}$ turns a number $i$ to a bitstring. $\overline{0}.1$ is a bitstring concatenation operation. }
 \label{fig:shorqafny}
 \end{figure}
 
@@ -179,14 +179,14 @@ As a running example, we use the Shor's algorithm~\cite{Shor94} shown in \Cref{f
 Given an integer $N$, Shor's algorithm finds its nontrivial prime factors, which has the following step: (1) randomly pick a number $1 < a < N$ and compute $k=\texttt{gcd}(a,N)$ \footnote{compute the greatest common divisor of $a$ and $N$}; (2) if $k \neq 1$, $k$ is the factor; (3) otherwise, $a$ and $N$ are coprime and we find the order $p$ of $a$ and $N$ \footnote{the order $p$ is the smallest number such that $a^p \% N = 1$}; (4) if $p$ is even and $a^{\frac{p}{2}} \neq -1 \% N$, $\texttt{gcd}(a^{\frac{p}{2}}\pm 1,N)$ are the factors, otherwise, we repeat the process. Step (2) is the quantum part of Shor's algorithm and \Cref{fig:shorqafny} and \Cref{fig:shorqafny2} show its automated proof in QNP. In \Cref{fig:shorexample}, we show the actual implementation and proof in the Qafny tool.
 
 The Shor's pre-measurement quantum steps in \Cref{fig:shorqafny} can be analogized as an efficient array filter operation.
-The steps before line 14 (steps at line 2, 5 and 9-11) create a $2^n$-length of pairs, each of which is formed as $(j,a^j \% N)$ where $j\in [0,2^n)$. The measurement in line 14 filters the array as a new one ($x[0..n]$) with all elements $j$ satisfying $a^j \% N=u$ where $u$ is a randomly picked number. Notice that modulo multiplication $f(j)=a^j\%N$ is a periodic function. All elements in $x[0..n]$ satisfy $a^j \% N=u$, which means that 1) there is a smallest $t$ such that $a^t \% N=u$, and 2) all elements can be rewritten as $j=t+kp$ and $p$ is the period of the modulo multiplication function, which is given as the post-condition on the right of line 15.
+The steps before line 14 (steps at line 2, 5 and 9-11) create a $2^n$-length of pairs, each of which is formed as $(i,a^i \% N)$ where $i\in [0,2^n)$. The measurement in line 14 filters the array as a new one ($x[0..n]$) with all elements $i$ satisfying $a^i \% N=u$ where $u$ is a randomly picked number. Notice that modulo multiplication $f(i)=a^i\%N$ is a periodic function. All elements in $x[0..n]$ satisfy $a^i \% N=u$, which means that 1) there is a smallest $t$ such that $a^t \% N=u$, and 2) all elements can be rewritten as $i=t+kp$ and $p$ is the period of the modulo multiplication function, which is given as the post-condition on the right of line 15.
 The implementation and correctness proof in \Cref{fig:shorqafny} exactly reflects the array analogy aspect.
 \ignore{
 One of the biggest advantage of using \qafny is that we can analogize quantum operations to classical array operations, so that we can utilize the existing automated proof infrastructure in many tools, such as Dafny.
 In the Qafny implementation, verifying a quantum program usually requires only the user input of the pre-, post-, and loop invariant. For example, the proof of \Cref{fig:shorqafny} in \qafny requires none of the states marked teal, but only the conditions marked black and purple. \footnote{The purple is also not needed if we combine the Shor's first and second half algorithms together.}
 Here, we step by step discuss the states, program syntax, and proofs of the aspect.
 }
-Notice that only the marked black and purple parts in \Cref{fig:shorqafny} are required to input in the \qafny implementation, and the marked teal parts can be inferred by the \qafny proof system. \footnote{The purple is also not needed if we verify the whole Shor's algorithm in \Cref{fig:shorexample}.}
+Notice that only the black and purple parts in \Cref{fig:shorqafny} are required to input in the \qafny implementation, and the teal parts can be inferred by the \qafny proof system. \footnote{The purple is also not needed if we verify the whole Shor's algorithm in \Cref{fig:shorexample}.}
 
 We first introduce \qafny states, syntax, and type system. Then, we discuss its semantics and proof system and metatheories.
 
@@ -247,12 +247,12 @@ In \qafny quantum type environments and states, qubit values are always associat
 
 \qafny utilize \emph{equivalence relations} over quantum sessions, quantum values and states (as shown in \Cref{fig:qafny-eq}) to facilitate automated program verification, written as $\equiv$ for state equivalence and $\preceq$ for environment partial order. One example is the rewrite from line 12 to line 13 in \Cref{fig:qafny-state}, where the state of session $x[0..0]$ is rewritten to $\texttt{true}$, because the session is essentially empty.
 The common equivalence relations are state form rewrites, permutations, split and joins. 
-State rewrites are to transform state forms, such as the rewrite of session $\{x[0..0],y[0..n]\}$ from type $\tnort$ to $\tcht$ in line 7 and 8 in \Cref{fig:qafny-state}. Another example is to rewrite a $\tcht$-type state $\ssum{j=0}{1}{z_j\beta_j}$ to $\tnort$-type ${z_0\beta_0}$. Permutation equivalence refers to two qubits can mutate their locations. For example, the state in line 13 can be rewritten to $\{y[0..n],x[0..n]\} \mapsto \scha{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{a^{j}\;\%\;N}{j}$ \footnote{More aggressively, we can write the state $x[0..2]\mapsto \frac{1}{\sqrt{2}}(\ket{01}+\ket{10})$ to $\{x[1..2],x[0..1]\}\mapsto \frac{1}{\sqrt{2}}(\ket{10}+\ket{01})$.}.
+State rewrites are to transform state forms, such as the rewrite of session $\{x[0..0],y[0..n]\}$ from type $\tnort$ to $\tcht$ in line 7 and 8 in \Cref{fig:shorqafny}. Another example is to rewrite a $\tcht$-type state $\ssum{j=0}{1}{z_j\beta_j}$ to $\tnort$-type ${z_0\beta_0}$. Permutation equivalence refers to two qubits can mutate their locations. For example, the state in line 13 can be rewritten to $\{y[0..n],x[0..n]\} \mapsto \scha{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{a^{j}\;\%\;N}{\ket{j}}$ \footnote{More aggressively, we can write the state $x[0..2]\mapsto \frac{1}{\sqrt{2}}(\ket{01}+\ket{10})$ to $\{x[1..2],x[0..1]\}\mapsto \frac{1}{\sqrt{2}}(\ket{10}+\ket{01})$.}.
 State joins merges two sessions together. Merging a $\tnort$-type and $\tcht$-type state is analogized to add the $\tnort$-type state's basis string to every basis states in the $\tcht$-type one. An example and its explanation are given in 
 \Cref{fig:background-circuit-example} line 4-6 and \Cref{sec:qnp-features}, 
 where the $\tnort$-type qubit $x[j]$ is merge to $\tcht$-type session $x[0..j]$.
 Merging a $\thadt$-type and $\tcht$-type state doubles the $\tcht$-type basis states. 
-In each loop step in \Cref{fig:shorsanalog} line 9-11, we add the $\thadt$ type qubit $x[j]$ to $\tcht$ type $\{x[0..j],y[0..n]\}$, and the state becomes $\scha{2^k}{\frac{1}{\sqrt{2^k}}}{\tos{j}.0}{a^{j}\;\%\;N}+\scha{2^k}{\frac{1}{\sqrt{2^k}}}{\tos{j}.1}{a^{j}\;\%\;N}$ \footnote{$\ket{j}$ is an abbreviation of $\ket{\tos{j}}$. $\tos{j}$ turns a number $j$ to a bitstring. $c_1.c_2$ is a bitstring concatenation. }.
+In each loop step in \Cref{fig:shorsanalog} line 9-11, we add the $\thadt$ type qubit $x[j]$ to $\tcht$ type $\{x[0..j],y[0..n]\}$, and the state becomes $\scha{2^k}{\frac{1}{\sqrt{2^k}}}{\tos{j}.0}{\ket{a^{j}\;\%\;N}}+\scha{2^k}{\frac{1}{\sqrt{2^k}}}{\tos{j}.1}{\ket{a^{j}\;\%\;N}}$ \footnote{$\ket{j}$ is an abbreviation of $\ket{\tos{j}}$. $\tos{j}$ turns a number $j$ to a bitstring. $c_1.c_2$ is a bitstring concatenation. }.
 Merging two $\tcht$-type states computes the Cartesian product of basis states in the two groups (\Cref{fig:qafny-eq}).
 State split cuts a session into two individual sessions. The split of $\tnort$ and $\thadt$ types is no more than an array split, while the split of a $\tcht$-type is equal to disentanglement, a very hard problem. In quantum algorithms, splitting $\tnort$ and $\thadt$ types are more common than disentanglement, and is permitted in \qafny. For splitting $\tcht$-type, we invented an upgraded type system in \Cref{sec:newtype} to permit few cases, while the normal \qafny type system in \Cref{sec:syntax-types} does not permit such behavior. 
 
@@ -514,7 +514,7 @@ q(c_j) = \scha{m}{z_j}{c_{j}}{\beta_j}
 \qquad \llbracket \mu \rrbracket c_{j} = z'_j\ket{c'_{j}}
 $
 }
-\caption{Oracle application and state preparation rules }
+\caption{Oracle application rules }
 \label{fig:exp-proofsystem-2}
 \end{figure*}
 
@@ -522,7 +522,11 @@ $
 \myparagraph{State Preparation and Oracle Application Rules}\label{sec:oracle-state}
 The \qafny state preparation $\ssassign{l}{}{op}$ and oracle application $\ssassign{\kappa}{}{\mu}$ operations
 are analogized to classical array map operation as discussed in \Cref{sec:background}. We have a session $\kappa\uplus \kappa'$, for each element $z_j\ket{c_{j}}{\beta_j}$ in the $\tcht$ type state, we first find $c_{j}$ as the corresponding basis state for the $\kappa$ positions because they have the same length and $c_j$ is the prefix basis state, then we apply $\mu$ on the $c_{j}$ part, which is described in the semantic rule \textsc{SA-CH}. Rule \textsc{PA-CH} describes the proof rule for capturing the array map analogy, which describes the exact behavior as the semantic rule.
-For example, in the loop body in \Cref{fig:shorqafny} line 8, we apply $\ssassign{y}{}{a^{2^j}y\;\%\; N}$ to a state $y[0..n] \mapsto \sch{2^{k\,\sminus\,1}}{\frac{1}{\sqrt{2^{k\,\sminus\,1}}}}{\tos{a^{\tos{j}}\;\%\;N} \,|\,\tos{j}.1}$ \footnote{The state is a equivalence state ($\{x[0..k],y[0..n]\} \mapsto \sch{2^k}{\frac{1}{\sqrt{2^k}}}{\tos{j}.\tos{a^{j}\;\%\;N}}$) of the masking session $x[0..j\,\splus\,1]$.}. The result is $\sch{2^{k\,\sminus\,1}}{\frac{1}{\sqrt{2^{k\,\sminus\,1}}}}{\tos{a^{\tos{j}.1}\;\%\;N} \,|\,\tos{j}.1}$ \footnote{We take the bitstring exponent formula as: $a^{c}= a^{\sum_{j}^{2^{c[j]}}}$. }.
+For example, in the loop body in \Cref{fig:shorqafny} line 11, we apply $\ssassign{y}{}{a^{2^j}y\;\%\; N}$ to a state $y[0..n] \mapsto \schai{2^{j}}{\frac{1}{\sqrt{2^{j}}}}{\tos{a^{\tos{i}}\;\%\;N}}{\ket{\tos{i}.1}}$ 
+\footnote{The state is inside a quantum conditional so the $x[0..j]$ part is masked, and the original one is $\{x[0..j],y[0..n]\} \mapsto \schai{2^{j}}{\frac{1}{\sqrt{2^{j}}}}{\tos{i}.0}{\ket{a^{\tos{i}}\;\%\;N}}+
+\schai{2^{j}}{\frac{1}{\sqrt{2^{j}}}}{\tos{i}.1}{\ket{a^{\tos{i}}\;\%\;N}}$ and $\tos{i}$ has $j$ bits. }. 
+The result is $\schai{2^{j}}{\frac{1}{\sqrt{2^{j}}}}{\tos{a^{\tos{j}.1}\;\%\;N}}{\ket{\tos{i}.1}}$ 
+\footnote{We take the bitstring exponent formula as: $a^{c}= a^{\sum_{j}^{2^{c[j]}}}$, where $c[j]$ is the $j$-th position of $c$. }.
 The other similar rules, such as state preparation rules, can be found in \Cref{sec:qafny-app}. 
 
 \begin{figure*}[t]
@@ -538,14 +542,14 @@ The other similar rules, such as state preparation rules, can be found in \Cref{
 \begin{minipage}[t]{0.5\textwidth}
 \subcaption{Mask/Unmask Function Modeling}
   \begin{mathpar}
-    \inferrule[]{R \\ \Omega;\sigma;\varphi\models \theta \mapsto \sch{m}{z_j}{c_{j2}\,|c_{j1}\,\beta_j}}
-          {\Omega;\sigma;\varphi\models \mathpzc{M}(b,\theta) 
-              \mapsto \sch{m}{z_j}{c_{j1}.c_{j2}\,\beta_j}+q(\kappa,\neg b) }
+    \inferrule[]{R \\ \Omega;\sigma;\varphi\models \kappa \mapsto \scha{m}{z_j}{\beta_j}{\ket{c_j}}}
+          {\Omega;\sigma;\varphi\models \mathpzc{M}(b,\kappa) 
+              \mapsto \scha{m}{z_j}{c_{j}}{\ket{\beta_j}}+q(\kappa,\neg b) }
 
     \inferrule[]{R
-            \\\Omega;\sigma,\varphi\models \theta \mapsto \sch{m'}{z'_j}{c_{j1}.c'_{j2}\,\beta_j}+q(\kappa,\neg b)}
-          {\Omega;\sigma,\varphi\models \mathpzc{U}(\neg b,\theta) \mapsto \sch{m}{z_j}{c_{j1}.c_{j2}\,\beta_j}+q(\kappa,\neg b)
-  \\\\ \\ * \mathpzc{U}(b,\theta) \mapsto \sch{m'}{z'_j}{c'_{j2}\,|c_{j1}\,\beta_j} }
+            \\\Omega;\sigma,\varphi\models \kappa \mapsto \scha{m'}{z'_j}{c_{j1}.c'_{j2}\,\beta_j}+q(\kappa,\neg b)}
+          {\Omega;\sigma,\varphi\models \mathpzc{U}(\neg b,\theta) \mapsto \scha{m}{z_j}{c_{j1}}{\ket{c_{j2}}\ket{\beta_j}}+q(\kappa,\neg b)
+  \\\\ \\ * \mathpzc{U}(b,\theta) \mapsto \scha{m'}{z'_j}{c'_{j2}}{\ket{\beta_j}\ket{c_{j1}}} }
   \end{mathpar}
 
   \label{fig:qafny-mu-model}
@@ -556,17 +560,19 @@ The other similar rules, such as state preparation rules, can be found in \Cref{
   \begin{mathpar}
 
 \inferrule[SIF]{ R \\ FV(\emptyset,s)\subseteq \kappa'
-          \\(\varphi[\kappa'\mapsto \sch{m}{z_j}{c_{j2}\,|c_{j1}\,\beta_j}],s) 
-      \longrightarrow (\varphi[\kappa'\mapsto \sch{m'}{z'_j}{c'_{j2}\,|c_{j1}\,\beta_j}],s') } 
-{(\varphi[\kappa\uplus\kappa'\mapsto \sch{m}{z_j}{c_{j1}.c_{j2}\,\beta_j}+q(\kappa,\neg b)],\sifq{b}{s}) \longrightarrow 
-          (\varphi[\kappa\uplus\kappa'\mapsto \sch{m'}{z'_j}{c_{j1}.c'_{j2}\,\beta_j}+q(\kappa,\neg b)],\sifq{b}{s'}) }
+          \\(\psi,\varphi[\kappa'\mapsto \scha{m}{z_j}{c_{j2}}{\ket{\beta_j}\ket{c_{j1}}}],s) 
+      \to (\psi,\varphi[\kappa'\mapsto \scha{m'}{z'_j}{c'_{j2}}{\ket{\beta_j}\ket{c_{j1}}}],s') } 
+{(\psi,\varphi[\kappa\uplus\kappa'\mapsto \scha{m}{z_j}{c_{j1}}{\ket{c_{j2}}\ket{\beta_j}}+q(\kappa,\neg b)],\sifq{b}{s}) \to 
+          (\psi,\varphi[\kappa\uplus\kappa'\mapsto \scha{m'}{z'_j}{c_{j1}}{\ket{c'_{j2}}\ket{\beta_j}}+q(\kappa,\neg b)],\sifq{b}{s'}) }
+
+
 
     \inferrule[PIF]{\Omega;\{\kappa' : \tcht\} \vdash Q' \\ \fivepule{\Omega}{\sigma[\kappa' \mapsto \tcht]}{\mmode}{P[\mathpzc{M}(b,\kappa')/ \kappa \uplus \kappa']}{s}{Q * Q'}}
                 {\fivepule{\Omega}{\sigma[\kappa \uplus \kappa' \mapsto \tcht]}{g}{P}{\sifq{b}{s}}{P[\mathpzc{U}(\neg b,\kappa \uplus \kappa')/\kappa \uplus \kappa')] * Q'[\mathpzc{U}(b,\kappa \uplus \kappa')/\kappa']}}
 
 \mprset{flushleft}
-    \inferrule[SLOOP]{ n_1 < n_2 }
-                  {(\varphi,\sqwhile{j}{n_1}{n_2}{b}{s}) \longrightarrow \\\\ \quad (\varphi,\sseq{\sifq{b}{s}}{\sqwhile{j}{\texttt{S}\;n_1}{n_2}{b}{s})}}
+    \inferrule[SLOOP]{ n_1 < n_2 \\ b'=b[n_1/j] \\ s' =s[n_1/j] }
+                  {(\psi,\varphi,\sqwhile{j}{n_1}{n_2}{b}{s}) \longrightarrow \\\\ \quad (\psi,\varphi,\sseq{\sifq{b'}{s'}}{\sqwhile{j}{\texttt{S}\;n_1}{n_2}{b}{s})}}
 
     \inferrule[PLOOP]{n_1 < n_2\\ \fivepule{\Omega}{\sigma}{\mmode}{P(j)\wedge j \,\slt\, n_2}{\sifq{b}{s}}{P(\snext{j})} }
      {\fivepule{\Omega}{\sigma}{g}{P(n_1)}{ \sqwhile{j}{n_1}{n_2}{b}{s} }{P(n_2)} }
@@ -580,80 +586,110 @@ The other similar rules, such as state preparation rules, can be found in \Cref{
 {\footnotesize
 \[
 \begin{array}{l}
-\theta := q \mid \kappa
+q(\kappa,\neg b) = \schai{m}{z_i}{c_{i}}{\beta_i}
+\;\;\texttt{where}\;\forall i.\;\slen{c_{i}}=\slen{\kappa}\wedge \denote{\neg b[c_{i}/\kappa]}
 \\[0.2em]
-q(\kappa,\neg b) = \schk{m}{z_k}{c_{k1}.c_{k2}\,\beta_k}
-\;\;\texttt{where}\;\forall k.\;\slen{c_{k1}}=\slen{\kappa}\wedge \denote{\neg b[c_{k1}/\kappa]}
-\\[0.2em]
-R = FV(\emptyset,b)=\kappa \wedge \forall j.\; \slen{c_{j1}}=\slen{\kappa}\wedge\denote{b[c_{j1}/\kappa]}
+R = FV(\emptyset,b)=\kappa \wedge \forall j.\; \slen{c_{j}}=\slen{\kappa}\wedge\denote{b[c_{j}/\kappa]}
 \end{array}
 \]
 }
-\caption{Semantic and Proof Rules for Conditionals and For-loops. $\theta$ is either a session or a quantum state. $\mathpzc{M}$ is the mask function and $\mathpzc{U}$ is the unmask function. }
+\caption{Semantic and Proof Rules for Conditionals and For-loops. $\mathpzc{M}$ is the frozen function and $\mathpzc{U}$ is the unfrozen function. $\denote{b[c_{j}/\kappa]}$ is the interpretation of Boolean guard $b$ by replacing qubits mentioned in $\kappa$ with bits in bitstring $c_{j}$.  $P(j)$ is a predicate $P$ with $j$ as a variable. }
 \label{fig:exp-proofsystem-3}
 \end{figure*}
 
 \myparagraph{Rules for Conditionals and For-Loops}\label{sec:conditionals}
-\Cref{fig:qafny-con-analog} describes the analogy of quantum conditionals in \qafny, which are partial map functions that only apply applications on the marked red parts and mask the marked black parts.
-It contains two level of masking. For each basis state element in a state with session $\kappa_b\uplus \kappa_a$, it masks the $\kappa_b$ part of the state, i.e., if the state has the form: $\sch{m}{z_j}{c_{j1}.c_{j2}\beta_j}$ with $\slen{c_{j1}} = \slen{\kappa_b}$, we mask the $c_{j1}$ part by pushing it to a masked stack as $\sch{m}{z_j}{c_{j2}\,|\,c_{j1}\,\beta_j}$, which is described in preparing the pre-state of the upper-level transition in rule \textsc{SIF} (\Cref{fig:qafny-mu-rules}).
-The second level of masking happens in selecting elements in the state by checking the Boolean condition $b$ on them.
-The $R$ condition in rule\textsc{SIF} finishes such task for us.
-Here, we split the state into two parts as $\sch{m}{z_j}{c_{j1}.c_{j2}\,\beta_j}+q(\kappa,\neg b)$, where the first part are all basis states satisfying $b$ since if we replace the variables in $b$ with $c_{j1}$, the evaluation $\denote{b[c_{j1}/\kappa]}$ returns true, while the second part $q(\kappa,\neg b)$ contains all basis states evaluated to false.
-After the masking, we apply the application $s$ on each element in the selected states, install the results ($z'_j$ and $c'_{j2}$ back to the unmasked state, and result in $\sch{m'}{z'_j}{c_{j1}.c'_{j2}\,\beta_j}+q(\kappa,\neg b)$.
-The result state number $m'$ might be different from the pre-state number $m$ because applications in $s$ might increase the state numbers such as applying a quantum diffusion operation.
+\Cref{fig:qafny-con-analog} describes the analogy of quantum conditionals in \qafny, which are partial map functions that only apply applications on the red parts and frozen the black parts.
+It contains two levels of freezing. For each basis state element in a state with session $\kappa_b\uplus \kappa_a$, it freezes the $\kappa_b$ part of the state, which is indicated as the marked black items in the second line in \Cref{fig:qafny-con-analog}. For a state having the form: $\scha{m}{z_j}{c_{j1}}{\ket{c_{j2}}\ket{\beta_j}}$ with $\slen{c_{j1}} = \slen{\kappa_b}$, we freeze the $c_{j1}$ part by pushing it to the end of the basis state as $\scha{m}{z_j}{c_{j2}}{\ket{\beta_j}\ket{c_{j1}}}$, which is described in preparing the pre-state of the upper-level transition in rule \textsc{SIF} (\Cref{fig:qafny-mu-rules}).
+In a basis state, the bitstring part that is located at the places greater than the session length can be viewed as a stack that stores the frozen basis states. For example, in the above state, 
+if $\slen{\kappa_a}=\slen{c_{j2}}$, the part $\ket{\beta_j}\ket{c_{j1}}$ store bitstrings that will be recovered once the current quantum conditional ends.
 
-To design a proof rule for such partial map, we develop the mask ($\mathpzc{M}$) and unmask ($\mathpzc{U}$) operations (\Cref{fig:qafny-mu-model}), both take a Boolean expression $b$ and a quantum state as the argument. $\mathpzc{M}$'s modeling materializes the masking mechanism above. For a state $\sch{m}{z_j}{c_{j1}.c_{j2}\,\beta_j}+q(\kappa,\neg b)$, we preserve the basis states satisfying $b$, as shown in the predicate $R$, remove the unsatisfied basis states $q(\kappa,\neg b)$, and push the bases $c_{j1}$ to state stacks.
-Here, we do not need to input $\mathpzc{M}$ the session associated with $c_{j1}$, because we can learn it through $b$.
+The second level of freezing happens in selecting basis states in a state by evaluating the Boolean condition $b$ on basis state bitstrings. Predicate $R$ in rule\textsc{SIF} represents such task.
+Here, we categorize the state into two parts as $\scha{m}{z_j}{c_{j1}}{\ket{c_{j2}}\ket{\beta_j}}+q(\kappa,\neg b)$, where the first part contains all basis states satisfying $b$: if we replace the qubit variables in $b$ with $c_{j1}$, the evaluation $\denote{b[c_{j1}/\kappa]}$ returns true; while the second part $q(\kappa,\neg b)$ contains all basis states that evaluate $b$ to false.
+After the freezing, we apply the application $s$ on each element in the selected states, install the results ($z'_j$ and $c'_{j2}$ back to the unfrozen state.
+The result state element number $m'$ might be different from the pre-state one ($m$) because applications in $s$ might increase the state numbers such as applying a quantum diffusion operation.
+
+To design a proof rule for such partial map, we develop the frozen ($\mathpzc{M}$) and unfrozen ($\mathpzc{U}$) operations added to the session category (\Cref{fig:qafny-mu-model}), both take a Boolean expression $b$ and a quantum state as the argument. $\mathpzc{M}$'s modeling materializes the freezing mechanism above. For a state $\scha{m}{z_j}{c_{j1}}{\ket{c_{j2}}\ket{\beta_j}}+q(\kappa,\neg b)$, we preserve the basis states satisfying $b$, as shown in the predicate $R$, remove the unsatisfied basis states $q(\kappa,\neg b)$, and push the bases $c_{j1}$ to the state stacks.
 In the pre-condition manipulation of rule \textsc{PIF} (\Cref{fig:qafny-mu-rules}), we substitute $\kappa \uplus \kappa'$ with $\mathpzc{M}(b,\kappa')$. During the process, the type for the session in $\sigma$ is changed from $\kappa \uplus \kappa'$ in the bottom to $\kappa'$ in the upper level.
-The unmask function $\mathpzc{U}$ assembles the result state of applying $s$ to the masked $\kappa$ state with the other parts hidden in the unmasked state (the part marked black in \Cref{fig:qafny-con-analog}). Function $\mathpzc{U}$ is usually appeared to be a pair with both $b$ and $\neg b$. In the post-condition manipulation, we substitute $\kappa \uplus \kappa'$ with $\mathpzc{U}(\neg b,\kappa \uplus \kappa')$ in $P$, representing the unchanged and masked state, substitute $\kappa'$ with $\mathpzc{U}(b,\kappa \uplus \kappa')$ in $Q'$, representing the result of applying $s$ on the unmasked part, and assemble them together through the separation operation $*$.
+The unfrozen function $\mathpzc{U}$ assembles the result state of applying $s$ to the frozen $\kappa$ state with the other parts hidden in the unfrozen state (the black part in \Cref{fig:qafny-con-analog}). Function $\mathpzc{U}$ is appeared as a pair with both the $b$ and $\neg b$ cases, referring to the two state categories above. In the post-condition manipulation, we substitute $\kappa \uplus \kappa'$ with $\mathpzc{U}(\neg b,\kappa \uplus \kappa')$ in $P$, representing the unchanged and frozen state; and substitute $\kappa'$ with $\mathpzc{U}(b,\kappa \uplus \kappa')$ in $Q'$, representing the result of applying $s$ on the unfrozen part, and assemble them together through the separation operation $*$.
 $\mathpzc{U}$'s modeling in \Cref{fig:qafny-mu-model} captures the assemble procedure by merging two $\mathpzc{U}$ constructs together.
+Rules \textsc{SLOOP} and \textsc{PLOOP} are the semantic and proof rules for a for-loop, which is a repeat operation of conditionals in \qafny. The $P(j)$ is a loop invariant with $j$ being a variable.
 
-Rules \textsc{SLOOP} and \textsc{PLOOP} are the semantic and proof rules for a for-loop, which is a repeat operation of conditionals in \qafny. The $P(j)$ is a loop invariant with $j$ being a variable. The case for $n_1 \ge n_2$ is given in \Cref{sec:newtype}. As an example, we show the proof for a loop-step in \Cref{fig:shorqafny}.
-
+\begin{figure*}[t]
 {\footnotesize
   \begin{mathpar}
 \mprset{flushleft}
 \inferrule[]{
    \inferrule[]
-   { \inferrule[] {
-    \fivepule{\Omega}{\sigma_2}{\mmode}{X(\snext{j}) * \{y[0..n]\}\mapsto C(j).1}{ s }{X(\snext{j}) * \{y[0..n]\}\mapsto C'(j).1} }
-  { \fivepule{\Omega}{\sigma_2}{\mmode}{X(\snext{j}) * \mathpzc{M}(b,\{y[0..n]\})\mapsto 0.C(j)+1.C(j)}{ s }{X(\snext{j}) * \{y[0..n]\}\mapsto C'(j).1} } }
-   {  \Omega,\sigma_1\vdash_{\mmode} \{X(\snext{j}) * \{x[0..\snext{j}],y[0..n]\}\mapsto 0.C(j)+1.C(j)\} \sifq{x[j]}{s}
-     \\\\\qquad\qquad \{ X(\snext{j}) * \mathpzc{U}(\neg x[j],\{x[0..\snext{j}],y[0..n]\})\mapsto 0.C(j)
-          * \mathpzc{U}(x[j],\{x[0..\snext{j}],y[0..n]\})\mapsto C'(j).1\}
-     } } {
-\fivepule{\Omega}{\sigma}{\mmode}{X(j) * \{x[0..j],y[0..n]\}\mapsto C(j)}{ \sifq{x[j]}{s} }{X(j\,\sminus\,1) * \{x[0..\snext{j}],y[0..n]\} \mapsto 0.C(j)+1.C'(j)} }
+   { \inferrule[] 
+{\fivepule{\Omega}{\{\kappa:\tcht\}}{\mmode}
+{\textcolor{teal}{
+\kappa\mapsto {\frac{1}{\sqrt{2}}}\ket{\overline{1}}\ket{0}\ket{1}
+}
+}{ s }{
+\textcolor{teal}{
+\kappa\mapsto {\frac{1}{\sqrt{2}}}\ket{\overline{1}}\ket{1}\ket{1}
+}
+}
+ }
+  { \fivepule{\Omega}{\{\kappa:\tcht\}}{\mmode}
+{\textcolor{teal}{
+\mathpzc{M}(x[j],\kappa)\mapsto
+  \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}}\ket{0}
+}
+}{ s }{
+\textcolor{teal}{
+\kappa\mapsto {\frac{1}{\sqrt{2}}}\ket{\overline{1}}
+}
+}
+} }
+   {
+\fivepule{\Omega}{\{\kappa_1:\tcht\}}{\cmode}
+{\textcolor{teal}{
+\kappa_1\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}}\ket{0}
+}
+}{ \sifq{x[j]}{s} }{
+\textcolor{teal}{
+\mathpzc{U}(\neg x[j],\kappa_1)\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}}\ket{0}
+*
+\mathpzc{U}(x[j],\kappa_1)\mapsto {\frac{1}{\sqrt{2}}}\ket{\overline{1}}
+}
+}} } {
+\fivepule{\Omega}{\sigma}{\cmode}
+{\textcolor{teal}{
+x[0..\snext{j}]\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}} * x[\snext{j}..n]\mapsto \ket{\overline{0}}
+}
+}{ \sifq{x[j]}{s} }{
+\textcolor{teal}{
+x[0..j\splus\,2]\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}} * x[j\,\splus\,2..n]\mapsto \ket{\overline{0}}
+} } }
   \end{mathpar}
-{\hspace*{-1.5em}
+{
+\begin{center}
 $\begin{array}{l}
-X(j)=\shad{2^{n \,\sminus\,  j}}{n \,\sminus\, j}{}
+\kappa=\{x[0..j],x[\snext{j}..j\,\splus\,2]\}
 \quad
-C(j)=\sch{2^k}{\frac{1}{\sqrt{2^k}}}{\tos{j}^{k}.\tos{a^{\tos{j}^k}\;\%\;N}}
+\kappa_1=\{x[j..\snext{j}\} \uplus \kappa
 \quad
-i.C(j)=\sch{2^{\snext{k}}}{\frac{1}{\sqrt{2^{\snext{k}}}}}{\tos{j}^k.i.\tos{a^{\tos{j}^k}\;\%\;N}}
-\\
-C'(j).i=\sch{2^{\snext{k}}}{\frac{1}{\sqrt{2^{\snext{k}}}}}{\tos{a^{\tos{j}^k.1}\;\%\;N}\,|\,\tos{j}^k.i}
-\qquad
-i.C'(j)=\sch{2^{\snext{k}}}{\frac{1}{\sqrt{2^{\snext{k}}}}}{\tos{j}^k.i.\tos{a^{\tos{j}^k.1}\;\%\;N}}
-\\
-\sigma_1=\{x[0..n\,\sminus\,\snext{j}] \mapsto \thadt, \{x[0..\snext{j}],y[0..n]\} \mapsto \tcht \}
+s=\ssassign{x[\snext{j}]}{}{x[\snext{j}]+1};
 \quad
-\sigma=\{x[0..n\,\sminus\,\snext{j}] \mapsto \thadt, y[0..n] \mapsto \tcht \}
-\quad
-s=\ssassign{y}{}{a^{2^j}y\;\%\; N}
+\sigma=\{x[0..\snext{j}]: \tcht, x[\snext{j}..n]: \tnort\}
 \end{array}$
+\end{center}
 }
 }
+\caption{Quantum conditional proof for \Cref{fig:background-circuit-example-proof}}
+\label{fig:exp-proofsystem-example}
+\end{figure*}
 
-The proof is built from bottom up. We first cut the $\thadt$ type state into two sessions ($x[0..n\,\sminus\,\snext{j}]$ and $x[j]$), join $x[j]$ with session $\{x[0..j],y[0..n]\}$, and double the state elements to be $0.C(j)+1.C(j)$, which is proved by applying the consequence rules. Notice that the type environment is also transitioned from $\sigma$ to $\sigma_1$.
-By the same strategy of the $\mathpzc{U}$ rule in \Cref{fig:qafny-mu-model}, we combine the two $\mathpzc{U}$ terms into the final result. 
-The second step applies rule \textsc{PIF} to substitute session $\{x[0..\snext{j}],y[0..n]\}$ with the mask construct $\mathpzc{M}(b,\{y[0..n]\})$ in the pre-condition and create two $\mathpzc{U}$ terms in the post-condition. The step on the top applies the modulo multiplication on every element in the masked state $\mapsto C(j).1$ by rule \textsc{PA-CH}.
+ As an example, we show the proof for a GHZ loop-step in \Cref{fig:exp-proofsystem-example}.
+The proof is built from bottom up. We first move a $\tnort$ type qubit $x[\snext{j}]$ to the session $x[0..\snext{j}]$ and use the \rulelab{Frame} rule to cut off the $x[j\,\splus\,2..n]$ session. We then apply rule \rulelab{PIF} to freeze the qubit $x[j]$ and part of the entangled state and leave the state ${\frac{1}{\sqrt{2}}}\ket{\overline{1}}\ket{0}\ket{1}$ on the top. Notice, that the last $\ket{1}$ here is the stored basis state for $x[j]$, and $\kappa_1$ has the same qubits as session $x[0..j\splus\,2]$ with different arrangement.
+We apply rule \textsc{PA-CH} at the top and flip the $0$ bit, so that the basis state $\ket{\overline{1}}\ket{1}\ket{1}$ can be merged as $\ket{\overline{1}}$ at the post-condition of the second line. As the post-condition of rule \rulelab{PIF}, we utilize two $\mathpzc{U}$ function to assemble the state ${\frac{1}{\sqrt{2}}}\ket{\overline{1}}$ back to the right position in session $\kappa_1$.
 
 \begin{figure*}[t]
-{\footnotesize
-\begin{minipage}[t]{0.4\textwidth}
+{\small
+\begin{minipage}[t]{0.37\textwidth}
 \subcaption{Measurement Analogy}
-  \vspace{0.5cm}
+  \vspace{0.2cm}
   \includegraphics[width=1\linewidth]{measure}
 
   \label{fig:qafny-mea-analog}
@@ -662,13 +698,11 @@ The second step applies rule \textsc{PIF} to substitute session $\{x[0..\snext{j
 \begin{minipage}[t]{0.5\textwidth}
 \subcaption{Measurement Modeling}
   \begin{mathpar}
-    \inferrule[]{\Omega;\sigma;\varphi\models \theta \mapsto \theta'}
-          {\Omega;\sigma;\varphi\models \mathpzc{F}(x,n,\theta) \mapsto \mathpzc{F}(x,n,\theta') }
 
     \inferrule[]{\slen{c}=n \\
            \Omega;\sigma;\varphi\models \theta \mapsto 
                       \sch{m}{\frac{z_j}{\sqrt{r}}}{c_{j}} \wedge x = (r,\tov{c})}
-          {\Omega;\sigma,\varphi\models \mathpzc{F}(x,n,\theta) \mapsto \sch{m}{z_j}{c.c_{j}}+q(n,\neq c) }
+          {\Omega;\sigma,\varphi\models \mathpzc{F}(x,n,\theta) \mapsto \scha{m}{z_j}{c}{\ket{c_{j}}}+q(n,\neq c) }
   \end{mathpar}
 
   \label{fig:qafny-mea-model}
@@ -678,7 +712,7 @@ The second step applies rule \textsc{PIF} to substitute session $\{x[0..\snext{j
 \subcaption{Semantic/Proof Rules}
   \begin{mathpar}
 
-    \inferrule[SMea]{\varphi(y) = \{y[0..n]\uplus\kappa\mapsto \sch{m}{z_j}{c.c_{j}}+q(n,\neq c)\}}{(\varphi,\sexp{x}{\smea{y}}{s}) \longrightarrow (\varphi[\kappa \mapsto  \sch{m}{\frac{z_j}{\sqrt{r}}}{c_{j}}],s[(r,\tov{c})/x]) }
+    \inferrule[SMea]{\varphi(y) = \{y[0..n]\uplus\kappa\mapsto \scha{m}{z_j}{c}{\ket{c_{j}}}+q(n,\neq c)\}}{(\psi,\varphi,\sexp{x}{\smea{y}}{s}) \longrightarrow (\psi[x\mapsto (r,\tov{c})],\varphi[\kappa \mapsto  \sch{m}{\frac{z_j}{\sqrt{r}}}{c_{j}}],s) }
 
     \inferrule[PMea]{\fivepule{\Omega[x\mapsto \mmode]}{\sigma[\kappa\mapsto \tcht]}{\cmode}{P[\mathpzc{F}(x,n,\kappa)/y[0,n]\uplus\kappa]}{s }{Q} }
      {\fivepule{\Omega[y\mapsto \qmode{n}]}{\sigma[y[0,n]\uplus\kappa\mapsto \tcht]}{\cmode}{P}{\sexp{x}{\smea{y}}{s} }{Q} }
@@ -699,126 +733,94 @@ q(n,\neq c) = \schk{m'}{z'_k}{c'.c'_{k}} \;\;\texttt{where}\;c'\neq c\]
 \end{figure*}
 
 \myparagraph{Rules for Measurement}\label{sec:measurement}
-As \Cref{fig:qafny-mea-analog} describes, quantum measurement is a two-step array filter: 1) each element in the state is partitioned into two parts, and we select a first part of an element as a key, as shown in the marked pink part; and 2) we create a new array state by removing all the first parts in the old state and collecting the elements whose first part is equal to the key.
-The second step actually collects elements in a periodical manner as shown in the analogy in \Cref{fig:qafny-mea-analog}, where the marked red basis states appear in a periodical pattern in the whole state. This behavior is universally true for quantum operations, and many quantum algorithms utilize the periodical pattern of quantum computation.
+As \Cref{fig:qafny-mea-analog} describes, quantum measurement is a two-step array filter: 1) The session is partitioned into two parts, so do all the basis states, and we select select a basis state's first part as a key, as shown in the pink part; and 2) we create a new array by cutting all elements' first parts and keeping the elements whose original first part is equal to the key.
+The second step actually collects elements in a periodical manner as shown in the analogy, where the red basis states appear in a periodical pattern in the whole array. This behavior is universally true for quantum operations, and many quantum algorithms utilize the periodical pattern of quantum computation.
 
-In rule \textsc{SMea}, we pick an $n$-length bitstring $c$ as the marked pink key, and elect $m$ basis states $\sch{m}{z_j}{c.c_{j}}$ that has the key $c$. In the post-state, we update the remaining session $\kappa$ to $\sch{m}{\frac{z_j}{\sqrt{r}}}{c_{j}}$ with the adjustment of amplitude $\frac{1}{\sqrt{r}}$, and replace the variable $x$ in the statement $s$ with the value $(r,\tov{c})$.
-In designing the proof rule \textsc{PMea}, the operation $\mathpzc{F}(x,n,\kappa)$ is invented,
-whose modeling is in \Cref{fig:qafny-mea-model}, to do exactly the two steps above by selecting an $n$-length prefix bitstring $c$ in a basis state, computing the probability $r$, and assigning $(r,\tov{c})$ to variable $x$.
+In rule \textsc{SMea}, we pick an $n$-length bitstring $c$ as the pink key, and elect $m$ basis states $\scha{m}{z_j}{c}{\ket{c_{j}}}$ that has the key $c$. In the post-state, we update the remaining session $\kappa$ to $\sch{m}{\frac{z_j}{\sqrt{r}}}{c_{j}}$ with the adjustment of amplitude $\frac{1}{\sqrt{r}}$, and replace the variable $x$ in the statement $s$ with the value $(r,\tov{c})$.
+In designing the proof rule \textsc{PMea}, the operation $\mathpzc{F}(x,n,\kappa)$ is invented to the session category (modeling in \Cref{fig:qafny-mea-model}) to do exactly the two steps above by selecting an $n$-length prefix bitstring $c$ in a basis state for range $y[0..n]$, computing the probability $r$, and assigning $(r,\tov{c})$ to variable $x$.
 Rule \textsc{PMea} in \Cref{fig:qafny-mea-rules} replaces the session $y[0..n]\cup \kappa$ in $P$ with the measurement result session $\mathpzc{F}(x,n,\kappa)$ and updates the type state $\Omega$ and $\sigma$. 
 
 {\footnotesize
   \begin{mathpar}
-\inferrule[]{
    \inferrule[]
-   { \fivepule{\Omega[u\mapsto \mmode]}{\sigma[\kappa \mapsto \tcht]}{\mmode}{\mathpzc{F}(u,n,x[0..n])\mapsto C'}{ \{\} }{x[0..n] \mapsto D * E} }
-   { \fivepule{\Omega}{\sigma}{\mmode}{\{y[0..n],x[0..n]\}\mapsto C'}{ \sexp{u}{\smea{y}}{\{\}} }{x[0..n] \mapsto D * E}
-     } } {\fivepule{\Omega}{\sigma}{\mmode}{\{x[0..n],y[0..n]\}\mapsto C}{ \sexp{u}{\smea{y}}{\{\}} }{x[0..n] \mapsto D * E} }
+   { \fivepule{\Omega[u\mapsto \mmode]}{\{x[0..n] : \tcht\}}{\cmode}
+  {\textcolor{teal}{\mathpzc{F}(u,n,x[0..n])\mapsto C}}{ \{\} }{\textcolor{teal}{x[0..n] \mapsto D * E}} }
+   { \fivepule{\Omega}{\{\{y[0..n],x[0..n]\} : \tcht\}}{\cmode}
+      {\textcolor{teal}{\{y[0..n],x[0..n]\}\mapsto C}}{ \sexp{u}{\smea{y}}{\{\}} }{\textcolor{teal}{x[0..n] \mapsto D * E}}
+     }
   \end{mathpar}
-{\hspace*{-1em}
+{
+\begin{center}
 $\begin{array}{l}
-C=\sch{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{\tos{j}.\tos{a^{j}\;\%\;N}}
+C \triangleq \sch{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{\tos{a^{j}\;\%\;N}.\tos{j}}
 \quad
-C'=\sch{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{\tos{a^{j}\;\%\;N}.\tos{j}}
+D \triangleq \smch{\frac{1}{\sqrt{s}}}{s}{t\,\splus\,k p}
 \quad
-\sigma=\{\{x[0..\snext{j}],y[0..n]\}:\tcht\}
-\\
-D=\smch{\frac{1}{\sqrt{s}}}{s}{t\,\splus\,k p}
-\quad
-E=p = \texttt{ord}(a,N)
+E \triangleq p = \texttt{ord}(a,N)
 \wedge
 u=(\frac{s}{2^n},a^{t}\;\%\;N)
 \wedge
 s=\texttt{rnd}(\frac{2^n}{p})
 \end{array}$
+\end{center}
 }
 }
 
-For an instance, we show a proof fragment above for the partial measurement in line 11 in \Cref{fig:shorqafny}.
-The bottom two lines are to modify the array group order of the session from 
-$\{y[0..n],x[0..n]\}$ to $\{x[0..n],y[0..n]\}$ through the consequence rule of state equivalence.
-The second line proof, applies rule $\textsc{PMea}$ by replacing session $\{x[0..n],y[0..n]\}$ with $\mathpzc{F}(u,n,x[0..n])$.
-On the top statement, the pre- and post-conditions are equivalent, because of the periodical aspects in quantum computing.
-In session $\{y[0..n],x[0..n]\}$, group $y[0..n]$ stores the basis state $\tos{a^{j}\;\%\;N}$, which contains value $j$ that represents the basis states for group $x[0..n]$. Selecting a basis state $a^{t}\;\%\;N$ also filters the $j$ in $x[0..n]$, which refers to any values $j$ having the relation $a^{j}\;\%\;N=a^{t}\;\%\;N$. Notice that modulo multiplication is a periodical function, which means that the relation can be rewritten $a^{t+kp}\;\%\;N=a^{t}\;\%\;N$, such that $p$ is the period order. Thus, the $x[0..n]$ state is rewritten as a summation of $k$: $\smch{\frac{1}{\sqrt{s}}}{s}{t\,\splus\,k p}$. The probability of selecting $\tos{a^{j}\;\%\;N}$ is $\frac{s}{2^n}$.
-In \qafny, we set up additional axioms for representing these periodical manners, which is why the pre- and post-condition equivalence is granted.
+For an instance, we show a proof fragment above for the partial measurement in line 14 in \Cref{fig:shorqafny}.
+The proof applies rule $\textsc{PMea}$ by replacing session $\{x[0..n],y[0..n]\}$ with $\mathpzc{F}(u,n,x[0..n])$.
+On the top, the pre- and post-conditions are equivalent, because of the periodical aspects in quantum computing.
+In session $\{y[0..n],x[0..n]\}$, group $y[0..n]$ stores the basis state $\tos{a^{j}\;\%\;N}$, which contains value $j$ that represents the basis states for group $x[0..n]$. Selecting a basis state $a^{t}\;\%\;N$ also filters the $j$ in $x[0..n]$, such that we pick any $j$ having the relation $a^{j}\;\%\;N=a^{t}\;\%\;N$. Notice that modulo multiplication is a periodical function, which means that the relation can be rewritten $a^{t+kp}\;\%\;N=a^{t}\;\%\;N$, such that $p$ is the order. Thus, the $x[0..n]$ state is rewritten as a summation of $k$: $\smch{\frac{1}{\sqrt{s}}}{s}{t\,\splus\,k p}$. The probability of selecting $\tos{a^{j}\;\%\;N}$ is $\frac{s}{2^n}$.
+In \qafny, we set up additional axioms for these periodical theorems to grant this kind of pre- and post-condition equivalence.
 
 \begin{figure*}[t]
-{\footnotesize
-\begin{minipage}[t]{0.35\textwidth}
-\subcaption{Diffusion Analogy}
-  \vspace{0.5cm}
-  \includegraphics[width=1\linewidth]{diffuse}
-
-  \label{fig:qafny-dis-analog}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.6\textwidth}
-\subcaption{Diffusion Modeling}
-  \begin{mathpar}
-    \inferrule[]{\Omega;\sigma;\varphi\models \theta \mapsto \theta'}
-          {\Omega;\sigma;\varphi\models \mathpzc{D}(n,\theta) \mapsto \mathpzc{D}(n,\theta') }
-
-    \inferrule[]{\Omega;\sigma;\varphi\models \theta\mapsto \mathpzc{D'}(n,\sch{n'}{z_{i}}{c_{i}})}
-          {\Omega;\sigma;\varphi\models \mathpzc{D}(n,\theta) \mapsto \schii{n'}{z_{i}}{c_{i}} }
-
-    \inferrule[]{\slen{\tos{j}}=n
-   \\ \Omega;\sigma;\varphi\models \theta\mapsto \Msum_{j=0}^{m}\schk{2^n}{(2 z_{jk}\sum_{t=0}^{2^n}z_{jt} - z_{jk})}{\tos{k}.c_{jk}}}
-          {\Omega;\sigma;\varphi\models \theta \mapsto \mathpzc{D'}(n,\Msum_{j=0}^{m}\schk{2^{n}}{z_{jk}}{\tos{k}.c_{jk}}) }
-  \end{mathpar}
-
-  \label{fig:qafny-dis-model}
-\end{minipage}
-
-{\begin{minipage}[t]{\textwidth}
-\subcaption{Semantic/Proof Rules}
+{\small
   \begin{mathpar}
 
     \inferrule[SDis]{FV(\Omega,l)=\kappa \\ \varphi(\kappa) = \{\kappa\uplus\kappa'\mapsto q\}}
       {(\varphi,\ssassign{l}{}{\sdis}) \longrightarrow (\varphi[\kappa\uplus\kappa' \mapsto \mathpzc{D}(\slen{\kappa},q)],\{\}) }
 
     \inferrule[PDis]{ FV(\Omega,l)=\kappa\\\sigma(\kappa)=\{\kappa\uplus\kappa:\tcht\} }
-     {\fivepule{\Omega}{\sigma}{g}{P[\mathpzc{D}(\slen{\kappa},\kappa\uplus\kappa')/\kappa\uplus\kappa']}{\ssassign{l}{}{\sdis} }{P} }
-
+     {\fivepule{\Omega}{\sigma}{g}{\kappa\uplus\kappa'\mapsto q}{\ssassign{l}{}{\sdis} }{\kappa\uplus\kappa'\mapsto \mathpzc{D}(\slen{\kappa},q)} }
   \end{mathpar}
-
-  \label{fig:qafny-dis-rules}
-\end{minipage}
 }
+{\footnotesize
+$
+\mathpzc{D}(n,\Msum_{i=0}^{m}\scha{2^{n}}{z_{ij}}{j}{\ket{c_{ij}}})=\Msum_{i=0}^{m}\scha{2^n}{(2 z_{ij}\sum_{u=0}^{2^n}z_{iu} - z_{ij})}{j}{\ket{c_{ij}}}
+$
 }
-\caption{Semantic and Proof Rules for Diffusion Operations. $\mathpzc{D}$ models the diffusion operations. }
+\caption{Semantic and Proof Rules for Diffusion Operations}
 \label{fig:exp-proofsystem-5}
 \end{figure*}
 
 \myparagraph{Rules for Diffusion}\label{sec:diffuse}
-Quantum diffusion operations ($\ssassign{l}{}{\sdis}$) reorient the amplitudes of basis states based on the basis state corresponding to $l$. They are analogized to an aggregate operation of reshape and mean computation, both appeared in many programming languages \footnote{Such as Python}.
-The aggregate operation first applies a reshape, where elements are regrouped into a normal form, as the first agree of \Cref{fig:qafny-dis-analog}. More specifically, the diffusion modeling function $\mathpzc{D}(n,\theta)$ takes an $n'$-element state $\sch{n'}{z_{j}}{c_{j}}$ as the second rule in \Cref{fig:qafny-dis-model}. The $n$ number corresponds to the number of bits in the session potion matching $l$.
-Then, we rearrange the state by a helper function $\mathpzc{D'}$ by extending the element number from $n'$ to $m*n$ with probably adding new elements that originally have zero amplitude (the marked white elements in \Cref{fig:qafny-dis-analog}), as the third rule in \Cref{fig:qafny-dis-model}.
-Here, let's view a basis $c_{i}$ as a small-endian (LSB) number $\tov{c_{i}}$. The rearrangement of changing bases $c_{i}$ (for all $i$) to $\tos{k}.c_{jk}$ is analogized to rearranging a number $\tov{c_{i}}$ to become the form $2^n j+k$, with $k\in [0,2^n)$. 
+Quantum diffusion operations ($\ssassign{l}{}{\sdis}$) reorient the amplitudes of basis states based on the basis state corresponding to $l$. They are analogized to an aggregate operation of reshape and mean computation, both appeared in many programming languages, such as Python.
+The aggregate operation first applies a reshape, where elements are regrouped into a normal form, as the first agree of \Cref{fig:qafny-dis-analog}. More specifically, the diffusion function $\mathpzc{D}(n,q)$ (\Cref{fig:exp-proofsystem-5}) first takes an $n'$-element $\tcht$ type state $\schi{t=0}{z_t}{c_t}$, where $n$ corresponds to the number of bits in the session positions matching $l$ (as $\kappa$).
+Then, we rearrange the state by extending the element number from $n'$ to $m*n$ with probably adding new elements that originally have zero amplitude (the white elements in \Cref{fig:qafny-dis-analog}).
+Here, let's view a basis $c_{t}$ as a small-endian (LSB) number $\tov{c_{t}}$. The rearrangement of changing bases $c_{t}$ (for all $t$) to $\tos{j}.c_{ij}$ is analogized to rewrite a number $\tov{c_{t}}$ to be the form $2^n i+j$, with $j\in [0,2^n)$. 
 Basically, the reshape step rearranges the basis states to be placed in a periodical counting sequence, with $2^n$ being the order.
-
-The mean computation analogy (the second arrow in \Cref{fig:qafny-dis-analog}) takes every period in the reshaped state, and for each basis state, we redistribute the amplitude by the formula $(2 z_{jk}\sum_{t=0}^{2^n}z_{jt} - z_{jk})$.
-In another word, for each period, given a basis state $k$, we sum all the amplitudes from $0$ to $2^n$ in the period as $z_{sum}$, then the redistributed amplitude for $k$ is $2 z_k z_{sum}-z_k$. 
-
-Rule \textsc{SDis} is the semantics for diffusion $\ssassign{l}{}{\sdis}$, which applies the $\mathpzc{D}$ function to the session $\kappa \uplus \kappa'$, where $\kappa$ corresponds to the $l$'s session. Proof rule \textsc{PDis} replaces session $\kappa\uplus \kappa'$ with the application $\mathpzc{D}$ on the session.
+%
+\begin{wrapfigure}{r}{5.2cm}
+  \includegraphics[width=.36\textwidth]{diffuse}
+  \caption{Diffusion Analogy}
+\label{fig:qafny-dis-analog}
+\end{wrapfigure}
+%
+The mean computation analogy (the second arrow in \Cref{fig:qafny-dis-analog}) takes every period in the reshaped state, and for each basis state, we redistribute the amplitude by the formula $(2 z_{ij}\sum_{u=0}^{2^n}z_{iu} - z_{ij})$, i.e., for each period, given a basis state $j$, we sum all the amplitudes from $0$ to $2^n$ in the period as $z_{sum}$, then the redistributed amplitude for $j$ is $2 z_j z_{sum}-z_j$. 
+Rule \textsc{SDis} is the semantics for diffusion $\ssassign{l}{}{\sdis}$, which applies the $\mathpzc{D}$ function to the session $\kappa \uplus \kappa'$, where $\kappa$ corresponds to the $l$'s session. Proof rule \textsc{PDis} does the same as rule \textsc{SDis}.
+\ignore{
 Quantum diffusion operations are used in many algorithms, such as amplifying a basis state's amplitude value in Grover's search algorithm, or redistributing a possible path direction in quantum walk algorithm.
 In these algorithms, the session piece that is diffused has either a small constant number of qubits or the whole session, meaning that the $n$ number in the $\mathpzc{D}$ function is either very small or equal to $\slen{\kappa \uplus \kappa'}$, as the whole session.
 In either case, the summation formula in $\mathpzc{D}$'s modeling (\Cref{fig:qafny-dis-model}) can be rewritten as very few terms that facilitate the automated verification, which is exactly how we handle the diffusion operations in \qafny.
+}
 An example of Grover's search and quantum walk algorithm is given in \Cref{sec:arith-oqasm}.
 
 \subsection{\qafny Metatheory}\label{sec:theorems}
 
-The type system is sound and the proof system is proved to be sound and complete.
-
+Here, we show the type soundness and proof system soundness and completeness.
 
 \myparagraph{Type Soundness}
 We prove that well-typed \qafny programs are well defined; i.e., the
-type system is sound with respect to the semantics. 
-We begin by defining the session domain and state well-formedness.
-
-
-
-
-
+type system is sound with respect to the semantics, with the well-formedness definitions in \Cref{def:well-formed-ses} and \Cref{def:well-formed}.
 The \qafny type soundness is stated as two theorems, type progress and preservation theorems. The proofs are done by induction on \qafny statements $s$ and mechanized in Coq. Type progress states that any well-typed \qafny program can take a move, while type preservation states that for any such move, the transitioned type and state are preserved and well-typed, respectively.
 
 \begin{theorem}[\qafny type progress]\label{thm:type-progress-oqasm}\rm 
@@ -833,21 +835,21 @@ there exists $\Omega'$ and $\sigma''$, $\Omega';\sigma'' \vdash_g s' \triangleri
 \myparagraph{Proof System Soundness and Completeness}
 We prove that the \qafny proof system is well defined; i.e., any properties derived in the \qafny proof system for well-typed \qafny programs can be interpreted by the state transitions in the \qafny semantics.
 In \qafny, there are three different state representations for a session $\kappa$ and two sessions can be joined into a large session.
-Hence, given a statement $s$ and an initial state $\varphi$, the semantic transition $(\varphi,s) \longrightarrow^{*} (\varphi',\{\})$ might not be unique, in the sense that there might be different representations of $\varphi'$, due to the different state representations.
+Hence, given a statement $s$ and an initial state $\psi$ and $\varphi$, the semantic transition $(\psi, \varphi,s) \longrightarrow^{*} (\psi',\varphi',\{\})$ might not be unique, in the sense that there might be different representations of $\varphi'$, due to the different state representations.
 However, any $\tnort$ and $\thadt$ type state can be represented as a $\tcht$ type state, so that $\tcht$ type states can be viewed as the \emph{most general} state representation. We also have state equivalence relations defined for capturing the behaviors of session permutation, join and split. We define a \emph{most general state representation} of evaluating a statement $s$ in an initial state $\varphi$ below.
 
 \begin{definition}[Most general \qafny state]\label{def:most-gen}\rm 
-  Given a statement $s$, an initial state $\varphi$, kind environment $\Omega$, type environment $\sigma$, and context mode $g$, such that $\Omega;\sigma\vdash \varphi$, $\vdash_g s \triangleright \sigma^*$, $\Omega;\sigma[\uparrow \sigma^*]\vdash \varphi^*$, and $(\varphi,s) \longrightarrow^{*} (\varphi^*,\{\})$, $\varphi^*$ is the most general state representation of evaluating $(\varphi,s)$, iff for all $\sigma'$ and $\varphi'$, such that $\vdash_g s \triangleright \sigma'$, $\Omega;\sigma[\uparrow \sigma']\vdash \varphi'$ and $(\varphi,s) \longrightarrow^{*} (\varphi',\{\})$, $\sigma' \preceq \sigma^*$ and $\varphi' \equiv \varphi^*$.
+  Given a statement $s$, an initial state $\varphi$, kind environment $\Omega$, type environment $\sigma$, and context mode $g$, such that $\Omega;\sigma\vdash_g \varphi$, $\vdash_g s \triangleright \sigma^*$, $\Omega;\sigma[\uparrow \sigma^*]\vdash \varphi^*$, and $(\psi,\varphi,s) \longrightarrow^{*} (\psi',\varphi^*,\{\})$, $\varphi^*$ is the most general state representation of evaluating $(\psi,\varphi,s)$, iff for all $\sigma'$ and $\varphi'$, such that $\vdash_g s \triangleright \sigma'$, $\Omega;\sigma[\uparrow \sigma']\vdash \varphi'$ and $(\psi,\varphi,s) \longrightarrow^{*} (\psi',\varphi',\{\})$, $\sigma' \preceq \sigma^*$ and $\varphi' \equiv \varphi^*$.
 \end{definition}
 
-The \qafny proof system correctness is defined by the soundness and relatively completeness theorems below, which has been formalized and proved in Coq. The \qafny proof system only describes the quantum portion of the whole Qafny+Dafny system, and the quantum portion contains non-terminated programs. Hence, the soundness and completeness essentially refers to the partial correctness of the \qafny proof system and the total correctness is achieved by the Qafny+Dafny system through mapping \qafny to Dafny, i.e., a separation logic proof system. Essentially, the \qafny proof system correctness is defined in terms of programs being well-typed. The type soundness theorem suggests that any intermediate transitions of evaluating a well-typed \qafny program is also well-typed. Thus, we can conclude that the pre- and post- conditions of a program are modeled properly through the above modeling rules that rely on well-typed transition states.
+The \qafny proof system correctness is defined by the soundness and relatively completeness theorems below, which has been formalized and proved in Coq. The \qafny proof system only describes the quantum portion built on top of the Dafny system, as the quantum portion contains non-terminated programs. Hence, the soundness and completeness essentially refers to the partial correctness of the \qafny proof system and the total correctness is achieved by compiling \qafny programs to Dafny, a separation logic proof system. The \qafny proof system correctness is defined in terms of programs being well-typed. The type soundness theorem suggests that any intermediate transitions of evaluating a well-typed \qafny program is also well-typed. Thus, we can conclude that the pre- and post- conditions of a program are modeled properly through the above modeling rules that rely on well-typed transition states.
 
 \begin{theorem}[proof system soundness]\label{thm:proof-soundness}\rm 
-For a well-typed program $s$, such that $\Omega;\sigma\vdash_g s \triangleright \sigma'$, $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$, $\Omega;\sigma;\varphi\models P$, then there exists a state representation $\varphi'$, such that $(\varphi,s)\longrightarrow (\varphi',\{\})$ and $\Omega;\sigma[\uparrow\sigma'];\varphi'\models Q$, and there is a most general state representation $\varphi^*$ of evaluating $(\varphi,s)$ as $(\varphi,s)\longrightarrow (\varphi^*,\{\})$ and $\varphi' \equiv \varphi*$.
+For a well-typed program $s$, such that $\Omega;\sigma\vdash_g s \triangleright \sigma'$, $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$, $\Omega;\sigma;\psi;\varphi\models_g P$, then there exists a state representation $\varphi'$, such that $(\psi,\varphi,s)\longrightarrow (\psi',\varphi',\{\})$ and $\Omega;\sigma[\uparrow\sigma'];\psi';\varphi'\models_g Q$, and there is a most general state representation $\varphi^*$ of evaluating $(\psi,\varphi,s)$ as $(\psi,\varphi,s)\longrightarrow (\psi',\varphi^*,\{\})$ and $\varphi' \equiv \varphi*$.
 \end{theorem}
 
 \begin{theorem}[proof system relative completeness]\label{thm:proof-completeness}\rm 
-For a well-typed program $s$, such that $\Omega;\sigma\vdash_g s \triangleright \sigma'$, $(\varphi,s)\longrightarrow (\varphi',\{\})$ and $\Omega;\sigma\vdash \varphi$, there is most general state representation $\varphi^*$, such that $(\varphi,s)\longrightarrow (\varphi',\{\})$ and $\varphi' \equiv \varphi^*$ and $\Omega;\sigma\vdash_g s \triangleright \sigma^*$ and $\Omega;\sigma[\uparrow \sigma^*]\vdash \varphi^*$, and there are predicates $P$ and $Q$, such that $\Omega;\sigma;\varphi\models P$ and $\Omega;\sigma[\uparrow\sigma^*];\varphi^* \models Q$ and $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$.
+For a well-typed program $s$, such that $\Omega;\sigma\vdash_g s \triangleright \sigma'$, $(\psi,\varphi,s)\longrightarrow (\psi',\varphi',\{\})$ and $\Omega;\sigma\vdash_g \varphi$, there is most general state representation $\varphi^*$, such that $(\psi,\varphi,s)\longrightarrow (\psi',\varphi',\{\})$ and $\varphi' \equiv \varphi^*$ and $\Omega;\sigma\vdash_g s \triangleright \sigma^*$ and $\Omega;\sigma[\uparrow \sigma^*]\vdash_g \varphi^*$, and there are predicates $P$ and $Q$, such that $\Omega;\sigma;\psi;\varphi\models_g P$ and $\Omega;\sigma[\uparrow\sigma^*];\psi';\varphi^* \models Q$ and $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$.
 \end{theorem}
 
 

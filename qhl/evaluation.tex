@@ -3,20 +3,22 @@
 
 \begin{figure*}[t]
 {\small
-\begin{tabular}{|l|c|c|c|}
+\begin{tabular}{|l|c|c|c|c|}
 \hline
-Algorithm & Running Time (seconds)  & Human Resources (days) & Number of Lines \\
+Algorithm & Run Time (sec) & Run Time in QBricks (sec) & Human Effort (days) & \#Lines \\
                      \hline
-GHZ & 4.2 & < 1 & 13 \\
-Controlled GHZ & 6.4 & < 1 & 15  \\
-Deutsch–Jozsa & 3.3 & < 1 & 11 \\
-Grover's search & 26.7 &  2 & 19 \\
-Shor's algorithm & 36.3 & 30 & 28  \\
-Quantum Walk & 43.1 & 2 & 35 \\
+GHZ & 4.2 & - & < 1 & 8 \\
+Controlled GHZ & 6.4 & - & < 1 & 6  \\
+Deutsch–Jozsa & 3.3 & 79 & < 1 & 6 \\
+Grover's search & 26.7 & 283 &  3 & 19 \\
+Shor's algorithm & 36.3 & 1380 & 30 & 28  \\
+Quantum Walk & 43.1 & - & 2 & 35 \\
 \hline                           
 \end{tabular}
 }
-\caption{Computer running time and human labor time for verifying algorithms in \qafny. Running time is measured in a i7 windows computer. Every algorithm is verified by a single person, thus the human resources measure the time for a person to finish programming and verifying an algorithm. The quantum walk algorithm is the core of the Childs' Boolean equation algorithm \cite{ChildsNAND}.}
+\caption{Computer running time and human labor time for verifying algorithms in \qafny. Running time is measured in a i7 windows computer. 
+QBricks running time is based on \cite{qbricks}, and \texttt{-} means no data.
+Every algorithm is verified by a single person, thus the human effort measures the time for a person to finish programming and verifying an algorithm. The quantum walk algorithm is the core of the Childs' Boolean equation algorithm \cite{ChildsNAND}.}
 \label{fig:circ-evaluation}
 \end{figure*}
 
@@ -24,7 +26,7 @@ We evaluate QNP by (1) demonstrating how quantum algorithms are verified in the 
 %
 This section presents the facts about verifying quantum programs in \qafny. Then, we discuss two case studies, including the verification of the controlled GHZ, Grover's search, and Shor's algorithm, as a demonstration of verifying quantum algorithms in \qafny.
 
-\Cref{fig:circ-evaluation} shows the algorithms being verified in \qafny. When we started the QNP project, we first tried to verify Shor's algorithm directly on Dafny, which spent a researcher 30 days to finish. After that, we built the \qafny compiler on Dafny, and run a \qafny version of the Shor's algorithm proof, which is much more cleaner than the code written directly in Dafny. The running time for that proof is 36.3 seconds. In fact, running any \qafny verification does not take more than a minute to finish, which is relatively comparable with most nowadays automated verification framework \cite{DBLP:conf/pldi/Qiu0SM13,dafnyref}, and better than the existing quantum automated frameworks, such as QBricks \cite{qbricks}.
+\Cref{fig:circ-evaluation} shows the algorithms being verified in \qafny. When we started the QNP project, we first tried to verify Shor's algorithm directly on Dafny, which spent a researcher 30 days to finish. After that, we built the \qafny compiler on Dafny, and run a \qafny version of the Shor's algorithm proof, which is much more cleaner than the code written directly in Dafny. The running time for that proof is 36.3 seconds. In fact, running any \qafny verification does not take more than a minute to finish, which is relatively comparable with most nowadays automated verification framework \cite{DBLP:conf/pldi/Qiu0SM13,dafnyref}, and better than the existing quantum automated frameworks, such as QBricks \cite{qbricks}, as indicated in \Cref{fig:circ-evaluation}.
 
 The computer running time is usually a less important factor in verifying programs, while the human effort is the more important issues. We believe that QNP saves a great amount of human resources. This fact is indicated by the number of lines in writing the algorithm specifications in \qafny. As shown in \Cref{fig:circ-evaluation}, all the algorithms are written with less than 35 lines of code. One of the examples is the Shor's algorithm specification written in the \qafny interface in \Cref{fig:shorexample}.
 In contrast, most algorithms written in other quantum automated verification frameworks require more than 1000 lines of code.
@@ -35,8 +37,122 @@ As a comparison, the complete Shor's algorithm correctness proof \cite{shorsprov
 As a consequence, QNP also helps programmers in discovering new ways of utilizing quantum algorithms. The controlled GHZ algorithm does not typically appear in many quantum information books \cite{mike-and-ike}, but it is a nice usage of the GHZ algorithm to prepare different entanglement structures. The implementation and verification of the controlled GHZ algorithm finishes momentarily (\Cref{fig:circ-evaluation}).
 
 
+\subsection{Case Study: A Way of Using Existing Quantum Algorithms: Controlled GHZ}
 
+\begin{figure}[t]
+{\centering
+\begin{minipage}[t]{.4\textwidth}
+\subcaption{Quantum circuit}
+  \vspace{0.5cm}
+  \small
+  \Qcircuit @C=0.5em @R=0.5em {
+    \lstick{\ket{0}} & \gate{H} & \qw & \ctrl{1} & \qw & \qw  & \\
+    \lstick{\ket{0}} & \qw & \qw & \multigate{3}{\texttt{GHZ}} & \qw &\qw &  \\
+    & \vdots &   &  &  & & \\
+    & \vdots &  & \dots & & &  \\
+    \lstick{\ket{0}} & \qw & \qw & \ghost{\texttt{GHZ}} &\qw &\qw &
+    }
+\end{minipage}
+%
+\begin{minipage}[t]{.5\textwidth}
+\subcaption{\qafny Program and Proof}
+{\small
+\[
+\begin{array}{r l}
+\textcolor{blue}{1}
+&
+\{x[0..1]\mapsto \ket{0},y[0..n]\mapsto \ket{\overline{0}}\}\\[0.2em]
+\textcolor{blue}{2}
+&
+\ssassign{x[0]}{}{\ihadh};\\[0.2em]
 
+\textcolor{blue}{3}
+&
+\textcolor{teal}{
+\{x[0..1]\mapsto \frac{1}{\sqrt{2}}(\ket{0}+\ket{1}) * y[0..n]\mapsto \ket{\overline{0}}\}
+}
+\\[0.2em]
+
+\textcolor{blue}{4}
+&
+\textcolor{teal}{
+\Rightarrow
+\{\{x[0..1],y[0..n]\}\mapsto \scha{2}{}{j}{\ket{\overline{0}}}\}
+}
+\\[0.2em]
+
+\textcolor{blue}{5}
+&
+\sifq{x[0]}{\texttt{ghz}(y)};
+\\[0.2em]
+
+\textcolor{blue}{6}
+&
+\{\{x[0..1],y[0..n]\}\mapsto \frac{1}{\sqrt{2}}\ket{\overline{0}}+\frac{1}{2}\ket{1.\overline{0}}+\frac{1}{2}\ket{\overline{1}} \}
+\end{array}
+\]
+}
+\end{minipage}
+%
+\begin{minipage}[t]{1\textwidth}
+\subcaption{Detailed proof for conditional in line 5. $\kappa=\{x[0..1],y[0..n]\}$}
+{\footnotesize
+  \begin{mathpar}
+\inferrule[]{
+   \inferrule[]
+   { 
+  { \fivepule{\Omega}{\{y[0..n]:\tcht\}}{\mmode}
+{\textcolor{teal}{
+y[0..n]\mapsto {\ket{\overline{0}}}\ket{1}
+}
+}{ \texttt{ghz}(y) }{
+\textcolor{teal}{
+y[0..n]\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}}\ket{1}
+}
+}
+} }
+   {
+\fivepule{\Omega}{\{y[0..n]:\tcht\}}{\cmode}
+{\textcolor{teal}{
+\mathpzc{M}(x[0],y[0..n])\mapsto \scha{2}{}{j}{\ket{\overline{0}}}
+}
+}{ \texttt{ghz}(y) }{
+\textcolor{teal}{
+y[0..n]\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}}\ket{1}
+}
+}} } {
+\inferrule[]
+{\fivepule{\Omega}{\sigma}{\cmode}
+{\textcolor{teal}{
+\kappa\mapsto \scha{2}{}{j}{\ket{\overline{0}}}
+}
+}{ \sifq{x[0]}{\texttt{ghz}(y)} }{
+\textcolor{teal}{
+\mathpzc{U}(\neg x[0],\kappa)\mapsto \scha{2}{}{j}{\ket{\overline{0}}}
+*
+\mathpzc{U}(x[0],\kappa)\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}}\ket{1}
+} }}
+{\fivepule{\Omega}{\sigma}{\cmode}
+{\textcolor{teal}{
+\kappa\mapsto \scha{2}{}{j}{\ket{\overline{0}}}
+}
+}{ \sifq{x[0]}{\texttt{ghz}(y)} }{
+\textcolor{teal}{
+\kappa \mapsto \frac{1}{\sqrt{2}}\ket{\overline{0}}+\frac{1}{2}\ket{1.\overline{0}}+\frac{1}{2}\ket{\overline{1}}
+} }}
+}
+  \end{mathpar}
+}
+\end{minipage}
+}
+\caption{Controlled GHZ circuit and proof. $\texttt{ghz}(y)$ is the GHZ algorithm in \Cref{fig:background-circuit-example}. Lines 3-4 are automatically inferred. In the \qafny implementation, Arrays $x$ and $y$ can be represented as a single variable through renaming techniques. Here, we split them for simplicity. }
+\label{fig:background-circuit-example-controlled}
+\end{figure}
+
+One important criteria that an automated verification framework has is the essence of reusing existing verification proofs to synthesize new algorithm verification. However, in most quantum proof systems nowadays, this criteria is neglected. For example, QBricks did not utilize the quantum phase estimation (QPE) proof, which is the core part of Shor's algorithm, to construct their Shor's algorithm proof.
+In VOQC \cite{VOQC}, the reuse of the QPE proof in the Shor's proof was done by proving many new theorems that were not originally required in the QPE proofs. QNP opens a windows towards the reusable proofs for verifying new algorithms based on existing verification.
+
+\Cref{fig:background-circuit-example-controlled} provides a proof of the Controlled GHZ algorithm based on the GHZ proof in \Cref{fig:background-circuit-example-proof}. The focal point is at \Cref{fig:background-circuit-example-controlled} line 5, where the GHZ function requires input to be a $\tnort$ state of all $0$ qubits, but the given state, which is in line 4, is an entanglement $\scha{2}{}{j}{\ket{\overline{0}}}$. In \qafny, we automatically verify the proof by rule \rulelab{PIF} the equational relation to rewrite a singleton $\tcht$ state to a $\tnort$ state as: $\sch{1}{z_j}{c_j}\equiv z_0\ket{c_0}$. The detailed proofs for the conditional is given in \Cref{fig:background-circuit-example-controlled}(c). Once rule \rulelab{PIF} is applied on the second and third line, session $y[0..n]$'s state is actually a $\tnort$ type state ${\ket{\overline{0}}}\ket{1}$, where $\overline{0}$ is $n$ bits and $\ket{1}$ is in the frozen stack; thus, the state is exactly the GHZ input one, so that we can safely reuse the GHZ proof in \Cref{fig:background-circuit-example-proof} and reach the final conclusion. 
 
 
 

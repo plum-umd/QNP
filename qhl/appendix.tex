@@ -978,7 +978,30 @@ $\sqsubseteq_n$ in \Cref{fig:qafny-subtype} describes a type term on the left ca
 Correspondingly, state equivalence relation $\equiv_n$ describes the two state forms to be equivalent; specifically, the left state term can be used as the right one, e.g., a single element entanglement state $\sch{1}{z_j}{c_j}$ can be used as a \texttt{Nor} type state $\ket{c_0}$ with the fact that $z_0$ is now a global phase that can be neglected.
 
 
-\subsection{Type Checking: A Quantum Session Type System}\label{sec:typesystem}
+\subsection{Type Checking: A Quantum Session Type System}\label{sec:typesystemappx}
+
+\begin{figure}[t]
+{
+  \small
+  \[\begin{array}{llcl} 
+      \text{\oqasm Expr} & \mu\\
+      \text{Parameter} & l & ::= & x \mid x[a] \\
+      \text{Arith Expr} & a & ::= & x \mid v \mid a + a \mid a * a \mid ... \\
+      \text{Bool Expr} & b & ::= & x[a] \mid (a = a) @ x[a] \mid (a < a) @ x[a] \mid ... \\
+      \text{Predicate} & P & ::= & a = a \mid a < a \mid \lambda \mapsto q \mid P \wedge P \mid P * P \mid ... \\
+      \text{Gate Expr} & op & ::= & \texttt{H} \mid \iqft[\lbrack -1 \rbrack]{}{} \\
+      \text{C/M Moded Expr}& e & ::= & a \mid \sinit{a} \mid \smea{y} \mid \textcolor{red}{\sret{y,(r,n)}} \\
+      \text{Statement} & s & ::= & \sskip \mid \sexp{x}{e}{s} \mid  \ssassign{l}{}{op} \mid \ssassign{\lambda}{}{\mu} 
+                                 \mid \ssassign{l}{}{\sdis}
+                                 \\ & & \mid & \sseq{s}{s} \mid \sifq{b}{s} \mid
+                                     \sqwhile{j}{a_1}{a_2}{b}{s}
+    \end{array}
+  \]
+}
+  \caption{Core \qafny syntax. \oqasm is in \Cref{sec:qafny}. For an operator \texttt{OP}, $\texttt{OP}^{\lbrack -1 \rbrack}$ indicates that the operator has a built-in inverse available. Arithmetic expressions in $e$ are only used for classical operations, while Boolean expressions are used for both classical and quantum operations. $x[a]$ represents the $a$-th element in the qubit array $x$, while a quantum variable $x$ represents the qubit group $x[0..n]$ and $n$ is the length of $x$. }
+  \label{fig:vqimpappx}
+\end{figure}
+
 
 \begin{figure}
 {\small
@@ -1866,4 +1889,46 @@ The final rule is to split a session, where we only allows the split of a $\tnor
   \begin{mathpar}
 
 }
+
+{\footnotesize
+  \begin{mathpar}
+\mprset{flushleft}
+\inferrule[]{
+   \inferrule[]
+   { \inferrule[] {
+    \fivepule{\Omega}{\sigma_2}{\mmode}{X(\snext{j}) * \{y[0..n]\}\mapsto C(j).1}{ s }{X(\snext{j}) * \{y[0..n]\}\mapsto C'(j).1} }
+  { \fivepule{\Omega}{\sigma_2}{\mmode}{X(\snext{j}) * \mathpzc{M}(b,\{y[0..n]\})\mapsto 0.C(j)+1.C(j)}{ s }{X(\snext{j}) * \{y[0..n]\}\mapsto C'(j).1} } }
+   {  \Omega,\sigma_1\vdash_{\mmode} \{X(\snext{j}) * \{x[0..\snext{j}],y[0..n]\}\mapsto 0.C(j)+1.C(j)\} \sifq{x[j]}{s}
+     \\\\\qquad\qquad \{ X(\snext{j}) * \mathpzc{U}(\neg x[j],\{x[0..\snext{j}],y[0..n]\})\mapsto 0.C(j)
+          * \mathpzc{U}(x[j],\{x[0..\snext{j}],y[0..n]\})\mapsto C'(j).1\}
+     } } {
+\fivepule{\Omega}{\sigma}{\mmode}{X(j) * \{x[0..j],y[0..n]\}\mapsto C(j)}{ \sifq{x[j]}{s} }{X(j\,\sminus\,1) * \{x[0..\snext{j}],y[0..n]\} \mapsto 0.C(j)+1.C'(j)} }
+  \end{mathpar}
+{\hspace*{-1.5em}
+$\begin{array}{l}
+X(j)=\shad{2^{n \,\sminus\,  j}}{n \,\sminus\, j}{}
+\quad
+C(j)=\sch{2^k}{\frac{1}{\sqrt{2^k}}}{\tos{j}^{k}.\tos{a^{\tos{j}^k}\;\%\;N}}
+\quad
+i.C(j)=\sch{2^{\snext{k}}}{\frac{1}{\sqrt{2^{\snext{k}}}}}{\tos{j}^k.i.\tos{a^{\tos{j}^k}\;\%\;N}}
+\\
+C'(j).i=\sch{2^{\snext{k}}}{\frac{1}{\sqrt{2^{\snext{k}}}}}{\tos{a^{\tos{j}^k.1}\;\%\;N}\,|\,\tos{j}^k.i}
+\qquad
+i.C'(j)=\sch{2^{\snext{k}}}{\frac{1}{\sqrt{2^{\snext{k}}}}}{\tos{j}^k.i.\tos{a^{\tos{j}^k.1}\;\%\;N}}
+\\
+\sigma_1=\{x[0..n\,\sminus\,\snext{j}] \mapsto \thadt, \{x[0..\snext{j}],y[0..n]\} \mapsto \tcht \}
+\quad
+\sigma=\{x[0..n\,\sminus\,\snext{j}] \mapsto \thadt, y[0..n] \mapsto \tcht \}
+\quad
+s=\ssassign{y}{}{a^{2^j}y\;\%\; N}
+\end{array}$
+}
+}
+
+
+
+
+The proof is built from bottom up. We first cut the $\thadt$ type state into two sessions ($x[0..n\,\sminus\,\snext{j}]$ and $x[j]$), join $x[j]$ with session $\{x[0..j],y[0..n]\}$, and double the state elements to be $0.C(j)+1.C(j)$, which is proved by applying the consequence rules. Notice that the type environment is also transitioned from $\sigma$ to $\sigma_1$.
+By the same strategy of the $\mathpzc{U}$ rule in \Cref{fig:qafny-mu-model}, we combine the two $\mathpzc{U}$ terms into the final result. 
+The second step applies rule \textsc{PIF} to substitute session $\{x[0..\snext{j}],y[0..n]\}$ with the mask construct $\mathpzc{M}(b,\{y[0..n]\})$ in the pre-condition and create two $\mathpzc{U}$ terms in the post-condition. The step on the top applies the modulo multiplication on every element in the masked state $\mapsto C(j).1$ by rule \textsc{PA-CH}.
 
