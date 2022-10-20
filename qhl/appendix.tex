@@ -1376,6 +1376,494 @@ then the state for $\zeta[j]$ is $\frac{1}{2^{n-1}}(\sum_{k=0}\theta_k)-\theta_j
 
 
 
+We evaluate \name by (1) demonstrating how it can be used for validation, both by verification and random testing, and (2) by showing that it gets good performance in terms of resource usage compared to Quipper, a state-of-the-art quantum programming framework~\cite{Green2013}.
+%
+This section presents the arithmetic operators we have implemented in
+\oqasm, while the next section discusses the geometric operators and
+expressions implemented in \vqimp. The following section presents an
+end-to-end case study applying Grover's search.
+
+\begin{figure}[t]
+{\small
+\[\hspace*{-1em}
+\begin{array}{r l  l}
+\textcolor{blue}{1}
+&&
+\{A(x) * A(y) \}
+\quad\text{where}\;\;
+A(\beta) = \beta[0..n] \mapsto \ket{\overline{0}} 
+\\[0.2em]
+&&
+\qquad\qquad\qquad
+\qquad\qquad\quad
+\begin{array}{l}
+B = 1 < a < N \wedge n > 0 \;\wedge
+\\\qquad N < 2^n \wedge \texttt{gcd}(a,N)=1
+\end{array}
+\\[0.5em]
+\textcolor{blue}{2}
+&
+&
+\textcolor{teal}{
+\Rightarrow
+\{\dabs{\ihadh}(x[0..n]) \mapsto C * A(y) * B \}
+}
+\\[0.2em]
+&&
+\qquad\qquad\qquad
+\qquad\;\;
+\text{where}
+\;\;
+\textcolor{teal}{
+C = \shad{2^n}{n}{}
+}
+\\[0.5em]
+\textcolor{blue}{3}
+& \ssassign{x}{}{\ihadh};
+&
+\textcolor{teal}{
+\{x[0..n] \mapsto C * A(y) * B \}
+}
+\\[0.4em]
+\textcolor{blue}{4}
+&
+&
+\textcolor{teal}{
+\Rightarrow
+\{x[0..n] \mapsto C * \dabs{y\splus 1}(y[0..n]) \mapsto \ket{\overline{0}.1} * B \}
+}
+\\[0.4em]
+\textcolor{blue}{5}
+& \ssassign{y}{}{y\splus 1};
+&
+\textcolor{teal}{
+\{x[0..n] \mapsto C * y[0..n] \mapsto \ket{\overline{0}.1} * B \}
+}
+\\[0.4em]
+\textcolor{blue}{6}
+& 
+&
+\textcolor{teal}{
+\Rightarrow
+\{ E(0) * B \}
+}
+\;\;
+\texttt{where}\;\;
+\textcolor{teal}{E(k) =}
+\\[0.2em]
+&&
+\qquad\qquad\quad\;
+\qquad
+\textcolor{teal}{
+\begin{array}{l}
+x[0..n\,\sminus\,k] \mapsto \shad{2^{n \,\sminus\,  k}}{n \,\sminus\, k}{}\;*
+\\[0.2em]
+\{x[0..k],y[0..n]\} \mapsto \sch{2^k}{\frac{1}{\sqrt{2^k}}}{\tos{j}.\tos{a^{j}\;\%\;N}}
+\end{array}
+}
+\\[0.4em]
+\textcolor{blue}{7}
+&\sqforh{\sint{j}{0}}{j\,\slt\, n}{x[j]}{\dplus{j}}
+&
+\{E(j) * B \}
+\\[0.4em]
+\textcolor{blue}{8}
+&
+\{\quad  \ssassign{y}{}{a^{2^j}y\;\%\; N}
+&
+\textcolor{teal}{
+\{E(j\,\splus\, 1) * B \}
+}
+\\[0.4em]
+\textcolor{blue}{9}
+&
+\}
+&
+\textcolor{teal}{
+\{E(n) * B \}
+}
+\\[0.4em]
+\textcolor{blue}{10}
+&
+&
+\textcolor{teal}{
+\Rightarrow
+\{\{x[0..n],y[0..n]\} \mapsto \sch{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{\tos{j}.\tos{a^{j}\;\%\;N}} * B \}
+}
+\\[0.4em]
+\textcolor{blue}{11}
+& \sexp{u}{\smea{y}}{...}
+&
+\textcolor{purple}{
+\big{\{}
+\begin{array}{l}
+x[0..n] \mapsto \smch{\frac{1}{\sqrt{s}}}{s}{t\,\splus\,k p} 
+\wedge
+p = \texttt{ord}(a,N)
+\\
+\wedge\;
+\texttt{nat}(u)=a^{t}\;\%\;N
+\wedge
+s=\texttt{rnd}(\frac{2^n}{p}) \wedge B
+\end{array}
+\big{\}}
+}
+\end{array}
+\]
+}
+\caption{Pre-measurement quantum steps of the Shor's algorithm. Second half in \Cref{fig:shorqafny2}. $\snat{u}$ gets the integer number part of $u$ (mode $\mmode$). $\sord{a,N}$ gets the order of $a$ and $N$. $\srnd{r}$ rounds $r$ to the nearest integer. }
+\label{fig:shorqafnyaa}
+\end{figure}
+
+\begin{figure}[t]
+{\small
+\[
+\begin{array}{r l  l}
+\textcolor{blue}{11}
+&
+\sexp{z}{\smea{y}}{}
+&
+\textcolor{purple}{
+\big{\{}
+\begin{array}{l}
+x[0..n] \mapsto \smch{\frac{1}{\sqrt{s}}}{s}{t+jr} 
+\wedge
+\\
+\texttt{nat}(z)=a^{n}\;\%\;N
+\wedge
+s=\texttt{rnd}(\frac{2^n}{r}) \wedge B
+\end{array}
+\big{\}}
+}
+\\[0.4em]
+\textcolor{blue}{12}
+&
+\quad\ssassign{x}{}{\iqft[-1]{}{}}; 
+&
+\textcolor{teal}{
+\big{\{}
+x[0..n] \mapsto \smich{\frac{1}{\sqrt{s 2^n}}}{2^n}{(\omega^{tk}\Msum_{j=0}^{s}\omega^{tkj})}{k} 
+\wedge
+s=\texttt{rnd}(\frac{2^n}{r}) \wedge B
+\big{\}}
+}
+\\[0.4em]
+\textcolor{blue}{13}
+&
+\quad\sexp{u}{\smea{x}}{}
+&
+\textcolor{teal}{
+\big{\{}
+\texttt{nat}(u)=r \wedge \texttt{pos}(u)=\frac{4}{\pi ^ {2 r}}
+\wedge
+s=\texttt{rnd}(\frac{2^n}{r}) \wedge r = \texttt{ord}(a,N) \wedge B
+\big{\}}
+}
+\\[0.4em]
+\textcolor{blue}{14}
+&
+\quad\quad\texttt{post}(u)
+&
+\big{\{}
+\texttt{nat}(\texttt{post}(u))=r \wedge r = \texttt{ord}(a,N) \wedge \texttt{pos}(u)=\frac{4e^{-2}}{\pi^2 \texttt{log}_2^4 N \wedge B}
+\big{\}}
+\end{array}
+\]
+}
+{\footnotesize
+\[
+B=1 < a < N \wedge n > 0 \wedge N < 2^n \wedge \texttt{gcd}(a,N)=1
+\qquad
+\omega=e^{\frac{2\pi i}{2^n}}
+\]
+}
+\caption{Second half of the Shor's algorithm quantum part in Qafny.}
+\label{fig:shorqafny2}
+\end{figure}
 
 
+\subsection{Implemented Operators}
+
+\Cref{fig:circ-evaluation} and \Cref{fig:op-table} tabulate the
+arithmetic operators we have implemented in \vqir. 
+
+The addition and modular multiplication circuits 
+(parts (a) and (d) of \Cref{fig:circ-evaluation}) are components of the oracle used in Shor's factoring algorithm~\cite{shors}, which accounts for most of the algorithm's cost \cite{Gidney2021howtofactorbit}.
+The oracle performs modular exponentiation on natural numbers via modular multiplication, which takes a quantum variable $x$ and two co-prime constants $M, N \in \mathbb{N}$ and produces $(x * M) \% N$. We have implemented two modular multipliers---inspired by \citet{qft-adder}
+and \citet{ripple-carry-mod}---in \vqir. 
+Both modular multipliers are constructed using controlled modular addition by a constant, which is implemented in terms of controlled addition and subtraction by a constant, as shown in \Cref{fig:mod-mult}.
+The two implementations differ in their underlying adder and subtractor circuits: the first (QFT) uses a quantum Fourier transform-based circuit for addition and subtraction \cite{Draper2000AdditionOA}, while the second (TOFF) uses a ripple-carry adder \cite{ripple-carry-mod}, which makes use of classical controlled-controlled-not (Toffoli) gates.
+
+
+\begin{figure}
+{\footnotesize
+{\hspace*{-6em}
+\begin{minipage}[t]{0.35\textwidth}
+\begin{center}
+ \[
+  \begin{array}{l@{~}cl}
+  \tau & \sqsubseteq & \tau \\
+  \tnort &\sqsubseteq& \tcht\\
+  \thadt &\sqsubseteq& \tcht
+    \end{array}
+  \]
+\end{center}
+\subcaption{Subtyping}
+  \label{fig:qafny-subtype}
+\end{minipage}
+\qquad
+\begin{minipage}[t]{0.5\textwidth}
+\begin{center}
+   \[
+   \begin{array}{l@{~}cl}
+   q & \equiv_{\slen{q}} & q \\
+  \ket{c} &\equiv_n& \sch{1}{ }{c}\\
+  \shad{2^n}{n}{\alpha(r_j)} &\equiv_n& \sch{2^n}{\frac{\alpha(\sum_{k=0}^{n} r_k \cdot \tos{j}[k])}{\sqrt{2^n}}}{j}
+    \end{array}
+ \]
+\end{center}
+\subcaption{Quantum Value Equivalence}
+  \label{fig:qafny-sequiv}
+\end{minipage}
+\hfill{}
+\begin{minipage}[t]{0.8\textwidth}
+\begin{center}
+ \[
+  \begin{array}{l @{~} c @{~} l l@{~}c @{~} l l @{~}c @{~} l l @ {~} c @{~} l}
+\lambda &\equiv & \lambda
+&
+\qquad
+x[n,n] & \equiv & \bot
+&
+\qquad
+\bot \uplus \lambda & \equiv & \lambda
+&
+\qquad
+x[n,m]\uplus\lambda & \equiv & x[n,j]\uplus x[j,m] \uplus\lambda
+\\
+&&&&&&&&&&&
+\texttt{where}\;\;n \le j < m
+
+    \end{array}
+  \]
+\end{center}
+\subcaption{Session Equivalence}
+  \label{fig:qafny-ses-equal}
+\end{minipage}
+\hfill{}
+\hspace*{-5em}
+\begin{minipage}[t]{0.475\textwidth}
+\begin{center}
+ \[
+  \begin{array}{l@{~}c@{~}l}
+    \sigma & \preceq & \sigma \\[0.2em]
+  \{\bot:\tau\} \cup \sigma &\preceq& \sigma\\[0.2em]
+   \{\lambda:\tau\} \cup \sigma &\preceq& \{\lambda:\tau'\} \cup \sigma\\
+&&\texttt{where}\;\;\tau\sqsubseteq_{\slen{\lambda}}\tau' \\[0.2em]
+  \{\lambda_1\uplus l_1 \uplus l_2 \uplus \lambda_2 :\tau\} \cup \sigma &\preceq& \{\lambda_1\uplus l_2 \uplus l_1 \uplus \lambda_2 : \tau\} \cup \sigma\\[0.2em]
+  \{\lambda_1 :\tau\} \cup \{\lambda_2 :\tau\} \cup \sigma &\preceq& \{\lambda_1 \uplus \lambda_2 :\tau\} \cup \sigma \\[0.2em]
+  \{\lambda_1 \uplus \lambda_2 :\tau\} \cup \sigma &\preceq& \{\lambda_1 :\tau\} \cup \{\lambda_2 :\tau\} \cup \sigma
+\\
+&&\texttt{where}\;\;\tau\neq\tcht
+    \end{array}
+  \]
+\end{center}
+\subcaption{Environment Equivalence}
+  \label{fig:env-equiv}
+\end{minipage}
+\begin{minipage}[t]{0.475\textwidth}
+\begin{center}
+   \[
+   \begin{array}{l@{~}c@{~}l}
+    \varphi & \equiv & \varphi \\[0.2em]
+  \{\bot:q\} \cup \varphi &\equiv& \varphi\\[0.2em]
+   \{\lambda:q\} \cup \varphi &\equiv& \{\lambda:q'\} \cup \varphi\\
+   &&\texttt{where}\;\;q\equiv_{\slen{\lambda}}q' 
+   \\[0.2em]
+  \{\lambda_1\uplus l_1 \uplus l_2 \uplus \lambda_2 :q\} \cup \varphi &\equiv& \{\lambda_1\uplus l_2 \uplus l_1 \uplus \lambda_2 : \texttt{mut}(q,\slen{\lambda_1})\} \cup \varphi\\[0.2em]
+  \{\lambda_1 :q_1\} \cup \{\lambda_2 :q_2\} \cup \varphi &\equiv& \{\lambda_1 \uplus \lambda_2 :\texttt{mer}(q_1,q_2)\} \cup \varphi 
+   \\[0.2em]
+  \{\lambda_1 \uplus \lambda_2 :\varphi\} \cup \sigma &\equiv& \{\lambda_1 :\varphi_1\} \cup \{\lambda_2 :\varphi_2\} \cup \sigma
+\\
+&&\texttt{where}\;\;\texttt{spt}(\tau,\slen{\lambda_1})=(\varphi_1,\varphi_2)
+    \end{array}
+ \]
+\end{center}
+\subcaption{State Equivalence}
+  \label{fig:qafny-stateequiv}
+\end{minipage}
+{\footnotesize
+\[
+\begin{array}{l}
+\texttt{pmut}((c_1.i_1.i_2.c_2),n)=(c_1.i_2.i_1.c_2) \;\;\texttt{when}\;\slen{c_1}=n
+\\[0.2em]
+\texttt{mut}(\ket{c},n)=\ket{\texttt{pmut}(c,n)}
+\\[0.2em]
+\texttt{mut}(\frac{1}{\sqrt{2^m}}(q_1 \bigotimes (\ket{0}+\alpha(r_n)\ket{1}) \bigotimes (\ket{0}+\alpha(r_{n+1})\ket{1}) \bigotimes q_2),n)
+\\
+\qquad\qquad
+=\frac{1}{\sqrt{2^m}}(q_1 \bigotimes (\ket{0}+\alpha(r_{n+1})\ket{1}) \bigotimes (\ket{0}+\alpha(r_n)\ket{1}) \bigotimes q_2)
+\quad\texttt{when\;}\slen{q_1}=n
+\\[0.2em]
+\texttt{mut}(\sch{m}{z_j}{c_j},n)=\sch{m}{z_j}{\texttt{pmut}(c_j,n)}
+\\[0.2em]
+\texttt{mer}(\ket{c_1},\ket{c_2})=\ket{c_1.c_2}
+\\[0.2em]
+\texttt{mer}(\shad{2^n}{n}{\alpha(r_j)},\shad{2^m}{m}{\alpha(r_j)})=\shad{2^{n+m}}{n+m}{\alpha(r_j)}
+\\[0.2em]
+\texttt{mer}(\sch{n}{z_j}{c_j},\schk{m}{z_k}{c_k})=\schi{n*m}{z_j\cdot z_k}{c_j.c_k}
+\\[0.2em]
+\texttt{spt}(\ket{c_1.c_2},n)=(\ket{c_1},\ket{c_2}) \;\;\texttt{when}\;\slen{c_1}=n
+\\[0.2em]
+\texttt{spt}(q_1\bigotimes q_2,n)=(q_1,q_2) \;\;\texttt{when}\;\slen{q_1}=n
+\end{array}
+\]
+}
+  \caption{\qafny type/state relations. $\{\tos{j}|j\in[0,2^n)\}(2^n)$ defines a set $\{\tos{j}|j\in[0,2^n)\}$ with the emphasis that it has $2^n$ elements. $\{0,1\}$ is a set of two single element bitstrings $0$ and $1$. $\cdot$ is the multiplication operation, $\tos{j}$ turns a number $j$ to a bitstring, $\tos{j}[k]$ takes the $k$-th element in the bitstring $\tos{j}$, and $\ket{j}$ is an abbreviation of $\ket{\tos{j}}$. We use set union ($\cup$) to describe the state concatenation with the empty set operation $\emptyset$. $i$ is a single bit either $0$ or $1$. The $.$ operation is bitstring concatenation. Term $\Msum^{n*m}P$ is a summation formula that omits the indexing details.
+Term $(\frac{1}{\sqrt{2^{n}}}\Motimes_{j=0}^{n}q_j) \bigotimes(\frac{1}{\sqrt{2^{m}}}\Motimes_{j=0}^{m}q_j)$ is equivalent to $\frac{1}{\sqrt{2^{n+m}}}\Motimes_{j=0}^{n+m}q_j$.}
+  \label{fig:qafny-eq}
+}
+}
+\end{figure}
+
+\subsection{State Equivalence}
+
+As we suggested in \Cref{sec:shors}, quantum states have certain level of permutation symmetries. Essentially, quantum computation is implemented as circuits. In \Cref{fig:background-circuit-example}, if the first and second circuit lines and qubits are permuted, it is intuitive that the two circuit results are equivalence up to the permutation. Additionally, as indicated in \Cref{sec:shors}, we need quantum sessions to be split and regrouped sometimes. All these properties are formulated in \qafny as equational properties in \Cref{fig:qafny-eq} that rely on session rewrites, which can then be used as builtin libraries in the proof system. As one can imagine, the equational properties might bring nondeterminism in the \qafny implementation, such that the automated system does not know which equations to apply in a step. In dealing with the nondeterminism, we design a type system for \qafny to track the uses, split, and join of sessions, as well as the three state types in every transition step, so that the system knows exactly how to apply an equation.
+
+\Cref{fig:qafny-eq} shows the equivalence relations on types and states.
+\Cref{fig:qafny-subtype} shows the subtyping relation such that $\tnort$ and $\thadt$ subtype to $\tcht$.
+Correspondingly, the subtype of $\tnort$ to $\tcht$ represents the first line equation in \Cref{fig:qafny-sequiv}, where a $\tnort$ state is converted to a $\tcht$ form. Similarly, a $\thadt$ state can also be converted to a $\tcht$ state in the second line.
+Additionally, \Cref{fig:qafny-ses-equal} defines the equivalence relations for the session concatenation operation $\uplus$: it is associative, identitive with the identity empty session element $\bot$.
+We also view a range $x[n,n]$ to be empty ($\bot$), and a range $x[n,m]$ can be split into a two ranges in the session as $x[n,j] \uplus x[j,m]$. 
+
+The main result to define state equivalence is to capture the permutation symmetry, split, and join of sessions introduced in \Cref{sec:shors}. The first rule describes the case for empty session, while the second rule in \Cref{fig:qafny-stateequiv} connects the quantum value equivalence to the state equivalence.
+The third rule describes the qubit permutation equivalence by the \texttt{mut} function.
+The fourth rule describes the join of two sessions in a state.
+For the two sessions are of the type $\tnort$ and $\thadt$, a join means an array concatenation.
+If the two sessions have $\tcht$ types, a join means a Cartesian product of the two basis states.
+The final rule is to split a session, where we only allows the split of a $\tnort$ and $\thadt$ type state and their splits are simply array splits. Splitting a $\tcht$ type state is equivalent to qubit disentanglement, which is a hard problem and we need to upgrade the type system to permit certain types of such disentanglement. In \Cref{sec:newtype}, we upgrade the \qafny type system to a dependent type system to track the disentanglement of $\tcht$ type state.
+
+\begin{figure*}[t]
+{\small
+\begin{tabular}{l}   
+{\noindent\textcolor{blue}{\text{Predicate modeling:}}}\\
+
+  \begin{mathpar}
+    \inferrule[]{\Omega;\sigma\vdash \kappa \\  \models \varphi(\kappa) \mapsto q }{\Omega;\sigma,\varphi\models \kappa \mapsto q }
+
+    \inferrule[]{ q\equiv_{\slen{q}} q' }{\models q \mapsto q' }
+
+    \inferrule[]{ \sch{m}{z_j}{c_j} \subseteq \sch{m}{z'_j}{c'_j} \\ 
+             \sch{m}{z'_j}{c'_j} \subseteq \sch{m}{z_j}{c_j} }{\models \sch{m}{z_j}{c_j} \mapsto \sch{m}{z'_j}{c'_j} }
+
+    \inferrule[]{\sigma \bot \sigma' \\ \varphi \bot \varphi' 
+      \\ \Omega;\sigma, \varphi \models P \\ \Omega;\sigma',\varphi' \models Q}
+        {\Omega;\sigma \cup \sigma',\varphi \cup \varphi'\models P * Q }
+
+    
+  \end{mathpar}
+
+\\[1em]
+{\noindent\textcolor{blue}{\text{Sequence Semantic and Proof Rules:}}}\\[0.5em]
+
+
+  \begin{mathpar}
+    \inferrule[SSeq-1]{(\varphi,s_1) \longrightarrow (\varphi',s'_1)}{(\varphi,\sseq{s_1}{s_2})\longrightarrow (\varphi',\sseq{s'_1}{s_2}) }
+
+    \inferrule[SSeq-2]{}{(\varphi,\sseq{\{\}}{s_2})\longrightarrow (\varphi,s_2) }
+
+    \inferrule[PSeq]{
+          \Omega;\sigma\vdash_g s_1 \triangleright \sigma' \\\\
+       \fivepule{\Omega}{\sigma}{g}{P}{s_1}{R} \\ 
+           \fivepule{\Omega}{\sigma[\uparrow \sigma']}{g}{R}{s_2}{Q}}
+                {\fivepule{\Omega}{\sigma}{g}{P}{\sseq{s_1}{s_2}}{Q}}
+
+  \end{mathpar}
+
+\\[1em]
+{\noindent\textcolor{blue}{\text{Pre-condition strengthening and Post-condition weakening Proof Rules:}}}\\[0.5em]
+
+  \begin{mathpar}
+    \inferrule[PConL]{
+       (\Omega,\sigma,P) \Rightarrow (\Omega,\sigma',P') \\ \fivepule{\Omega}{\sigma'}{g}{P'}{s}{Q}}
+                {\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}}
+
+    \inferrule[PConR]{\Omega,\sigma\vdash_g s_1 \triangleright \sigma'\\\\
+          \fivepule{\Omega}{\sigma'}{g}{P}{s}{Q'} \\(\Omega,\sigma'',Q') \nRightarrow (\Omega,\sigma[\uparrow \sigma'],Q) }
+                {\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}}
+  \end{mathpar}
+\end{tabular}
+}
+{\footnotesize
+\[
+\begin{array}{l}
+\\
+(\Omega,\sigma,P) \Rightarrow (\Omega,\sigma',P') \triangleq \Omega,\sigma\vdash P \wedge \Omega,\sigma' \vdash P' \wedge \sigma \preceq \sigma' \wedge P \Rightarrow P'
+\\[0.2em]
+(\Omega,\sigma,Q) \nRightarrow (\Omega,\sigma',Q') \triangleq \Omega,\sigma\vdash Q \wedge \Omega,\sigma' \vdash Q' \wedge \sigma' \preceq \sigma \wedge Q \Rightarrow Q'
+\ignore{
+\\[0.2em]
+\varphi \equiv \varphi' \wedge \varphi \models P \wedge \varphi' \models P' \Rightarrow (P \Leftrightarrow P') 
+}
+\end{array}
+\]
+}
+\caption{Sequence and Consequence Rules}
+\label{fig:exp-proofsystem-1}
+\end{figure*}
+
+
+\begin{figure*}[t]
+{\small
+
+\begin{minipage}[t]{0.4\textwidth}
+\subcaption{Application Analogy}
+  \vspace{1cm}
+  \includegraphics[width=\textwidth]{oracle}
+  \label{fig:qafny-oracle-analog}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.5\textwidth}
+\subcaption{App Function Modeling}
+  \begin{mathpar}
+
+    \inferrule[]{\forall j.\;\slen{c_{j1}}=n \\ \Omega;\sigma;\varphi\models \sch{m}{z_j}{\denote{\mu}(c_{j1}).c_{j2}\,\beta_j} \mapsto q}
+          {\Omega;\sigma;\varphi\models \eth \;n.\denote{\mu}(\sch{m}{z_j}{c_{j1}.c_{j2}\,\beta_j}) 
+              \mapsto q }
+  \end{mathpar}
+  \label{fig:qafny-mu-model}
+\end{minipage}
+
+\begin{minipage}[t]{\textwidth}
+\subcaption{Semantic/Proof Rules}
+  \begin{mathpar}
+
+
+    \inferrule[SH-N]{ FV(\emptyset,l)= \kappa \\ \varphi(\kappa)=\ket{c} }{ (\varphi,\ssassign{l}{}{\texttt{H}}) \longrightarrow (\varphi[\kappa\mapsto \shad{2^{\slen{c}}}{\slen{c}}{\alpha(\frac{1}{2^{c[j]}})}],\{\}) }
+
+    \inferrule[PH-N]{FV(\Omega,l)=\kappa \\ \sigma(\kappa)=\tau}
+                {\fivepule{\Omega}{\sigma}{g}{P[\eth \;\kappa.\denote{\texttt{H}}(\kappa) / \kappa]}{\ssassign{l}{}{\texttt{H}}}{P}}
+
+  \end{mathpar}
+  \label{fig:qafny-oracle-rules}
+\end{minipage}
+}
+\caption{Oracle application and state preparation rules. $\eth$ is an array map operation, where $\eth \;\kappa.\denote{\mu}(\kappa \uplus \kappa')$ means that for every basis state in the state of $\kappa \uplus \kappa'$, we apply $\denote{\mu}$ to $\kappa$ part of session. }
+\label{fig:exp-proofsystem-2}
+\end{figure*}
+
+\ignore{
+
+\begin{minipage}[t]{0.4\textwidth}
+\subcaption{Application Analogy}
+  \vspace{1cm}
+  \includegraphics[width=\textwidth]{oracle}
+  \label{fig:qafny-oracle-analog}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.5\textwidth}
+\subcaption{App Function Modeling}
+  \begin{mathpar}
+
+}
 
