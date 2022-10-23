@@ -125,23 +125,6 @@ series = {ICFP '00}
    month={Jul},
    pages={139–146} }
 
-@inproceedings{10.1109/LICS52264.2021.9470673,
-author = {Zhou, Li and Barthe, Gilles and Hsu, Justin and Ying, Mingsheng and Yu, Nengkun},
-title = {{A Quantum Interpretation of Bunched Logic and Quantum Separation Logic}},
-year = {2021},
-isbn = {9781665448956},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-url = {https://doi.org/10.1109/LICS52264.2021.9470673},
-doi = {10.1109/LICS52264.2021.9470673},
-abstract = {We propose a model of the substructural logic of Bunched Implications (BI) that is suitable for reasoning about quantum states. In our model, the separating conjunction of BI describes separable quantum states. We develop a program logic where pre- and post-conditions are BI formulas describing quantum states---the program logic can be seen as a counterpart of separation logic for imperative quantum programs. We exercise the logic for proving the security of quantum one-time pad and secret sharing, and we show how the program logic can be used to discover a flaw in Google Cirq's tutorial on the Variational Quantum Algorithm (VQA).},
-booktitle = {Proceedings of the 36th Annual ACM/IEEE Symposium on Logic in Computer Science},
-articleno = {75},
-numpages = {14},
-location = {Rome, Italy},
-series = {LICS '21}
-}
-
 @article{quantumseparation,
 author = {Le, Xuan-Bach and Lin, Shang-Wei and Sun, Jun and Sanan, David},
 title = {{A Quantum Interpretation of Separating Conjunction for Local Reasoning of Quantum Programs Based on Separation Logic}},
@@ -269,8 +252,7 @@ keywords = {recursive program, smt solvers, tree, heap analysis}
                Pranav Garg and
                Andrei Stefanescu and
                Parthasarathy Madhusudan},
-  editor    = {Hans{-}Juergen Boehm and
-               Cormac Flanagan},
+  editor    = {Hans{-}Juergen Boehm and Cormac Flanagan},
   title     = {Natural proofs for structure, data, and separation},
   booktitle = {{ACM} {SIGPLAN} Conference on Programming Language Design and Implementation,
                {PLDI} '13, Seattle, WA, USA, June 16-19, 2013},
@@ -323,6 +305,55 @@ month = {jun},
 pages = {62–73},
 numpages = {12},
 keywords = {program synthesis, smt, component-based synthesis}
+}
+
+@InProceedings{10.1007/3-540-46674-6_11,
+author="den Hartog, J. I.",
+editor="Thiagarajan, P. S.
+and Yap, Roland",
+title="Verifying Probabilistic Programs Using a Hoare like Logic",
+booktitle="Advances in Computing Science --- ASIAN'99",
+year="1999",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="113--125",
+abstract="Hoare logic can be used to verify properties of deterministic programs by deriving correctness formulae, also called Hoare triples. The goal of this paper is to extend the Hoare logic to be able to deal with probabilistic programs. To this end a generic non-uniform language Lpw with a probabilistic choice operator is introduced and a denotational semantics D is given for the language. A notion of probabilistic predicate is defined to express claims about the state of a probabilistic program. To reason about the probabilistic predicates a derivation system pH, similar to that of standard Hoare logic, is given. The derivation system is shown to be correct with respect to the semantics D. Some basic examples illustrate the use of the system.",
+isbn="978-3-540-46674-1"
+}
+
+
+@InProceedings{10.1007/978-3-642-10622-4_7,
+author="Kakutani, Yoshihiko",
+editor="Datta, Anupam",
+title="A Logic for Formal Verification of Quantum Programs",
+booktitle="Advances in Computer Science - ASIAN 2009. Information Security and Privacy",
+year="2009",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="79--93",
+abstract="This paper provides a Hoare-style logic for quantum computation. While the usual Hoare logic helps us to verify classical deterministic programs, our logic supports quantum probabilistic programs. Our target programming language is QPL defined by Selinger, and our logic is an extension of the probabilistic Hoare-style logic defined by den Hartog. In this paper, we demonstrate how the quantum Hoare-style logic proves properties of well-known algorithms.",
+isbn="978-3-642-10622-4"
+}
+
+
+@article{10.1007/s00165-018-0465-3,
+author = {Ying, Mingsheng},
+title = {Toward Automatic Verification of Quantum Programs},
+year = {2019},
+issue_date = {Feb 2019},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+volume = {31},
+number = {1},
+issn = {0934-5043},
+url = {https://doi.org/10.1007/s00165-018-0465-3},
+doi = {10.1007/s00165-018-0465-3},
+abstract = {This paper summarises the results obtained by the author and his collaborators in a program logic approach to the verification of quantum programs, including quantum Hoare logic, invariant generation and termination analysis for quantum programs. It also introduces the notion of proof outline and several auxiliary rules for more conveniently reasoning about quantum programs. Some problems for future research are proposed at the end of the paper.},
+journal = {Form. Asp. Comput.},
+month = {feb},
+pages = {3–25},
+numpages = {23},
+keywords = {Invariant generation, Hoare logic, Proof outline, Termination analysis, Auxiliary rules, Quantum programming}
 }
 
 @Inbook{Greenberger1989,
@@ -427,7 +458,8 @@ url="https://doi.org/10.1007/978-1-4419-5906-5_615"
   volume={},
   number={},
   pages={55-74},
-  doi={10.1109/LICS.2002.1029817}}
+  doi={10.1109/LICS.2002.1029817}
+}
 
 
 @INPROCEEDINGS{oracleoopsla,
@@ -490,8 +522,7 @@ isbn="978-3-642-03359-9"
 
 @InProceedings{10.1007/978-3-642-17511-4_20,
 author="Leino, K. Rustan M.",
-editor="Clarke, Edmund M.
-and Voronkov, Andrei",
+editor="Clarke, Edmund M. and Voronkov, Andrei",
 title="Dafny: An Automatic Program Verifier for Functional Correctness",
 booktitle="Logic for Programming, Artificial Intelligence, and Reasoning",
 year="2010",
@@ -909,6 +940,25 @@ series = {POPL '99}
    year={2006},
    month={Dec},
    pages={359–371}
+}
+
+@article{10.1145/3290346,
+author = {Unruh, Dominique},
+title = {Quantum Relational Hoare Logic},
+year = {2019},
+issue_date = {January 2019},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {3},
+number = {POPL},
+url = {https://doi.org/10.1145/3290346},
+doi = {10.1145/3290346},
+abstract = {We present a logic for reasoning about pairs of interactive quantum programs – quantum relational Hoare logic (qRHL). This logic follows the spirit of probabilistic relational Hoare logic (Barthe et al. 2009) and allows us to formulate how the outputs of two quantum programs relate given the relationship of their inputs. Probabilistic RHL was used extensively for computer-verified security proofs of classical cryptographic protocols. Since pRHL is not suitable for analyzing quantum cryptography, we present qRHL as a replacement, suitable for the security analysis of post-quantum cryptography and quantum protocols. The design of qRHL poses some challenges unique to the quantum setting, e.g., the definition of equality on quantum registers. Finally, we implemented a tool for verifying proofs in qRHL and developed several example security proofs in it.},
+journal = {Proc. ACM Program. Lang.},
+month = {jan},
+articleno = {33},
+numpages = {31},
+keywords = {formal verification, Quantum cryptography, Hoare logics}
 }
 
 @article{Childs_2009,
@@ -1928,6 +1978,44 @@ Note = {Previous versions published as technical reports UIUCDCS-R-2006-2802 in 
  keywords = {Lambda-calculus, Nominal logic work, Theorem provers},
 }
 
+@InProceedings{relationlogic,
+  author =	{Li, Yangjia and Unruh, Dominique},
+  title =	{{Quantum Relational Hoare Logic with Expectations}},
+  booktitle =	{48th International Colloquium on Automata, Languages, and Programming (ICALP 2021)},
+  pages =	{136:1--136:20},
+  series =	{Leibniz International Proceedings in Informatics (LIPIcs)},
+  ISBN =	{978-3-95977-195-5},
+  ISSN =	{1868-8969},
+  year =	{2021},
+  volume =	{198},
+  editor =	{Bansal, Nikhil and Merelli, Emanuela and Worrell, James},
+  publisher =	{Schloss Dagstuhl -- Leibniz-Zentrum f{\"u}r Informatik},
+  address =	{Dagstuhl, Germany},
+  URL =		{https://drops.dagstuhl.de/opus/volltexte/2021/14205},
+  URN =		{urn:nbn:de:0030-drops-142058},
+  doi =		{10.4230/LIPIcs.ICALP.2021.136},
+  annote =	{Keywords: Quantum cryptography, Hoare logics, formal verification}
+}
+
+@article{Shi2021,
+author = {Shi, Wen-Jun and Cao, Qin-Xiang and Deng, Yu-Xin and Jiang, Han-Ru and Feng, Yuan},
+title = {Symbolic Reasoning About Quantum Circuits in Coq},
+year = {2021},
+issue_date = {Dec 2021},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+volume = {36},
+number = {6},
+issn = {1000-9000},
+url = {https://doi.org/10.1007/s11390-021-1637-9},
+doi = {10.1007/s11390-021-1637-9},
+abstract = {A quantum circuit is a computational unit that transforms an input quantum state to an output state. A natural way to reason about its behavior is to compute explicitly the unitary matrix implemented by it. However, when the number of qubits increases, the matrix dimension grows exponentially and the computation becomes intractable. In this paper, we propose a symbolic approach to reasoning about quantum circuits. It is based on a small set of laws involving some basic manipulations on vectors and matrices. This symbolic reasoning scales better than the explicit one and is well suited to be automated in Coq, as demonstrated with some typical examples.},
+journal = {J. Comput. Sci. Technol.},
+month = {dec},
+pages = {1291–1306},
+numpages = {16},
+keywords = {Coq, quantum circuit, symbolic reasoning, Dirac notation}
+}
 
 @InProceedings{qhoreusage,
 author="Liu, Junyi
@@ -1948,6 +2036,26 @@ address="Cham",
 pages="187--207",
 abstract="We formalize the theory of quantum Hoare logic (QHL) [TOPLAS 33(6),19], an extension of Hoare logic for reasoning about quantum programs. In particular, we formalize the syntax and semantics of quantum programs in Isabelle/HOL, write down the rules of quantum Hoare logic, and verify the soundness and completeness of the deduction system for partial correctness of quantum programs. As preliminary work, we formalize some necessary mathematical background in linear algebra, and define tensor products of vectors and matrices on quantum variables. As an application, we verify the correctness of Grover's search algorithm. To our best knowledge, this is the first time a Hoare logic for quantum programs is formalized in an interactive theorem prover, and used to verify the correctness of a nontrivial quantum algorithm.",
 isbn="978-3-030-25543-5"
+}
+
+@article{10.1145/3456877,
+author = {Feng, Yuan and Ying, Mingsheng},
+title = {Quantum Hoare Logic with Classical Variables},
+year = {2021},
+issue_date = {December 2021},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {2},
+number = {4},
+issn = {2643-6809},
+url = {https://doi.org/10.1145/3456877},
+doi = {10.1145/3456877},
+abstract = {Hoare logic provides a syntax-oriented method to reason about program correctness and has been proven effective in the verification of classical and probabilistic programs. Existing proposals for quantum Hoare logic either lack completeness or support only quantum variables, thus limiting their capability in practical use. In this article, we propose a quantum Hoare logic for a simple while language that involves both classical and quantum variables. Its soundness and relative completeness are proven for both partial and total correctness of quantum programs written in the language. Remarkably, with novel definitions of classical-quantum states and corresponding assertions, the logic system is quite simple and similar to the traditional Hoare logic for classical programs. Furthermore, to simplify reasoning in real applications, auxiliary proof rules are provided that support standard logical operation in the classical part of assertions and super-operator application in the quantum part. Finally, a series of practical quantum algorithms, in particular the whole algorithm of Shor’s factorisation, are formally verified to show the effectiveness of the logic.},
+journal = {ACM Transactions on Quantum Computing},
+month = {dec},
+articleno = {16},
+numpages = {43},
+keywords = {Quantum programming, quantum while language}
 }
 
 
@@ -2500,8 +2608,7 @@ isbn="978-3-319-63390-9"
                Valentin Perrelle and
                Beno{\^{\i}}t Valiron},
   editor    = {Nobuko Yoshida},
-  title     = {An Automated Deductive Verification Framework for Circuit-building
-               Quantum Programs},
+  title     = {An Automated Deductive Verification Framework for Circuit-building Quantum Programs},
   booktitle = {Programming Languages and Systems - 30th European Symposium on Programming,
                {ESOP} 2021, Held as Part of the European Joint Conferences on Theory
                and Practice of Software, {ETAPS} 2021, Luxembourg City, Luxembourg,
@@ -3132,21 +3239,6 @@ location = {Philadelphia, Pennsylvania, USA},
 series = {STOC '96},
 eprint={quant-ph/9605043},
 archivePrefix={arXiv}
-}
-
-@article{grover1997,
-  title = {Quantum Mechanics Helps in Searching for a Needle in a Haystack},
-  author = {Grover, Lov K.},
-  journal = {Phys. Rev. Lett.},
-  volume = {79},
-  issue = {2},
-  pages = {325--328},
-  year = 1997,
-  month = jul,
-  publisher = {American Physical Society},
-  doi = {10.1103/PhysRevLett.79.325},
-  eprint={quant-ph/9706033},
-  archivePrefix={arXiv}
 }
 
 @inproceedings{chacha,

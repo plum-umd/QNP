@@ -5,14 +5,14 @@
 {\footnotesize
 \begin{tabular}{|l|c|c|c|c|c|}
 \hline
-Algorithm & Run Time (sec) & QBricks Run Time (sec) & Human Effort (days) & \# Lines& QBricks \# Lines \\
+Algorithm & Run Time (sec) & QBricks Run Time (sec) & \# Lines& QBricks \# Lines  & Human Effort (days)\\
                      \hline
-GHZ & 4.2 & - & < 1 & 8 & - \\
-Controlled GHZ & 6.4 & - & < 1 & 6 & -  \\
-Deutsch–Jozsa & 3.3 & 79 & < 1 & 6 & 57 \\
-Grover's search & 26.7 & 283 &  3 & 19 & 193\\
-Shor's algorithm & 36.3 & 1380 & 30 & 28 & 1163  \\
-Quantum Walk & 43.1 & - & 2 & 35 & - \\
+GHZ & 4.2 & - & 8 & - & < 1 \\
+Controlled GHZ & 6.4 & - & 6 & - & < 1 \\
+Deutsch–Jozsa & 3.3 & 79 & 6 & 57  & < 1 \\
+Grover's search & 26.7 & 283 & 19 & 193 &  3\\
+Shor's algorithm & 36.3 & 1380  & 28 & 1163 & 30  \\
+Quantum Walk & 43.1 & - & 35 & - & 2 \\
 \hline                           
 \end{tabular}
 }
@@ -33,11 +33,6 @@ In contrast, most algorithms written in other quantum automated verification fra
 For example, the Grover's search specification in quantum Haore Logic \cite{qhoreusage} has 3184 lines of code, and the Shor's algorithm specification in QBricks \cite{qbricks} has 1163 lines of code \footnote{We do not mean to compare the coding lines to other frameworks since the coding line numbers might be varied depending on many factors, but we only provide a hint on the automation in \qafny.}.
 In terms of human resources, other than Shor's algorithm, which was done before the \qafny compiler was fully constructed, most algorithms were written and verified in \qafny (\Cref{fig:circ-evaluation}) in two days by a single researcher. 
 As a comparison, the complete Shor's algorithm correctness proof \cite{shorsprove} was finished by four researchers that spent two years. Even the oracle in the Shor's algorithm, the modulo multiplication circuit, was verified by three researchers that spent four months. Therefore, QNP help relieve programmers' pain in reasoning about quantum programs.
-
-As a consequence, QNP also helps programmers in discovering new ways of utilizing quantum algorithms. The controlled GHZ algorithm does not typically appear in many quantum information books \cite{mike-and-ike}, but it is a nice usage of the GHZ algorithm to prepare different entanglement structures. The implementation and verification of the controlled GHZ algorithm finishes momentarily (\Cref{fig:circ-evaluation}).
-
-
-\subsection{Case Study: A Way of Using Existing Quantum Algorithms: Controlled GHZ}
 
 \begin{figure}[t]
 {\centering
@@ -148,6 +143,11 @@ y[0..n]\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}}\ket{1}
 \caption{Controlled GHZ circuit and proof. $\texttt{ghz}(y)$ is the GHZ algorithm in \Cref{fig:background-circuit-example}. Lines 3-4 are automatically inferred. In the \qafny implementation, Arrays $x$ and $y$ can be represented as a single variable through renaming techniques. Here, we split them for simplicity. }
 \label{fig:background-circuit-example-controlled}
 \end{figure}
+
+As a consequence, QNP also helps programmers in discovering new ways of utilizing quantum algorithms. The controlled GHZ algorithm does not typically appear in many quantum information books \cite{mike-and-ike}, but it is a nice usage of the GHZ algorithm to prepare different entanglement structures. The implementation and verification of the controlled GHZ algorithm finishes momentarily (\Cref{fig:circ-evaluation}).
+
+
+\subsection{Case Study: A Way of Using Existing Quantum Algorithms: Controlled GHZ}
 
 One important criteria that an automated verification framework has is the essence of reusing existing verification proofs to synthesize new algorithm verification. However, in most quantum proof systems nowadays, this criteria is neglected. For example, QBricks did not utilize the quantum phase estimation (QPE) proof, which is the core part of Shor's algorithm, to construct their Shor's algorithm proof.
 In VOQC \cite{VOQC}, the reuse of the QPE proof in the Shor's proof was done by proving many new theorems that were not originally required in the QPE proofs. QNP opens a windows towards the reusable proofs for verifying new algorithms based on existing verification.

@@ -16,6 +16,8 @@ The most general representation is to express quantum states as a path-sum formu
 This is named \textit{entanglement typed state} ($\tcht$) in QNP.
 For example, the bell pair can be represented as $\sch{2}{\frac{1}{\sqrt{2}}}{c_j}$ with $c_0=00$ and $c_1=11$.
 Notice that the amplitudes satisfy the relation $\sum_{0}^{m}\slen{z_j}^2 = 1$. However, in some intermediate program evaluation in QNP, we loose the restriction to be $\sum_{0}^{m}\slen{z_j}^2 \le 1$, because the state $\sch{m}{z_j}{c_j}$ can be split into two parts as $\sch{m}{z_j}{c_j}=\schii{m_1}{z_i}{c_i}+\schk{m_2}{z_k}{c_k}$, and we might only want to reason about a portion of the state $\sch{m_1}{z_j}{c_j}$ locally, so that $\sum_{0}^{m_1}\slen{z_i}^2 < 1$. Obviously, in the top-most program evaluation level, every state satisfies the restriction that $\sum_{0}^{m}\slen{z_j}^2 = 1$.
+
+As a shortcut of basis state representations, we might write $\ket{c_1}\otimes \ket{c_2}=\ket{c_1}\ket{c_2}=\ket{c_1.c_2}$ where $c_1.c_2$ is the bitstring concatenation and $c_1$ and $c_2$ are bitstrings of some sizes that relate to session lengths. In the beginning of \Cref{fig:background-circuit-example-proof}, we have $x[0..n]\mapsto \ket{\overline{0}}$, and $\ket{\overline{0}}$ means an $n$-length bitstring of $0$, same length as session $x[0..n]$.
 \ignore{
 \myparagraph{Sessions}
 If we analogize a quantum state $\sch{m}{z_j}{c_j}$ as an $m$-length array and each basis state $z_j\ket{c_j}$ as the $j$-th element in the array. \Cref{fig:background-circuit-example-proof} line 1, we have a singleton array $x[0..n]$, each element of which is $n$-length.
