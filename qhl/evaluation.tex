@@ -163,21 +163,21 @@ In VOQC \cite{VOQC}, the reuse of the QPE proof in the Shor's proof was done by 
 \textcolor{blue}{1}
 &
 \textcolor{teal}{
-\{ x[0..n] \mapsto \shadi{2^n}{n}{} *
+\{ x[0..t] \mapsto \shadi{2^t}{t}{} *
    y[0..m] \mapsto \ket{\overline{0}} *
    u[0..1] \mapsto \ket{0} *
-   w[0..n] \mapsto \ket{\overline{0}} * m < n\}
+   w[0..n] \mapsto \ket{\overline{0}} * m = 2^t \wedge m < n\}
 }
 \\[0.3em]
 \textcolor{blue}{2}
 &
-\texttt{for}~{(\texttt{int}~j \in [0,m)~\&\&~x < 2^j \,@\, y[j])}
+\texttt{for}~{(\texttt{int}~j \in [0,m)~\&\&~x < \snext{j} \,@\, y[j])}
 \\[0.3em]
 
 \textcolor{blue}{3}
 &
 \;\;
-\{ \{x[0..n],y[0..j],u[0..1],w[0..n]\} \mapsto q(j) \wedge \texttt{is\_steps}(j,q(j)) \}
+\{ \{x[0..t],y[0..j],u[0..1],w[0..n]\} \mapsto q(j) \wedge \texttt{is\_steps}(j,q(j)) \}
 \;\;\{
 \\[0.3em]
 
@@ -211,23 +211,16 @@ In VOQC \cite{VOQC}, the reuse of the QPE proof in the Shor's proof was done by 
 \end{array}
 \]
 }
-{\small
-\[
-\begin{array}{l}
-\lfloor i \rfloor = \snext{t} \;\;\texttt{where}\;\;2^t \le i < 2^{\snext{t}}
-\qquad \lfloor 0 \rfloor = 0
-\\[0.2em]
-\texttt{pat}(c,t,j) = \ket{0}^{\otimes t}\ket{1}^{\otimes (j-t)}
-\\[0.2em]
-\texttt{gkey}(i,j) = \texttt{IF}\, i < 2^j\,\texttt{THEN}\,\texttt{key}(i)\,\texttt{ELSE}\,\overline{0}
-\\[0.2em]
-q(j)=\schai{2^j}{z_i}{i}{\ket{\texttt{pat}(c,\lfloor i \rfloor,j)}\ket{u_i}\ket{\texttt{gkey(i,j)}}}
-\\[0.2em]
+{\footnotesize
+\begin{mathpar}
+\texttt{pat}(c,i,j) = \ket{0}^{\otimes i}\ket{1}^{\otimes (j-i)}
+\\
+q(j)=\schai{2^{(\snext{j})}\,\sminus\,2}{z_i}{i}{\ket{\texttt{pat}(c,i,j)}\ket{u_i}\ket{\texttt{key}(i)}} + \ssum{k=j}{2^t}{z_k\ket{k}\ket{\overline{0}}\ket{0}\ket{\overline{0}}}
+\\
 \texttt{is\_steps}(j,q(j))=
-\forall i. \ket{i}\ket{\texttt{pat}(c,\lfloor i \rfloor,j)}\ket{u_i}\ket{\texttt{gkey(i,j)}} \in q(j) \wedge i < 2^j
-\Rightarrow \texttt{is\_suc}(\lfloor i \rfloor,\texttt{key}(i))
-\end{array}
-\]
+\forall i\in [1,j]. \ket{i}\ket{\texttt{pat}(c,i,j)}\ket{u_i}\ket{\texttt{key(i)}} \in q(j)
+\Rightarrow \texttt{is\_suc}(i,\texttt{key}(i))
+  \end{mathpar}
 }
 }
 \caption{Quantum walk proof for a complete binary tree. In the circuit level, $\texttt{if}~(\neg u[0]) \,s$ is interpreted as $\texttt{X}(u[0]);\,\texttt{if}~(u[0])\,s$. $\texttt{left}$ and $\texttt{right}$ are to reach the left and right children in a tree. $q(j)$ is a quantum state with variable $j$. $\texttt{key}(i)$ accesses $i$-th node's key in a tree.
@@ -241,12 +234,13 @@ The type of $y[0..n]:\tcht$ on the top of \Cref{fig:background-circuit-example-c
 
 Quantum walk \cite{Wong_2022,ChildsNAND,Venegas_Andraca_2012} is an quantum version of the classical random walk \cite{RayleighThePO}, and it is an important algorithmic protocol for writing quantum algorithms. However, most quantum walk analyses were based on Hamiltonian simulation evolving, which deters many computer scientists to invent quantum walk algorithms. Here, we show that discrete time quantum walk, at its very least, is a quantum version of breadth first search. 
 
-\Cref{fig:background-circuit-example-walk} provides the core loop of a discrete time quantum walk algorithm on a complete binary search tree. In quantum walk, there are four quantum array pieces: $x$ (size $n$) is named the sources that provide enough basis states in superposition for the later calculation; $y$ (size $m$) stores the result of evaluating $x<2^j$ in every loop step; $u$ (size $1$) is the coin, $1$ for the left direction and $0$ for the right one, in a random walk that determines the next step ; and $w$ (size $n$) stores the node keys with $\overline{0}$ being the root node. The $j$-th loop step entangles all these four pieces together
-as session $\{x[0..n],y[0..j],u[0..1],w[0..n]\}$. Before such loop, every basis states are divided into two sets based on the range $x[0..n]$ value, if a basis state has $\tov{x[0..n]}<2^{j-1}$, it is active, while the rest ones are inactive. In the loop, we first compare $x[0..n]$ with $2^j$ and turn all basis states having $x[0..n]$ values, as $2^{j-1} \le \tov{x[0..n]}<2^{j}$, to active set, insert $y[j]$ qubit into the session, and stores the Boolean result $\tov{x[0..n]}<2^{j}$ on $y[j]$.
-Then, we apply a diffusion operation on the coin of all active set basis states. For every basis state, this step redistributes its amplitude to "copy" a new basis state with exactly the same content except that the coin is now in an opposite direction. 
-The next two statements in \Cref{fig:background-circuit-example-walk} line 5-6 exchange active basis state's keys with its child's key depending on the coin directions \footnote{The tree representations and \texttt{left} and \texttt{right} functions can be implemented as data structures based on \oqasm.}.
+\Cref{fig:background-circuit-example-walk} provides the core loop of a discrete time quantum walk algorithm on a complete binary search tree. In quantum walk, there are four quantum array pieces: $x$ (size $t$) is named the sources that provide enough basis states in superposition for the later calculation; $y$ (size $m=2^t$) stores the result of evaluating $x<2^j$ in every loop step; $u$ (size $1$) is the coin, $1$ for the left direction and $0$ for the right one, in a random walk that determines the next step ; and $w$ (size $n$) stores the node keys with $\overline{0}$ being the root node. The loop entangles all these four pieces together
+as session $\{x[0..t],y[0..j],u[0..1],w[0..n]\}$. Before the $j$-th step, every basis states are divided into two sets based on the range $x[0..t]$ value, described by $q(j)$'s two parts, if a basis state has $\tov{x[0..n]}<j$, it is active, while the rest ones are inactive. In the loop, we first compare $x[0..n]$ with $\snext{j}$, turn exactly one basis state, the one $\tov{x[0..n]}=j$, to active set, insert $y[j]$ qubit into the session, and stores the Boolean result $\tov{x[0..n]}<\snext{j}$ on $y[j]$.
+Then, we apply a diffusion operation on the coin of all active set basis states, which double the active set size. In each loop step, we have $2^{(\snext{j})}-2$ numbers of active basis states.
+For every basis state, diffusion redistributes its amplitude to "copy" a new basis state with exactly the same content except that the coin is now in an opposite direction. 
+The next two statements in \Cref{fig:background-circuit-example-walk} line 5-6 change active basis state's node keys with its child's keys depending on the coin directions \footnote{The tree representations and \texttt{left} and \texttt{right} functions can be implemented as data structures based on \oqasm.}.
 
-If the for-loop executes $m$ steps, the result contains all possible tree $m$-depth nodes, which is stated as the post-condition in \Cref{fig:background-circuit-example-walk}. Remember that in a complete tree, there are $2^m$ number of $m$-depth nodes, and quantum walk creates a state contains all possible nodes. Apparently, the amplitudes, which represent the basis state likelihood, are low for each basis state. In quantum computing, there are amplification operations that serve the opposite of quantum diffusion to increase certain basis state amplitudes. In the full \qafny implementation, we have an amplifier operation $\ssassign{w}{}{\texttt{reduce}(\overline{0})}$ that reduces the root node amplitude while increases the other basis state amplitudes. We can insert the operation in \Cref{fig:background-circuit-example-walk} line 4, so that every time if the range $w$ of am active basis state is the root node, we reduce its amplitude. Notice that every new basis state that just becomes active in each loop step starts with the root node, which means that basis states having $\snext{j}$-th depth nodes have a higher amplitudes than basis states having $j$-th depth nodes, so that leaf nodes having the biggest amplitudes, which is ideal because most tree algorithms are likely to work on the leaves rather than the middle transition nodes. 
+If the for-loop executes $m$ steps, the result contains all possible tree $m$-depth nodes except the root node, which is stated as the post-condition in \Cref{fig:background-circuit-example-walk}. Remember that in a complete tree, there are $2^m$ number of $m$-depth nodes, and quantum walk creates a state contains all possible nodes. Apparently, the amplitudes, which represent the basis state likelihood, are low for each basis state. In quantum computing, there are amplification operations that serve the opposite of quantum diffusion to increase certain basis state amplitudes. In the full \qafny implementation, we have an amplifier operation $\ssassign{w}{}{\texttt{reduce}(\overline{0})}$ that reduces the root node amplitude while increases the other basis state amplitudes. We can insert the operation in \Cref{fig:background-circuit-example-walk} line 4, so that every time if the range $w$ of am active basis state is the root node, we reduce its amplitude. Notice that every new basis state that just becomes active in each loop step starts with the root node, which means that basis states having $\snext{j}$-th depth nodes have a higher amplitudes than basis states having $j$-th depth nodes, so that leaf nodes having the biggest amplitudes, which is ideal because most tree algorithms are likely to work on the leaves rather than the middle transition nodes. 
 
 
 
