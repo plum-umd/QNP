@@ -2,21 +2,21 @@
 \label{sec:arith-oqasm}
 
 \begin{figure*}[t]
-{\small
-\begin{tabular}{|l|c|c|c|c|}
+{\footnotesize
+\begin{tabular}{|l|c|c|c|c|c|}
 \hline
-Algorithm & Run Time (sec) & Run Time in QBricks (sec) & Human Effort (days) & \#Lines \\
+Algorithm & Run Time (sec) & QBricks Run Time (sec) & Human Effort (days) & \# Lines& QBricks \# Lines \\
                      \hline
-GHZ & 4.2 & - & < 1 & 8 \\
-Controlled GHZ & 6.4 & - & < 1 & 6  \\
-Deutsch–Jozsa & 3.3 & 79 & < 1 & 6 \\
-Grover's search & 26.7 & 283 &  3 & 19 \\
-Shor's algorithm & 36.3 & 1380 & 30 & 28  \\
-Quantum Walk & 43.1 & - & 2 & 35 \\
+GHZ & 4.2 & - & < 1 & 8 & - \\
+Controlled GHZ & 6.4 & - & < 1 & 6 & -  \\
+Deutsch–Jozsa & 3.3 & 79 & < 1 & 6 & 57 \\
+Grover's search & 26.7 & 283 &  3 & 19 & 193\\
+Shor's algorithm & 36.3 & 1380 & 30 & 28 & 1163  \\
+Quantum Walk & 43.1 & - & 2 & 35 & - \\
 \hline                           
 \end{tabular}
 }
-\caption{Computer running time and human labor time for verifying algorithms in \qafny. Running time is measured in a i7 windows computer. 
+\caption{Computer running time and human labor time for verifying algorithms in \qafny. Verification running time (Run Time) is measured in a i7 windows computer. 
 QBricks running time is based on \cite{qbricks}, and \texttt{-} means no data.
 Every algorithm is verified by a single person, thus the human effort measures the time for a person to finish programming and verifying an algorithm. The quantum walk algorithm is the core of the Childs' Boolean equation algorithm \cite{ChildsNAND}.}
 \label{fig:circ-evaluation}

@@ -47,7 +47,7 @@
                             %% e.g., \cite{Baker12,Baker14,Baker16}
                             %% rendered as [2,3,4] rather than [2-4].
 
-\citestyle{acmauthoryear}   %% For author/year citations
+\citestyle{acmnumeric}   %% For author/year citations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Note: Authors migrating a paper from traditional SIGPLAN
 %% proceedings format to PACMPL format must update the
@@ -155,7 +155,7 @@
 %% Note: \begin{abstract}...\end{abstract} environment must come
 %% before \maketitle command
 \begin{abstract}
-  Q-Dafny.
+ \input{abstract}
 \end{abstract}
 
 %% 2012 ACM Computing Classification System (CSS) concepts
@@ -191,7 +191,7 @@
 %% environment and commands, and keywords command.
 \maketitle
 
-%\input{intro}
+\input{intro}
 \input{background}
 %\input{implementation}
 \input{intlang}

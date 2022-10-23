@@ -1,11 +1,7 @@
 \section{Background}
 \label{sec:background}
 
-Here, we provide background information for quantum computing and an example explaining QNP and \qafny.
-
-\subsection{Preliminaries}
-
-We begin with some background on quantum computing. 
+Here, we provide background information for quantum computing with an example in \qafny.
 
 \myparagraph{Quantum States} A quantum state consists of one or more quantum bits (\emph{qubits}). A qubit can be expressed as a two dimensional vector $\begin{psmallmatrix} \alpha \\ \beta \end{psmallmatrix}$ where $\alpha,\beta$ are complex numbers such that $|\alpha|^2 + |\beta|^2 = 1$.  The $\alpha$ and $\beta$ are called \emph{amplitudes}. 
 %
@@ -13,108 +9,15 @@ We frequently write the qubit vector as $\alpha\ket{0} + \beta\ket{1}$ where $\k
 We can join multiple qubits together to form a larger quantum state with the \emph{tensor product} ($\otimes$) from linear algebra. For example, the two-qubit state $\ket{0} \otimes \ket{1}$ (also written as $\ket{01}$) corresponds to vector $[~0~1~0~0~]^T$. 
 Sometimes a multi-qubit state cannot be expressed as the tensor of individual states; such states are called \emph{entangled}. One example is the state $\frac{1}{\sqrt{2}}(\ket{00} + \ket{11})$, known as a \emph{Bell pair}.
 
-\myparagraph{Alternative State Representation} $n$-qubit quantum states are typically represented as $2^n$ dimensional vectors above. Alternatively, the state can be represented as different forms. For example, a newly generated qubit typically has a state $\ket{0}$ or $\ket{1}$, which is named \textit{normal typed state} ($\tnort$) in QNP. Qubits that are in superposition but not entangled, such as $\frac{1}{\sqrt{2}}(\ket{0} + \ket{1})\otimes \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})$, can be expressed as a summation of tensor products as $\shad{2^n}{n}{\alpha(r_j)}$, where $\alpha(r_j)=e^{2\pi i r}$ and $r \in \mathbb{R}$, which is named H\textit{adamard typed state} ($\thadt$) in QNP. The above two qubit superposition can be expressed as $\shad{4}{2}{}$.
+\myparagraph{Alternative State Representation} $n$-qubit quantum states are typically represented as $2^n$ dimensional vectors above. Alternatively, the state can be represented as different forms. For example, a newly generated qubit typically has a state $\ket{0}$ or $\ket{1}$, which is named \textit{normal typed state} ($\tnort$) in QNP. Qubits that are in superposition but not entangled, such as $\frac{1}{\sqrt{2}}(\ket{0} + \ket{1})\otimes \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})$, can be expressed as a summation of tensor products as $\shad{2^n}{n}{\alpha(r_j)}$, where $\alpha(r_j)=e^{2\pi i r}$ and $r \in \mathbb{R}$, which is named \textit{Hadamard typed state} ($\thadt$) in QNP. The above two qubit superposition can be expressed as $\shad{4}{2}{}$.
 $\alpha(r_j)$ is named the \emph{local phase} of the state, which are special quantum amplitudes (see below) such that the norm is $1$, i.e., $\slen{\alpha(r_j)}^2=1$. In the above state, we can view the local phase $1$ as $e^{0}$, and $\frac{1}{\sqrt{4}}e^{0}$ is the amplitude for every basis state.
 
 The most general representation is to express quantum states as a path-sum formula as: $\sch{m}{z_j}{c_j}$, where $z_j\in \mathbb{C}$ is named \emph{amplitude}, $c_j$ is an $n$-length bitstring named \emph{basis}, and $m \le 2^n$. Each $j$-th term ${z_j}\ket{c_j}$ in the formula represents a \emph{basis state} in a superposition state as ${z_0}\ket{c_0}+...+{z_{m-1}}\ket{c_{m-1}}$. 
 This is named \textit{entanglement typed state} ($\tcht$) in QNP.
 For example, the bell pair can be represented as $\sch{2}{\frac{1}{\sqrt{2}}}{c_j}$ with $c_0=00$ and $c_1=11$.
 Notice that the amplitudes satisfy the relation $\sum_{0}^{m}\slen{z_j}^2 = 1$. However, in some intermediate program evaluation in QNP, we loose the restriction to be $\sum_{0}^{m}\slen{z_j}^2 \le 1$, because the state $\sch{m}{z_j}{c_j}$ can be split into two parts as $\sch{m}{z_j}{c_j}=\schii{m_1}{z_i}{c_i}+\schk{m_2}{z_k}{c_k}$, and we might only want to reason about a portion of the state $\sch{m_1}{z_j}{c_j}$ locally, so that $\sum_{0}^{m_1}\slen{z_i}^2 < 1$. Obviously, in the top-most program evaluation level, every state satisfies the restriction that $\sum_{0}^{m}\slen{z_j}^2 = 1$.
-
-\myparagraph{Quantum Computations} In the \emph{QRAM model}~\cite{Knill1996} quantum computers are used as co-processors to classical computers. The classical computer generates descriptions of circuits to send to the quantum computer and then processes the measurement results. High-level quantum programming languages are designed to follow this model.
-Computation on a quantum state consists of a series of \emph{quantum operations}, each of which acts on a subset of qubits in the quantum state. In the standard presentation, quantum computations are expressed as \emph{circuits}, as shown in \Cref{fig:background-circuit-examplea}, which constructs a circuit that prepares the Greenberger-Horne-Zeilinger (GHZ) state \cite{Greenberger1989}, which is an $n$-qubit entangled quantum state of the form:
-\begin{align*}
-    \ket{\text{GHZ}^n} = \frac{1}{\sqrt{2}}(\ket{0}^{\otimes n}+\ket{1}^{\otimes n}).
-\end{align*}
-
-In these circuits, each horizontal wire represents a qubit and boxes on these wires indicate quantum operations, or \emph{gates}. The circuit in \Cref{fig:background-circuit-examplea} uses $n$ qubits and applies $n$ gates: a \emph{Hadamard} (\coqe{H}) gate and $n-1$ \emph{controlled-not} (\coqe{CNOT}) gates.
-Applying a gate to a state \emph{evolves} the state. The semantics of doing so is expressed by multiplying the state vector by the gate's corresponding matrix representation; single-qubit gates are 2-by-2 matrices, and two-qubit gates are 4-by-4 matrices. A gate's matrix must be \emph{unitary}, ensuring that it preserves the unitarity invariant of quantum states' amplitudes. An entire circuit can be expressed as a matrix by composing its constituent gates.
-
-\myparagraph{Measurement} A special, non-unitary \emph{measurement} operation is used to extract classical information from a quantum state, typically when a computation completes. Measurement collapses the state to one of the basis states with a probability related to the state's amplitudes. For example, measuring $\frac{1}{\sqrt{2}}(\ket{0} + \ket{1})$ will collapse the state to $\ket{0}$ with probability $\frac{1}{2}$ and likewise for $\ket{1}$, returning classical values 0 or 1, respectively.
-
-\begin{figure}[t]
-  \centering
-    \captionsetup[subfigure]{justification=centering}
-\begin{minipage}[b]{.25\textwidth}
-  \small
-  \Qcircuit @C=0.5em @R=0.5em {
-    \lstick{\ket{0}} & \gate{H} & \ctrl{1} & \qw &\qw & & \dots & \\
-    \lstick{\ket{0}} & \qw & \targ & \ctrl{1} & \qw & &  \dots &  \\
-    \lstick{\ket{0}} & \qw & \qw   & \targ & \qw & &  \dots &  \\
-    & \vdots &   &  &  & & & \\
-    & \vdots &  & \dots & & & \ctrl{1} & \qw  \\
-    \lstick{\ket{0}} & \qw & \qw & \qw &\qw &\qw & \targ & \qw
-    }
-\subcaption{Quantum circuit}
-\label{fig:background-circuit-examplea}
-\end{minipage}
-%
-\begin{minipage}[b]{.7\textwidth}
-{\small
-\[\hspace*{-1em}
-\begin{array}{r l}
-\textcolor{blue}{1}
-&
-\{x[0..n]\mapsto \ket{\overline{0}}\}\\[0.2em]
-\textcolor{blue}{2}
-&
-\ssassign{x[0]}{}{\ihadh};\\[0.2em]
-
-\textcolor{blue}{3}
-&
-\textcolor{teal}{
-\{x[0..1]\mapsto \frac{1}{\sqrt{2}}(\ket{0}+\ket{1}) * x[1..n]\mapsto \ket{\overline{0}}\}
-}
-\\[0.2em]
-
-\textcolor{blue}{4}
-&
-\texttt{for}~{(\texttt{int}~j \in [0,n\,\sminus\,1)~\&\&~x[j])}
-\\[0.2em]
-
-\textcolor{blue}{5}
-&
-\quad
-\{x[0..\snext{j}]\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}} * x[\snext{j}..n]\mapsto \ket{\overline{0}} * \snext{j} < n\}
-\\[0.2em]
-
-\textcolor{blue}{6}
-&
-\quad\;\;
-\ssassign{x[\snext{j}]}{}{x[\snext{j}]+1};
-\\[0.2em]
-
-\textcolor{blue}{7}
-&
-\textcolor{teal}{
-\{x[0..n]\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}} * x[n..n]\mapsto \ket{\overline{0}}\}
-}
-\\[0.2em]
-
-\textcolor{blue}{8}
-&
-\{x[0..n]\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}}\}
-\end{array}
-\]
-}
-\subcaption{\qafny Program and Proof}
-\label{fig:background-circuit-example-proof}
-\end{minipage}
-\caption{Example quantum program: GHZ state preparation. $\snext{j}=j\,\splus\,1$. $\overline{i}$ refers to $m$ number of $i\in[0,1]$ bits, where $m=\slen{\kappa}$, if $\kappa\mapsto \schii{2}{}{\overline{i}}$ and $\slen{\kappa}$ is the length of $\kappa$. }
-\label{fig:background-circuit-example}
-\end{figure}
-
-\subsection{Quantum Algorithms and Programs and Proofs in QNP}\label{sec:qnp-features}
-
-QNP has two levels of advantanges: the programming language and the automated proof system levels.
-The QNP programming language, \qafny, permits the operation functionality based quantum programs that can be compiled to quantum circuits via the \qafny to \sqir compiler. As a contrast, most quantum programming languages are either built by meta-programs embedded in a host language, such as Python (for Qiskit~\cite{Qiskit}, Cirq~\cite{cirq}, PyQuil~\cite{PyQuil}, and others), Haskell (for Quipper~\cite{Green2013}), or Coq (for \sqir and \voqc \cite{VOQC}), or contain some high level opertions with the mix of some circuit gates without a compiler, like \cite{sliqlanguage} and \cite{qsharp}.
-In \qafny, we think about program opertions as their functionality such as preparing superposition states by using $\texttt{H}$ and $\texttt{QFT}$ gates. \Cref{fig:background-circuit-example-proof} Line 2 applies a $\texttt{H}$ gate on $x[0]$, the $0$-th position of the array $x$, but the gate application can also be applied on the whole array, to prepare superposition of $n$-qubits, as in \Cref{fig:shorqafny}. Line 4-6 applies $n-1$ \coqe{CNOT} gates as shown in \Cref{fig:background-circuit-examplea}. However, in \qafny, we think of such behavior as an application of $n-1$ loop steps of quantum conditionals. In the $j$-th step, assume that we have a possibly entangled quantum state $\schii{m}{z_i}{c_i}$; for every basis state $\ket{c_i}$, we look at the $j$-th and $(\snext{j})$-th position as $c_i[j]$ and $c_i[\snext{j}]$, if $c_i[j]=0$, we do nothing, if $c_i[j]=1$, we apply the loop body $\ssassign{x[\snext{j}]}{}{x[\snext{j}]+1}$ to $c_i[\snext{j}]$ \footnote{The addition $x[\snext{j}]+1$ is a $\slen{x[\snext{j}]}$ bit addition. Here, it is single bit one. }. 
-We believe that this viewpoint can save quantum programmers' effort in writing quantum algorithms.
-
-The second level is the proof system. While most quantum proof systems, such as QHL \cite{qhoreusage}, QBricks \cite{qbricks},  QSL/BI \cite{10.1109/LICS52264.2021.9470673}, and QSL \cite{quantumseparation}, built proof systems based on quantum computation theories, QNP tries to connect the \qafny proof system to traditional Hoare/Separation logic systems; thus, we can then utilize a classical automated proof engine, like Dafny, to automatically verify quantum programs, as our \qafny to Dafny compiler in \Cref{sec:dafny-compilation}.
-The way is to think of \qafny quantum operations as classical array aggregate operations. 
-Indeed, quantum gate applications are linear in the sense that the whole state effect can be viewed as a synthesized effect of applications on individual basis states. For example, applying a $\texttt{X}$ gate on the first qubit in a Bell pair $\frac{1}{\sqrt{2}}(\ket{00} + \ket{11})$ is equal to $\frac{1}{\sqrt{2}}(\texttt{X}\ket{00} + \texttt{X}\ket{11})$, the sum of applying the gate on the second elment of the individual basis states.
-
+\ignore{
+\myparagraph{Sessions}
 If we analogize a quantum state $\sch{m}{z_j}{c_j}$ as an $m$-length array and each basis state $z_j\ket{c_j}$ as the $j$-th element in the array. \Cref{fig:background-circuit-example-proof} line 1, we have a singleton array $x[0..n]$, each element of which is $n$-length.
 In QNP, we named the name structure referring to an array representing a quantum state as a \emph{session}. Here $x[0..n]$ is a session indicating that the location of the array is in a region named $x$, and the range is from $0$ to $n$, which means that the length of each element is $n$. After the application of $\ssassign{x[0]}{}{\ihadh}$, we split the session into two parts: $x[0..1]$ and $x[1..n]$ having a $\thadt$ type ($\frac{1}{\sqrt{2}}(\ket{0}+\ket{1})$) and $\tnort$ ($\ket{\overline{0}}$) type states, respectively.
 Here, the singleton element in $x[1..n]$ is now $n-1$ length.
@@ -122,11 +25,29 @@ State $\frac{1}{\sqrt{2}}(\ket{0}+\ket{1})$ can also be viewed as $\sch{2}{\frac
 Here, $\overline{i}$ is a singleton bitstring. 
 In each step of the loop in line 4-6, we cut off the $j$-th bit in the singleton element array, so the array session becomes $x[\snext{j}..n]$, then we put the bit in the original $x[0..1]$ session which is now structured as $x[0..j]$.
 The state becomes $\sch{2}{\frac{1}{\sqrt{2}}}{\overline{i}}\ket{0}$. Notice that the quantum conditional in each loop step applies on the $j$-th and $(\snext{j})$-th bits of the two basis states ($\overline{0}$ and $\overline{1}$). When $i=0$, we do nothing; if $i=1$, we flip the bit, which means that we turn the state to be $\sch{2}{\frac{1}{\sqrt{2}}}{\overline{i}}$, with the $\overline{i}$ length increases by one and it is the same as the length the session $x[0..\snext{j}]$. In the end, we can remove the $x[n..n]\mapsto \ket{\overline{0}}$ in the final state, because session $x[n..n]$ means that each element in the state array is $0$, so we claim such session as empty. 
+}
 
-One benefit of QNP is that we can achieve the level of automation that was never seen previously. The \Cref{fig:background-circuit-example-proof} verification in our \qafny implementation in Dafny has exactly eight lines of code. In fact, programmers only need to input the marked black parts in \Cref{fig:background-circuit-example-proof}, while the marked teal parts are automatically inferred by \qafny.
-To make such quantum to classical agreegate operation mapping happen, in verifying a program in \qafny, we utilize a type system to track the sessions in the program, as well as pre- and post-conditions in \Cref{sec:qafny}. 
+\myparagraph{Quantum Computations and Conditionals} In the \emph{QRAM model}~\cite{Knill1996} quantum computers are used as co-processors to classical computers. The classical computer generates descriptions of circuits to send to the quantum computer and then processes the measurement results. High-level quantum programming languages are designed to follow this model.
+Computation on a quantum state consists of a series of \emph{quantum operations}, each of which acts on a subset of qubits in the quantum state. In the standard presentation, quantum computations are expressed as \emph{circuits}, as shown in \Cref{fig:background-circuit-examplea}, which constructs a circuit that prepares the Greenberger-Horne-Zeilinger (GHZ) state \cite{Greenberger1989}, which is an $n$-qubit entangled quantum state of the form:
+\begin{align*}
+    \ket{\text{GHZ}^n} = \frac{1}{\sqrt{2}}(\ket{0}^{\otimes n}+\ket{1}^{\otimes n}).
+\end{align*}
 
+In these circuits, each horizontal wire represents a qubit and boxes on these wires indicate quantum operations, or \emph{gates}. The circuit in \Cref{fig:background-circuit-examplea} uses $n$ qubits and applies $n$ gates: a \emph{Hadamard} (\coqe{H}) gate and $n-1$ \emph{controlled-not} (\coqe{CNOT}) gates.
+Applying a gate to a state \emph{evolves} the state. 
+The \qafny implementation in \Cref{fig:background-circuit-example-proof} shows the evolving. In the $j$-th loop step, the quantum state of array $x[0..j]$ is $\frac{1}{\sqrt{2}}(\ket{\overline{0}}+\ket{\overline{1}})$ \footnote{$\overline{0}$ and $\overline{1}$ have the same length as $x[0..j]$}, and a qubit $\ket{0}$ is added to the state and transforms it to $\frac{1}{\sqrt{2}}(\ket{\overline{0}}\ket{0}+\ket{\overline{1}}\ket{0})$, which adds a bit $0$ to the end of every basis state. Then, the quantum conditional 
+($\sifq{x[j]}{\ssassign{x[\snext{j}]}{}{x[\snext{j}]+1}}$) turns $\ket{0}$ in the second basis state to $\ket{1}$ as $\frac{1}{\sqrt{2}}(\ket{\overline{0}}\ket{0}+\ket{\overline{1}}\ket{1})$, because quantum conditionals checks every the $j$-th qubit in every basis state, if it is $1$, then the conditional body is applied; otherwise, it does nothing.
 
+\myparagraph{Measurement} A special, non-unitary \emph{measurement} operation is used to extract classical information from a quantum state, typically when a computation completes. Measurement collapses the state to one of the basis states with a probability related to the state's amplitudes. For example, measuring $\frac{1}{\sqrt{2}}(\ket{0} + \ket{1})$ will collapse the state to $\ket{0}$ with probability $\frac{1}{2}$ and likewise for $\ket{1}$, returning classical values 0 or 1, respectively.
+
+\myparagraph{Quantum Oracles} Quantum algorithms manipulate input information encoded in ``oracles,'' which are callable black box circuits. For example, Grover's algorithm for unstructured quantum search \cite{grover1996,grover1997} is a general approach for searching a quantum ``database,'' which is encoded in an oracle for a function $f : \{0, 1\}^n \to \{0, 1\}$. Grover's finds an element $x \in \{0, 1\}^n$ such that $f(x) = 1$ using $O(2^{n/2})$ queries, a quadratic speedup over the best possible classical algorithm, which requires $\Omega(2^n)$ queries. Oracles are typically viewed as quantum reversible implementations of classical operations, especially arithmetic operations. OQASM \cite{oracleoopsla} is a language that permits the effective testing of quantum oracles.
+
+\myparagraph{Dafny and Natural Proof} Dafny \cite{10.1007/978-3-642-17511-4_20} is a language that is designed to make it easy to write correct code. It permits imperative programming with logical specifications which can be automatically verified through the Dafny proof system, a separation logic based system. The natural proof methodology was first proposed by Madhusudan \textsf{et al.} \cite{nat-proof,10.1145/2103621.2103673}, which exploits a fixed set of proof tactics, keeping the expressiveness of powerful logics, retaining the
+automated nature of proving validity, but giving up on completeness, e.g., the \qafny to Dafny compilation is only sound but not complete. 
+The \qafny implementation of the natural proof methodology identifies a subclass of proofs $\mathpzc{N}$ such that
+(1) a large class of valid verification specifications of near term classical quantum hybrid programs have a proof in $\mathpzc{N}$, 
+and (2) searching for a proof in $\mathpzc{N}$ is efficiently decidable. 
+In the original natural proof, the subclass identification is based on mapping heap data-structures, such as trees and link lists, to logical invariant properties. In QNP, the identification is through the \qafny type system in classifying quantum sessions and state types so that quantum operation applications on a specific session can be compiled to classical aggregate operations that have rich proof infrastructures. 
 
 
 

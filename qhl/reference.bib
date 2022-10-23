@@ -35,6 +35,25 @@ series = {ICFP '00}
   copyright = {Creative Commons Attribution 4.0 International}
 }
 
+@misc{certiq,
+  doi = {10.48550/ARXIV.1908.08963},
+  
+  url = {https://arxiv.org/abs/1908.08963},
+  
+  author = {Shi, Yunong and Tao, Runzhou and Li, Xupeng and Javadi-Abhari, Ali and Cross, Andrew W. and Chong, Frederic T. and Gu, Ronghui},
+  
+  keywords = {Quantum Physics (quant-ph), Emerging Technologies (cs.ET), Programming Languages (cs.PL), FOS: Physical sciences, FOS: Physical sciences, FOS: Computer and information sciences, FOS: Computer and information sciences},
+  
+  title = {{CertiQ: A Mostly-automated Verification of a Realistic Quantum Compiler}},
+  
+  publisher = {arXiv},
+  
+  year = {2019},
+  
+  copyright = {arXiv.org perpetual, non-exclusive license}
+}
+
+
 
 @article{grover1997,
   title = {Quantum Mechanics Helps in Searching for a Needle in a Haystack},
@@ -108,7 +127,7 @@ series = {ICFP '00}
 
 @inproceedings{10.1109/LICS52264.2021.9470673,
 author = {Zhou, Li and Barthe, Gilles and Hsu, Justin and Ying, Mingsheng and Yu, Nengkun},
-title = {A Quantum Interpretation of Bunched Logic and Quantum Separation Logic},
+title = {{A Quantum Interpretation of Bunched Logic and Quantum Separation Logic}},
 year = {2021},
 isbn = {9781665448956},
 publisher = {Association for Computing Machinery},
@@ -222,6 +241,26 @@ address="Cham",
 pages="382--398",
 abstract="This paper shows that an SMT-based program verifier can support reasoning about co-induction---handling infinite data structures, lazy function calls, and user-defined properties defined as greatest fix-points, as well as letting users write co-inductive proofs. Moreover, the support can be packaged to provide a simple user experience. The paper describes the features for co-induction in the language and verifier Dafny, defines their translation into input for a first-order SMT solver, and reports on some encouraging initial experience.",
 isbn="978-3-319-06410-9"
+}
+
+@article{10.1145/2103621.2103673,
+author = {Madhusudan, Parthasarathy and Qiu, Xiaokang and Stefanescu, Andrei},
+title = {Recursive Proofs for Inductive Tree Data-Structures},
+year = {2012},
+issue_date = {January 2012},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {47},
+number = {1},
+issn = {0362-1340},
+url = {https://doi.org/10.1145/2103621.2103673},
+doi = {10.1145/2103621.2103673},
+abstract = {We develop logical mechanisms and procedures to facilitate the verification of full functional properties of inductive tree data-structures using recursion that are sound, incomplete, but terminating. Our contribution rests in a new extension of first-order logic with recursive definitions called Dryad, a syntactical restriction on pre- and post-conditions of recursive imperative programs using Dryad, and a systematic methodology for accurately unfolding the footprint on the heap uncovered by the program that leads to finding simple recursive proofs using formula abstraction and calls to SMT solvers. We evaluate our methodology empirically and show that several complex tree data-structure algorithms can be checked against full functional specifications automatically, given pre- and post-conditions. This results in the first automatic terminating methodology for proving a wide variety of annotated algorithms on tree data-structures correct, including max-heaps, treaps, red-black trees, AVL trees, binomial heaps, and B-trees.},
+journal = {SIGPLAN Not.},
+month = {jan},
+pages = {123–136},
+numpages = {14},
+keywords = {recursive program, smt solvers, tree, heap analysis}
 }
 
 
@@ -383,7 +422,7 @@ url="https://doi.org/10.1007/978-1-4419-5906-5_615"
 @INPROCEEDINGS{separationlogic,
   author={Reynolds, J.C.},
   booktitle={Proceedings 17th Annual IEEE Symposium on Logic in Computer Science}, 
-  title={Separation logic: a logic for shared mutable data structures}, 
+  title={{Separation logic: a logic for shared mutable data structures}}, 
   year={2002},
   volume={},
   number={},
@@ -404,6 +443,87 @@ url="https://doi.org/10.1007/978-1-4419-5906-5_615"
   title = {Verified Compilation of Quantum Oracles},
   
   year = {2022}
+}
+
+@article{qseplocal,
+author = {Le, Xuan-Bach and Lin, Shang-Wei and Sun, Jun and Sanan, David},
+title = {A Quantum Interpretation of Separating Conjunction for Local Reasoning of Quantum Programs Based on Separation Logic},
+year = {2022},
+issue_date = {January 2022},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {6},
+number = {POPL},
+url = {https://doi.org/10.1145/3498697},
+doi = {10.1145/3498697},
+abstract = {It is well-known that quantum programs are not only complicated to design but also challenging to verify because the quantum states can have exponential size and require sophisticated mathematics to encode and manipulate. To tackle the state-space explosion problem for quantum reasoning, we propose a Hoare-style inference framework that supports local reasoning for quantum programs. By providing a quantum interpretation of the separating conjunction, we are able to infuse separation logic into our framework and apply local reasoning using a quantum frame rule that is similar to the classical frame rule. For evaluation, we apply our framework to verify various quantum programs including Deutsch–Jozsa’s algorithm and Grover's algorithm.},
+journal = {Proc. ACM Program. Lang.},
+month = {jan},
+articleno = {36},
+numpages = {27},
+keywords = {Quantum Computing, Formal Semantics, Verification}
+}
+
+@InProceedings{10.1007/978-3-642-03359-9_2,
+author="Cohen, Ernie
+and Dahlweid, Markus
+and Hillebrand, Mark
+and Leinenbach, Dirk
+and Moskal, Micha{\l}
+and Santen, Thomas
+and Schulte, Wolfram
+and Tobies, Stephan",
+editor="Berghofer, Stefan
+and Nipkow, Tobias
+and Urban, Christian
+and Wenzel, Makarius",
+title="VCC: A Practical System for Verifying Concurrent C",
+booktitle="Theorem Proving in Higher Order Logics",
+year="2009",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="23--42",
+abstract="VCC is an industrial-strength verification environment for low-level concurrent system code written in C. VCC takes a program (annotated with function contracts, state assertions, and type invariants) and attempts to prove the correctness of these annotations. It includes tools for monitoring proof attempts and constructing partial counterexample executions for failed proofs. This paper motivates VCC, describes our verification methodology, describes the architecture of VCC, and reports on our experience using VCC to verify the Microsoft Hyper-V hypervisor.",
+isbn="978-3-642-03359-9"
+}
+
+
+@InProceedings{10.1007/978-3-642-17511-4_20,
+author="Leino, K. Rustan M.",
+editor="Clarke, Edmund M.
+and Voronkov, Andrei",
+title="Dafny: An Automatic Program Verifier for Functional Correctness",
+booktitle="Logic for Programming, Artificial Intelligence, and Reasoning",
+year="2010",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="348--370",
+abstract="Traditionally, the full verification of a program's functional correctness has been obtained with pen and paper or with interactive proof assistants, whereas only reduced verification tasks, such as extended static checking, have enjoyed the automation offered by satisfiability-modulo-theories (SMT) solvers. More recently, powerful SMT solvers and well-designed program verifiers are starting to break that tradition, thus reducing the effort involved in doing full verification.",
+isbn="978-3-642-17511-4"
+}
+
+@inproceedings{qsepa,
+author = {Zhou, Li and Barthe, Gilles and Hsu, Justin and Ying, Mingsheng and Yu, Nengkun},
+title = {{A Quantum Interpretation of Bunched Logic and Quantum Separation Logic}},
+year = {2021},
+isbn = {9781665448956},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1109/LICS52264.2021.9470673},
+doi = {10.1109/LICS52264.2021.9470673},
+abstract = {We propose a model of the substructural logic of Bunched Implications (BI) that is suitable for reasoning about quantum states. In our model, the separating conjunction of BI describes separable quantum states. We develop a program logic where pre- and post-conditions are BI formulas describing quantum states---the program logic can be seen as a counterpart of separation logic for imperative quantum programs. We exercise the logic for proving the security of quantum one-time pad and secret sharing, and we show how the program logic can be used to discover a flaw in Google Cirq's tutorial on the Variational Quantum Algorithm (VQA).},
+booktitle = {Proceedings of the 36th Annual ACM/IEEE Symposium on Logic in Computer Science},
+articleno = {75},
+numpages = {14},
+location = {Rome, Italy},
+series = {LICS '21}
+}
+
+@misc{Hung2019OnTT,
+  title={On the Theory and Practice of Invariant-based Verification of Quantum Programs},
+  author={Shih-Han Hung and Yuxiang Peng and Xin Wang and Shaopeng Zhu and Xiaodi Wu},
+  url = {https://www.cs.umd.edu/~xwu/papers/q_invariant_sdp.pdf},
+  year={2019}
 }
 
 @misc{Giovannetti2008,
@@ -948,6 +1068,29 @@ year = {2007},
 month = {03},
 pages = {},
 title = {{Every NAND formula of size N can be evaluated in time $N^{1/2+o(1)}$ on a Quantum Computer}}
+}
+
+@article{Wong_2022,
+	doi = {10.26421/qic22.1-2-4},
+  
+	url = {https://doi.org/10.26421%2Fqic22.1-2-4},
+  
+	year = 2022,
+	month = {jan},
+  
+	publisher = {Rinton Press},
+  
+	volume = {22},
+  
+	number = {1{\&}2},
+  
+	pages = {53--85},
+  
+	author = {Thomas G. Wong},
+  
+	title = {Unstructured search by random and quantum walk},
+  
+	journal = {Quantum Information and Computation}
 }
 
 @INPROCEEDINGS{1366221,
@@ -1783,7 +1926,8 @@ Note = {Previous versions published as technical reports UIUCDCS-R-2006-2802 in 
  publisher = {Springer-Verlag New York, Inc.},
  address = {Secaucus, NJ, USA},
  keywords = {Lambda-calculus, Nominal logic work, Theorem provers},
-} 
+}
+
 
 @InProceedings{qhoreusage,
 author="Liu, Junyi
@@ -3086,6 +3230,133 @@ numpages = {12},
 keywords = {Coq, dependent types, assembly code},
 location = {Madrid, Spain},
 series = {PPDP '13}
+}
+
+@InProceedings{10.1007/978-3-319-89960-2_2,
+author="Zhan, Bohua",
+editor="Beyer, Dirk
+and Huisman, Marieke",
+title="Efficient Verification of Imperative Programs Using Auto2",
+booktitle="Tools and Algorithms for the Construction and Analysis of Systems",
+year="2018",
+publisher="Springer International Publishing",
+address="Cham",
+pages="23--40",
+abstract="Auto2 is a recently introduced prover for the proof assistant Isabelle. It is designed to be both highly customizable from within Isabelle, and also have a powerful proof search mechanism. In this paper, we apply auto2 to the verification of imperative programs. We describe the setup of auto2 for both stages of the proof process: verification of a functional version of the program, and refining to the imperative version using separation logic. As examples, we verify several data structures, including red-black trees, interval trees, priority queues, and union-find. We also verify several algorithms making use of these data structures. These examples show that our framework is able to verify complex algorithms efficiently and in a modular manner.",
+isbn="978-3-319-89960-2"
+}
+
+@misc{arxiv.1609.00919,
+  doi = {10.48550/ARXIV.1609.00919},
+  
+  url = {https://arxiv.org/abs/1609.00919},
+  
+  author = {Ta, Quang-Trung and Le, Ton Chanh and Khoo, Siau-Cheng and Chin, Wei-Ngan},
+  
+  keywords = {Logic in Computer Science (cs.LO), Programming Languages (cs.PL), FOS: Computer and information sciences, FOS: Computer and information sciences},
+  
+  title = {Automated Mutual Explicit Induction Proof in Separation Logic},
+  
+  publisher = {arXiv},
+  
+  year = {2016},
+  
+  copyright = {Creative Commons Attribution Non Commercial Share Alike 4.0 International}
+}
+
+@InProceedings{10.1007/978-3-319-89960-2_13,
+author="Neider, Daniel
+and Garg, Pranav
+and Madhusudan, P.
+and Saha, Shambwaditya
+and Park, Daejun",
+editor="Beyer, Dirk
+and Huisman, Marieke",
+title="Invariant Synthesis for Incomplete Verification Engines",
+booktitle="Tools and Algorithms for the Construction and Analysis of Systems",
+year="2018",
+publisher="Springer International Publishing",
+address="Cham",
+pages="232--250",
+abstract="We propose a framework for synthesizing inductive invariants for incomplete verification engines, which soundly reduce logical problems in undecidable theories to decidable theories. Our framework is based on the counter-example guided inductive synthesis principle (CEGIS) and allows verification engines to communicate non-provability information to guide invariant synthesis. We show precisely how the verification engine can compute such non-provability information and how to build effective learning algorithms when invariants are expressed as Boolean combinations of a fixed set of predicates. Moreover, we evaluate our framework in two verification settings, one in which verification engines need to handle quantified formulas and one in which verification engines have to reason about heap properties expressed in an expressive but undecidable separation logic. Our experiments show that our invariant synthesis framework based on non-provability information can both effectively synthesize inductive invariants and adequately strengthen contracts across a large suite of programs.",
+isbn="978-3-319-89960-2"
+}
+
+
+@inproceedings{10.1145/3453483.3454087,
+author = {Itzhaky, Shachar and Peleg, Hila and Polikarpova, Nadia and Rowe, Reuben N. S. and Sergey, Ilya},
+title = {Cyclic Program Synthesis},
+year = {2021},
+isbn = {9781450383912},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3453483.3454087},
+doi = {10.1145/3453483.3454087},
+abstract = {We describe the first approach to automatically synthesizing heap-manipulating programs with auxiliary recursive procedures. Such procedures occur routinely in data structure transformations (e.g., flattening a tree into a list) or traversals of composite structures (e.g., n-ary trees). Our approach, dubbed cyclic program synthesis, enhances deductive program synthesis with a novel application of cyclic proofs. Specifically, we observe that the machinery used to form cycles in cyclic proofs can be reused to systematically and efficiently abduce recursive auxiliary procedures. We develop the theory of cyclic program synthesis by extending Synthetic Separation Logic (SSL), a logical framework for deductive synthesis of heap-manipulating programs from Separation Logic specifications. We implement our approach as a tool called Cypress, and showcase it by automatically synthesizing a number of programs manipulating linked data structures using recursive auxiliary procedures and mutual recursion, many of which were beyond the reach of existing program synthesis tools.},
+booktitle = {Proceedings of the 42nd ACM SIGPLAN International Conference on Programming Language Design and Implementation},
+pages = {944–959},
+numpages = {16},
+keywords = {Separation Logic, Cyclic Proofs, Program Synthesis},
+location = {Virtual, Canada},
+series = {PLDI 2021}
+}
+
+@inproceedings{nat-proof-frame,
+author = {Pek, Edgar and Qiu, Xiaokang and Madhusudan, P.},
+title = {Natural Proofs for Data Structure Manipulation in C Using Separation Logic},
+year = {2014},
+isbn = {9781450327848},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2594291.2594325},
+doi = {10.1145/2594291.2594325},
+abstract = {The natural proof technique for heap verification developed by Qiu et al. [32] provides a platform for powerful sound reasoning for specifications written in a dialect of separation logic called Dryad. Natural proofs are proof tactics that enable automated reasoning exploiting recursion, mimicking common patterns found in human proofs. However, these proofs are known to work only for a simple toy language [32].In this work, we develop a framework called VCDryad that extends the Vcc framework [9] to provide an automated deductive framework against separation logic specifications for C programs based on natural proofs. We develop several new techniques to build this framework, including (a) a novel tool architecture that allows encoding natural proofs at a higher level in order to use the existing Vcc framework (including its intricate memory model, the underlying type-checker, and the SMT-based verification infrastructure), and (b) a synthesis of ghost-code annotations that captures natural proof tactics, in essence forcing Vcc to find natural proofs using primarily decidable theories.We evaluate our tool extensively, on more than 150 programs, ranging from code manipulating standard data structures, well-known open source library routines (Glib, OpenBSD), Linux kernel routines, customized OS data structures, etc. We show that all these C programs can be fully automatically verified using natural proofs (given pre/post conditions and loop invariants) without any user-provided proof tactics. VCDryad is perhaps the first deductive verification framework for heap-manipulating programs in a real language that can prove such a wide variety of programs automatically.},
+booktitle = {Proceedings of the 35th ACM SIGPLAN Conference on Programming Language Design and Implementation},
+pages = {440–451},
+numpages = {12},
+keywords = {separation logic, natural proofs, data structures, program verifiers},
+location = {Edinburgh, United Kingdom},
+series = {PLDI '14}
+}
+
+
+@article{nat-proof,
+author = {Qiu, Xiaokang and Garg, Pranav and \c{S}tef\u{a}nescu, Andrei and Madhusudan, Parthasarathy},
+title = {Natural Proofs for Structure, Data, and Separation},
+year = {2013},
+issue_date = {June 2013},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {48},
+number = {6},
+issn = {0362-1340},
+url = {https://doi.org/10.1145/2499370.2462169},
+doi = {10.1145/2499370.2462169},
+abstract = {We propose natural proofs for reasoning with programs that manipulate data-structures against specifications that describe the structure of the heap, the data stored within it, and separation and framing of sub-structures. Natural proofs are a subclass of proofs that are amenable to completely automated reasoning, that provide sound but incomplete procedures, and that capture common reasoning tactics in program verification. We develop a dialect of separation logic over heaps, called Dryad, with recursive definitions that avoids explicit quantification. We develop ways to reason with heaplets using classical logic over the theory of sets, and develop natural proofs for reasoning using proof tactics involving disciplined unfoldings and formula abstractions. Natural proofs are encoded into decidable theories of first-order logic so as to be discharged using SMT solvers.We also implement the technique and show that a large class of more than 100 correct programs that manipulate data-structures are amenable to full functional correctness using the proposed natural proof method. These programs are drawn from a variety of sources including standard data-structures, the Schorr-Waite algorithm for garbage collection, a large number of low-level C routines from the Glib library and OpenBSD library, the Linux kernel, and routines from a secure verified OS-browser project. Our work is the first that we know of that can handle such a wide range of full functional verification properties of heaps automatically, given pre/post and loop invariant annotations. We believe that this work paves the way for deductive verification technology to be used by programmers who do not (and need not) understand the internals of the underlying logic solvers, significantly increasing their applicability in building reliable systems.},
+journal = {SIGPLAN Not.},
+month = {jun},
+pages = {231–242},
+numpages = {12},
+keywords = {data structures, smt solvers, separation logic, natural proofs, heap analysis}
+}
+
+@article{nat-proof-fun,
+author = {L\"{o}ding, Christof and Madhusudan, P. and Pe\~{n}a, Lucas},
+title = {Foundations for Natural Proofs and Quantifier Instantiation},
+year = {2017},
+issue_date = {January 2018},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {2},
+number = {POPL},
+url = {https://doi.org/10.1145/3158098},
+doi = {10.1145/3158098},
+abstract = {We give foundational results that explain the efficacy of heuristics used for dealing with quantified formulas and recursive definitions. We develop a framework for first order logic (FOL) over an uninterpreted combination of background theories. Our central technical result is that systematic term instantiation is complete for a fragment of FOL that we call safe. Coupled with the fact that unfolding recursive definitions is essentially term instantiation and with the observation that heap verification engines generate verification conditions in the safe fragment explains the efficacy of verification engines like natural proofs that resort to such heuristics. Furthermore, we study recursive definitions with least fixpoint semantics and show that though they are not amenable to complete procedures, we can systematically introduce induction principles that in practice bridge the divide between FOL and FOL with recursive definitions.},
+journal = {Proc. ACM Program. Lang.},
+month = {dec},
+articleno = {10},
+numpages = {30},
+keywords = {Natural proofs, Quantifier instantiation, Completeness, Program logics, Verification, Program analysis}
 }
 
 
