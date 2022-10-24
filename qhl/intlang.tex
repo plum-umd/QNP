@@ -785,7 +785,7 @@ In \qafny, we set up additional axioms for these periodical theorems to grant th
 }
 {\footnotesize
 $
-\mathpzc{D}(n,\Msum_{i=0}^{m}\scha{2^{n}}{z_{ij}}{j}{\ket{c_{ij}}})=\Msum_{i=0}^{m}\scha{2^n}{(2 z_{ij}\sum_{u=0}^{2^n}z_{iu} - z_{ij})}{j}{\ket{c_{ij}}}
+\mathpzc{D}(n,\Msum_{i=0}^{m}\scha{2^{n}}{z_{ij}}{j}{\ket{c_{ij}}})=\Msum_{i=0}^{m}\scha{2^n}{(\frac{1}{2^{n-1}}\sum_{u=0}^{2^n}z_{iu} - z_{ij})}{j}{\ket{c_{ij}}}
 $
 }
 \caption{Semantic and Proof Rules for Diffusion Operations}
@@ -793,11 +793,7 @@ $
 \end{figure*}
 
 \myparagraph{Rules for Diffusion}\label{sec:diffuse}
-Quantum diffusion operations ($\ssassign{l}{}{\sdis}$) reorient the amplitudes of basis states based on the basis state corresponding to $l$. They are analogized to an aggregate operation of reshape and mean computation, both appeared in many programming languages, such as Python.
-The aggregate operation first applies a reshape, where elements are regrouped into a normal form, as the first agree of \Cref{fig:qafny-dis-analog}. More specifically, the diffusion function $\mathpzc{D}(n,q)$ (\Cref{fig:exp-proofsystem-5}) first takes an $n'$-element $\tcht$ type state $\schi{t=0}{z_t}{c_t}$, where $n$ corresponds to the number of bits in the session positions matching $l$ (as $\kappa$).
-Then, we rearrange the state by extending the element number from $n'$ to $m*n$ with probably adding new elements that originally have zero amplitude (the white elements in \Cref{fig:qafny-dis-analog}).
-Here, let's view a basis $c_{t}$ as a small-endian (LSB) number $\tov{c_{t}}$. The rearrangement of changing bases $c_{t}$ (for all $t$) to $\tos{j}.c_{ij}$ is analogized to rewrite a number $\tov{c_{t}}$ to be the form $2^n i+j$, with $j\in [0,2^n)$. 
-Basically, the reshape step rearranges the basis states to be placed in a periodical counting sequence, with $2^n$ being the order.
+Quantum diffusion operations ($\ssassign{l}{}{\sdis}$) reorient the amplitudes of basis states based on the basis state corresponding to $l$. They are analogized to an aggregate operation of reshape and mean computation, both appeared in some programming languages, such as Python.
 %
 \begin{wrapfigure}{r}{5.2cm}
   \includegraphics[width=.36\textwidth]{diffuse}
@@ -805,14 +801,18 @@ Basically, the reshape step rearranges the basis states to be placed in a period
 \label{fig:qafny-dis-analog}
 \end{wrapfigure}
 %
-The mean computation analogy (the second arrow in \Cref{fig:qafny-dis-analog}) takes every period in the reshaped state, and for each basis state, we redistribute the amplitude by the formula $(2 z_{ij}\sum_{u=0}^{2^n}z_{iu} - z_{ij})$, i.e., for each period, given a basis state $j$, we sum all the amplitudes from $0$ to $2^n$ in the period as $z_{sum}$, then the redistributed amplitude for $j$ is $2 z_j z_{sum}-z_j$. 
-Rule \textsc{SDis} is the semantics for diffusion $\ssassign{l}{}{\sdis}$, which applies the $\mathpzc{D}$ function to the session $\kappa \uplus \kappa'$, where $\kappa$ corresponds to the $l$'s session. Proof rule \textsc{PDis} does the same as rule \textsc{SDis}.
+The aggregate operation first applies a reshape, where elements are regrouped into a normal form, as the first arrow of \Cref{fig:qafny-dis-analog}. More specifically, the diffusion function $\mathpzc{D}(n,q)$ (\Cref{fig:exp-proofsystem-5}) first takes an $n'$-element $\tcht$ type state $\schi{t=0}{z_t}{c_t}$, where $n$ corresponds to the number of qubits in $l$.
+Then, we rearrange the state by extending the element number from $n'$ to $m*n$ with probably adding new elements that originally have zero amplitude (the white elements in \Cref{fig:qafny-dis-analog}).
+Here, let's view a basis $c_{t}$ as a small-endian (LSB) number $\tov{c_{t}}$. The rearrangement of changing bases $c_{t}$ (for all $t$) to $\tos{j}.c_{ij}$ is analogized to rewrite a number $\tov{c_{t}}$ to be the form $2^n i+j$, with $j\in [0,2^n)$,
+i.e., the reshape step rearranges the basis states to be a periodical counting sequence, with $2^n$ being the order.
+The mean computation analogy (the second arrow in \Cref{fig:qafny-dis-analog}) takes every period in the reshaped state, and for each basis state in a period, we redistribute its amplitude by the formula $(\frac{1}{2^{n-1}}\sum_{u=0}^{2^n}z_{iu} - z_{ij})$.
+Rule \textsc{SDis} is the semantics for diffusion $\ssassign{l}{}{\sdis}$, which applies the $\mathpzc{D}$ function to the session $\kappa \uplus \kappa'$, where $\kappa$ corresponds to the $l$'s session. Proof rule \textsc{PDis} is a separation style rule that does the same as rule \textsc{SDis}.
 \ignore{
 Quantum diffusion operations are used in many algorithms, such as amplifying a basis state's amplitude value in Grover's search algorithm, or redistributing a possible path direction in quantum walk algorithm.
 In these algorithms, the session piece that is diffused has either a small constant number of qubits or the whole session, meaning that the $n$ number in the $\mathpzc{D}$ function is either very small or equal to $\slen{\kappa \uplus \kappa'}$, as the whole session.
 In either case, the summation formula in $\mathpzc{D}$'s modeling (\Cref{fig:qafny-dis-model}) can be rewritten as very few terms that facilitate the automated verification, which is exactly how we handle the diffusion operations in \qafny.
 }
-An example of Grover's search and quantum walk algorithm is given in \Cref{sec:arith-oqasm}.
+An example of quantum walk algorithm that uses diffusion operations is given in \Cref{sec:quantumwalk}.
 
 \subsection{\qafny Metatheory}\label{sec:theorems}
 

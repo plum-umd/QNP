@@ -230,7 +230,7 @@ $\texttt{is\_suc}(t,i)$ judges if $i$ is a $t$-depth node.}
 
 The type of $y[0..n]:\tcht$ on the top of \Cref{fig:background-circuit-example-controlled} is actually turned to $\tnort$ because session $y[0..n]$ has a single basis state. Essentially, the \qafny type system is implemented as predicates in Dafny, and we utilize extra predicates to implement the $\tcht$ state to a $\tnort$ state rewrite above. In \Cref{sec:newtype}, we implement a new type system that tracks both sessions and basis states. In the new type system, the type rewrite can automatically happens without extra predicate axioms.
 
-\subsection{Case Study: Understanding Quantum Walk}
+\subsection{Case Study: Understanding Quantum Walk}\label{sec:quantumwalk}
 
 Quantum walk \cite{Wong_2022,ChildsNAND,Venegas_Andraca_2012} is an quantum version of the classical random walk \cite{RayleighThePO}, and it is an important algorithmic protocol for writing quantum algorithms. However, most quantum walk analyses were based on Hamiltonian simulation evolving, which deters many computer scientists to invent quantum walk algorithms. Here, we show that discrete time quantum walk, at its very least, is a quantum version of breadth first search. 
 
