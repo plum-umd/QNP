@@ -1926,9 +1926,80 @@ s=\ssassign{y}{}{a^{2^j}y\;\%\; N}
 }
 
 
-
+\subsection{Additional Proof Rules}\label{appx:proof-rules}
 
 The proof is built from bottom up. We first cut the $\thadt$ type state into two sessions ($x[0..n\,\sminus\,\snext{j}]$ and $x[j]$), join $x[j]$ with session $\{x[0..j],y[0..n]\}$, and double the state elements to be $0.C(j)+1.C(j)$, which is proved by applying the consequence rules. Notice that the type environment is also transitioned from $\sigma$ to $\sigma_1$.
 By the same strategy of the $\mathpzc{U}$ rule in \Cref{fig:qafny-mu-model}, we combine the two $\mathpzc{U}$ terms into the final result. 
 The second step applies rule \textsc{PIF} to substitute session $\{x[0..\snext{j}],y[0..n]\}$ with the mask construct $\mathpzc{M}(b,\{y[0..n]\})$ in the pre-condition and create two $\mathpzc{U}$ terms in the post-condition. The step on the top applies the modulo multiplication on every element in the masked state $\mapsto C(j).1$ by rule \textsc{PA-CH}.
+
+\begin{figure*}[t]
+{\small
+  \begin{mathpar}
+
+\hspace*{-1em}
+    \inferrule[Frame]{FV(s)\cap FV(R)=\emptyset \\ FV(s)\subseteq \dom{\sigma} \\\\
+       \sigma\bot\sigma' \\ \fivepule{\Omega}{\sigma}{g}{P}{s}{Q}}
+                {\fivepule{\Omega}{\sigma\cup\sigma'}{g}{P * R}{s}{Q * R}}
+
+    \inferrule[]{\sigma \bot \sigma' \\ \varphi \bot \varphi' 
+      \\ \Omega;\sigma; \psi; \varphi \models_g P \\ \Omega;\sigma';\psi; \varphi' \models_g Q}
+        {\Omega;\sigma \cup \sigma';\psi; \varphi \cup \varphi'\models_g P * Q }
+
+    \inferrule[SSeq-1]{(\psi,\varphi,s_1) \longrightarrow (\psi',\varphi',s'_1)}{(\psi,\varphi,\sseq{s_1}{s_2})\longrightarrow (\psi',\varphi',\sseq{s'_1}{s_2}) }
+\quad
+    \inferrule[SSeq-2]{}{(\psi,\varphi,\sseq{\{\}}{s_2})\longrightarrow (\psi,\varphi,s_2) }
+\quad
+    \inferrule[PSeq]{
+          \Omega;\sigma\vdash_g s_1 \triangleright \sigma' \\\\
+       \fivepule{\Omega}{\sigma}{g}{P}{s_1}{R} \quad
+           \fivepule{\Omega}{\sigma[\uparrow \sigma']}{g}{R}{s_2}{Q}}
+                {\fivepule{\Omega}{\sigma}{g}{P}{\sseq{s_1}{s_2}}{Q}}
+
+
+    \inferrule[PConL]{
+       (\Omega,\sigma,P) \Rightarrow (\Omega,\sigma',P') \\ \fivepule{\Omega}{\sigma'}{g}{P'}{s}{Q}}
+                {\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}}
+
+    \inferrule[PConR]{\Omega,\sigma\vdash_g s_1 \triangleright \sigma'\\\\
+          \fivepule{\Omega}{\sigma'}{g}{P}{s}{Q'} \\(\Omega,\sigma'',Q') \nRightarrow (\Omega,\sigma[\uparrow \sigma'],Q) }
+                {\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}}
+  \end{mathpar}
+}
+{\footnotesize
+\[
+\begin{array}{l}
+\\
+(\Omega,\sigma,P) \Rightarrow (\Omega,\sigma',P') \triangleq \Omega,\sigma\vdash P \wedge \Omega,\sigma' \vdash P' \wedge \sigma \preceq \sigma' \wedge P \Rightarrow P'
+\\[0.2em]
+(\Omega,\sigma,Q) \nRightarrow (\Omega,\sigma',Q') \triangleq \Omega,\sigma\vdash Q \wedge \Omega,\sigma' \vdash Q' \wedge \sigma' \preceq \sigma \wedge Q \Rightarrow Q'
+\ignore{
+\\[0.2em]
+\varphi \equiv \varphi' \wedge \varphi \models P \wedge \varphi' \models P' \Rightarrow (P \Leftrightarrow P') 
+
+\\[0.2em]
+ q(c_j) = \scha{m}{z_j}{c_{j}}{\beta_j}
+\qquad \llbracket \mu \rrbracket c_{j} = z'_j\ket{c'_{j}}
+}
+\end{array}
+\]
+}
+\caption{Sequence and Consequence Rules}
+\label{fig:exp-proofsystem-seq}
+\end{figure*}
+
+\subsection{Well-formed Sessions and Predicates}\label{appx:well-formed}
+
+\begin{definition}[Well-formed session domain]\label{def:well-formed-ses}\rm 
+  The domain of a environment $\sigma$ (or state $\varphi$) is \emph{well-formed}, written as
+  $\Omega \vdash \dom{\sigma}$ (or $\dom{\varphi}$), iff for every session $\kappa\in \dom{\sigma}$ (or $\dom{\varphi}$):
+\begin{itemize}
+\item $\kappa$ is disjoint unioned, i.e., for every two ranges $x[i..j]$ and $y[i'..j']$, $x[i..j]\cap y[i'..j']=\emptyset$.
+
+\item For every range $x[i..j]\in\kappa$, $\Omega(x)=\qmode{n}$ and $[i,j) \subseteq [0,n)$.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Well-formed state predicate]\label{def:well-formed-pred}\rm 
+  A predicate $P$ is well-formed, written as $\Omega,\sigma \vdash P$, iff every variable and session appearing in $P$ is defined in $\Omega$ and $\sigma$, respectively; particularly, if $P=\kappa \mapsto q * P'$, $\kappa \in \dom{\sigma}$.
+\end{definition}
 
