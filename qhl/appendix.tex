@@ -323,7 +323,7 @@ transforms it from $\tphi{n}$ back to \texttt{Nor} (rule
 \rulelab{RQFT}). Position shifting operations 
 are disallowed on variables $x$ in
 the \texttt{Phi} basis because the qubits that make up $x$ are
-internally related (see \Cref{def:well-formed}) and cannot be rearranged. Indeed, applying a
+internally related (see \Cref{appx:well-formed}) and cannot be rearranged. Indeed, applying a
 \texttt{Lshift} and then a $\texttt{QFT}^{-1}$ on $x$ in \texttt{Phi}
 would entangle $x$'s qubits.
 
@@ -556,7 +556,7 @@ We prove that well-typed \oqasm programs are well defined; i.e., the
 type system is sound with respect to the semantics. 
 We begin by defining the well-formedness of an \oqasm state.
 
-\begin{definition}[Well-formed \oqasm state]\label{def:well-formed}\rm 
+\begin{definition}[Well-formed \oqasm state]\label{appx:well-formed}\rm 
   A state $\varphi$ is \emph{well-formed}, written
   $\Sigma;\Omega \vdash \varphi$, iff:
 \begin{itemize}
@@ -584,7 +584,7 @@ and the semantics function $\llbracket \rrbracket$ can be interpreted as a $2^d 
 Because \oqasm's semantics can be viewed as a unitary matrix, correctness properties extend by linearity from $\hsp{S}^d$ to $\hsp{H}^d$---an oracle that performs addition for classical \texttt{Nor} inputs will also perform addition over a superposition of \texttt{Nor} inputs. We have proved that $\hsp{S}^d$ is closed under well-typed \oqasm programs.
 
 \liyi{good?}
-Given a qubit size map $\Sigma$ and type environment $\Omega$, the set of \oqasm programs that are well-typed with respect to $\Sigma$ and $\Omega$ (i.e., $\Sigma;\Omega \vdash \instr \triangleright \Omega'$) form a algebraic structure $(\{\instr\},\Sigma, \Omega,\hsp{S}^d)$, where $\{\instr\}$ defines the set of valid program syntax, such that there exists $\Omega'$, $\Sigma;\Omega \vdash \instr \triangleright \Omega'$ for all $\instr$ in $\{\instr\}$; $\hsp{S}^d$ is the set of $d$-qubit states on which programs $\instr\in \{\instr\}$ are run, and are well-formed ($\Sigma;\Omega \vdash \varphi$) according to \Cref{def:well-formed}.
+Given a qubit size map $\Sigma$ and type environment $\Omega$, the set of \oqasm programs that are well-typed with respect to $\Sigma$ and $\Omega$ (i.e., $\Sigma;\Omega \vdash \instr \triangleright \Omega'$) form a algebraic structure $(\{\instr\},\Sigma, \Omega,\hsp{S}^d)$, where $\{\instr\}$ defines the set of valid program syntax, such that there exists $\Omega'$, $\Sigma;\Omega \vdash \instr \triangleright \Omega'$ for all $\instr$ in $\{\instr\}$; $\hsp{S}^d$ is the set of $d$-qubit states on which programs $\instr\in \{\instr\}$ are run, and are well-formed ($\Sigma;\Omega \vdash \varphi$) according to \Cref{appx:well-formed}.
 From the \oqasm semantics and the type soundness theorem, for all $\instr \in \{\instr\}$ and $\varphi \in \hsp{S}^d$, such that $\Sigma;\Omega \vdash \instr \triangleright \Omega'$ and $\Sigma;\Omega \vdash \varphi$, we have $\llbracket \instr \rrbracket\varphi=\varphi'$, $\Sigma;\Omega' \vdash \varphi'$, and $\varphi' \in \hsp{S}^d$. Thus, $(\{\instr\},\Sigma, \Omega,\hsp{S}^d)$, where $\{\instr\}$ defines a groupoid.
 
 We can certainly extend the groupoid to another algebraic structure $(\{\instr'\},\Sigma,\hsp{H}^d)$, where $\hsp{H}^d$ is a general $2^d$ dimensional Hilbert space $\hsp{H}^d$ and $\{\instr'\}$ is a universal set of quantum gate operations.
