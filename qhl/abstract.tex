@@ -1,0 +1,6 @@
+Quantum program correctness is typically assured by formal verification, but the quantum semantic nature, based on unitary, density matrices, and complex numbers, indicates that such verification is laborious and time-comsuming. 
+In this paper, we proposed quantum natural proof (QNP), an automated proof system for verifying classical quantum hybird algorithms. 
+Natural proofs are a subclass of proofs that are amenable to completely automated reasoning, that provide sound but incomplete procedures, and that capture common reasoning tactics in program verification. 
+The core of QNP is a quantum proof system, named the Qafny proof system, that maps quantum operations to classical array aggregate operations that can be effectively verified in a classical separation logic framework. We have shown the soundness and completeness of the Qafny proof system as well as the soundness of the proof system compilation from Qafny to Dafny.
+Qafny permits quantum conditionals and we believe that our quantum conditional proof rule is the first quantifier free proof rules for quantum conditional operations.
+In addition, quantum programs written in Qafny can be compiled to quantum circuits so that every verified quantum program can be run on a quantum machine. 
