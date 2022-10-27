@@ -166,19 +166,12 @@ The \qafny proof system captures the analogy of viewing quantum
 operations as classical aggregate operations 
 by utilizing the type system to ensure the session state forms.
 All of these features are novel to quantum languages and proof systems. 
-
-\begin{wrapfigure}{r}{8.2cm}
-  \includegraphics[width=.60\textwidth]{shorsmap}
-  \caption{The array analogy of Shor's first half in \Cref{fig:shorqafny}. }
-\label{fig:shorsanalog}
-\end{wrapfigure}
-
 This section presents \qafny states and the language's syntax, typing, 
 semantics, proof system, and soundness/completeness results.  
+
 As a running example, we use the Shor's algorithm~\cite{Shor94} shown in \Cref{fig:shorqafny}. 
 Given an integer $N$, Shor's algorithm finds its nontrivial prime factors, which has the following step: (1) randomly pick a number $1 < a < N$ and compute $k=\texttt{gcd}(a,N)$ \footnote{compute the greatest common divisor of $a$ and $N$}; (2) if $k \neq 1$, $k$ is the factor; (3) otherwise, $a$ and $N$ are coprime and we find the order $p$ of $a$ and $N$ \footnote{the order $p$ is the smallest number such that $a^p \% N = 1$}; (4) if $p$ is even and $a^{\frac{p}{2}} \neq -1 \% N$, $\texttt{gcd}(a^{\frac{p}{2}}\pm 1,N)$ are the factors, otherwise, we repeat the process. Step (2) is the Shor's algorithm's quantum component and \Cref{fig:shorqafny} and \Cref{fig:shorqafny2} show its automated proof in QNP. In \Cref{fig:shorexample}, we show the actual implementation and proof in the Qafny tool.
-
-The Shor's pre-measurement quantum steps in \Cref{fig:shorqafny} can be analogized as an efficient array filter operation.
+The Shor's pre-measurement quantum steps in \Cref{fig:shorqafny} can be analogized as an efficient array filter operation in \Cref{fig:shorsanalog}.
 The steps before line 14 (steps at line 2, 5 and 9-11) create a $2^n$-length of pairs, each of which is formed as $(i,a^i \% N)$ where $i\in [0,2^n)$. The measurement in line 14 filters the array as a new one ($x[0..n]$) with all elements $i$ satisfying $a^i \% N=u$ where $u$ is a randomly picked number. Notice that modulo multiplication $f(i)=a^i\%N$ is a periodic function. All elements in $x[0..n]$ satisfy $a^i \% N=u$, which means that 1) there is a smallest $t$ such that $a^t \% N=u$, and 2) all elements can be rewritten as $i=t+kp$ and $p$ is the period of the modulo multiplication function, which is given as the post-condition on the right of line 15.
 The implementation and correctness proof in \Cref{fig:shorqafny} exactly reflects the array analogy aspect.
 \ignore{
@@ -190,7 +183,7 @@ Notice that only the black and purple parts in \Cref{fig:shorqafny} are required
 
 We first introduce \qafny states, syntax, and type system. Then, we discuss its semantics and proof system and metatheories.
 
-\subsection {Classical and Quantum States}
+\subsection {Classical and Quantum States}\label{sec:quantum-state}
 
 \begin{figure}[t]
 { \small
