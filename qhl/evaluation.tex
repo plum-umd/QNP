@@ -37,10 +37,8 @@ Below, we show two examples of helping programmings to understand and integrate 
 
 \begin{figure}[t]
 {\centering
-\begin{minipage}[t]{.4\textwidth}
-\subcaption{Quantum circuit}
-  \vspace{0.5cm}
-\qquad\qquad
+{
+\begin{tabular}{c c}
   \small
   \Qcircuit @C=0.5em @R=0.5em {
     \lstick{\ket{0}} & \gate{H} & \qw & \ctrl{1} & \qw & \qw  & \\
@@ -49,12 +47,10 @@ Below, we show two examples of helping programmings to understand and integrate 
     & \vdots &  & \dots & & &  \\
     \lstick{\ket{0}} & \qw & \qw & \ghost{\texttt{GHZ}} &\qw &\qw &
     }
-\end{minipage}
-%
-\begin{minipage}[t]{.5\textwidth}
-\subcaption{\qafny Program and Proof}
-{\small
-\[
+
+&
+{
+$\small
 \begin{array}{r l}
 \textcolor{blue}{1}
 &
@@ -87,12 +83,24 @@ Below, we show two examples of helping programmings to understand and integrate 
 &
 \{\{x[0..1],y[0..n]\}\mapsto \frac{1}{\sqrt{2}}\ket{\overline{0}}+\frac{1}{2}\ket{1}\ket{\overline{0}}+\frac{1}{2}\ket{\overline{1}} \}
 \end{array}
-\]
+$
 }
-\end{minipage}
-%
-\begin{minipage}[t]{1\textwidth}
-\subcaption{Detailed proof for conditional in line 4-6}
+\end{tabular}
+}
+}
+\vspace*{-0.5em}
+\caption{Controlled GHZ circuit and proof. $\texttt{ghz}(y)$ is given in \Cref{fig:background-circuit-example}. Lines 3-4 are automatically inferred.}
+\label{fig:background-circuit-example-controlled}
+\end{figure}
+
+\subsection{Controlled GHZ Case Study: Building Quantum Algorithms on Others}
+
+One important criteria appearing in many automated verification frameworks is to reuse existing verification proofs to synthesize new algorithm verification. 
+However, in most quantum proof systems nowadays, this criteria is neglected. For example, QBricks did not utilize the quantum phase estimation (QPE) proof, which is the core part of Shor's algorithm, to construct their Shor's algorithm proof.
+In VOQC \cite{VOQC}, the QPE reuse in the Shor's proof was done by proving many new theorems that were not originally required in the QPE proofs. QNP opens a windows towards the reusable proofs for verifying new algorithms.
+\Cref{fig:background-circuit-example-controlled} provides a proof of the Controlled GHZ algorithm based on the GHZ proof in \Cref{fig:background-circuit-example-proof}. The focal point is at \Cref{fig:background-circuit-example-controlled} line 5, where the GHZ function requires input to be a $\tnort$ state of all $0$ qubits, but the given state, in line 4, is an entanglement $\scha{2}{}{j}{\ket{\overline{0}}}$. In \qafny, we automatically verify the proof by rule \rulelab{PIF} and the equational relation to rewrite a singleton $\tcht$ state to a $\tnort$ state, as $\sch{1}{z_j}{c_j}\equiv z_0\ket{c_0}$. The detailed proofs for the conditional is given below, where $\kappa=\{x[0..1],y[0..n]\}$. 
+
+\vspace*{-1em}
 {\footnotesize
   \begin{mathpar}
 \inferrule[]{
@@ -140,22 +148,8 @@ y[0..n]\mapsto \schii{2}{\frac{1}{\sqrt{2}}}{\overline{i}}}
 }
   \end{mathpar}
 }
-\end{minipage}
-}
-\caption{Controlled GHZ circuit and proof. $\texttt{ghz}(y)$ is the GHZ algorithm in \Cref{fig:background-circuit-example}. Lines 3-4 are automatically inferred. The purple parts are the frozen basis bitstrings. $\kappa=\{x[0..1],y[0..n]\}$. }
-\label{fig:background-circuit-example-controlled}
-\end{figure}
 
-
-%As a consequence, QNP also helps programmers in discovering new ways of integrating quantum algorithms. The controlled GHZ algorithm does not typically appear in many quantum information books \cite{mike-and-ike}, but it is a usage of the GHZ algorithm to prepare different entanglement structures. The implementation and verification of the controlled GHZ algorithm finishes momentarily (\Cref{fig:circ-evaluation}).
-
-\subsection{Controlled GHZ Case Study: Building Quantum Algorithms on Others}
-
-One important criteria appearing in many automated verification frameworks is to reuse existing verification proofs to synthesize new algorithm verification. 
-However, in most quantum proof systems nowadays, this criteria is neglected. For example, QBricks did not utilize the quantum phase estimation (QPE) proof, which is the core part of Shor's algorithm, to construct their Shor's algorithm proof.
-In VOQC \cite{VOQC}, the QPE reuse in the Shor's proof was done by proving many new theorems that were not originally required in the QPE proofs. QNP opens a windows towards the reusable proofs for verifying new algorithms.
-
-\Cref{fig:background-circuit-example-controlled} provides a proof of the Controlled GHZ algorithm based on the GHZ proof in \Cref{fig:background-circuit-example-proof}. The focal point is at \Cref{fig:background-circuit-example-controlled} line 5, where the GHZ function requires input to be a $\tnort$ state of all $0$ qubits, but the given state, in line 4, is an entanglement $\scha{2}{}{j}{\ket{\overline{0}}}$. In \qafny, we automatically verify the proof by rule \rulelab{PIF} and the equational relation to rewrite a singleton $\tcht$ state to a $\tnort$ state, as $\sch{1}{z_j}{c_j}\equiv z_0\ket{c_0}$. The detailed proofs for the conditional is given in \Cref{fig:background-circuit-example-controlled}(c). Once rule \rulelab{PIF} is applied on the second and third line, session $y[0..n]$'s state is actually a $\tnort$ type state $\textcolor{teal}{\ket{\overline{0}}}\textcolor{purple}{\ket{1}}$, where $\overline{0}$ is $n$ qubits and $\ket{1}$ is frozen. Now, the state satisfies the input state for GHZ above,
+Once rule \rulelab{PIF} is applied on the second and third line, session $y[0..n]$'s state is actually a $\tnort$ type state $\textcolor{teal}{\ket{\overline{0}}}\textcolor{purple}{\ket{1}}$, where $\overline{0}$ is $n$ qubits and $\ket{1}$ is frozen, which is marked purple. Now, the state satisfies the input state for GHZ above,
 so that we can safely reuse the GHZ proof in \Cref{fig:background-circuit-example-proof} and finish the proof. 
 The type of $y[0..n]:\tcht$ on the top of \Cref{fig:background-circuit-example-controlled} is turned to $\tnort$ by extra axioms defined in the \qafny to Dafny compiler to rewrite type predicates.
 In \Cref{sec:newtype}, we implement a new type system that tracks both sessions and basis states, where the type rewrite can automatically happens without extra predicate axioms.

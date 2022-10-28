@@ -504,8 +504,8 @@ The other similar rules, such as state preparation rules, can be found in \Cref{
 
 \inferrule[SIF]{ R \\ FV(\emptyset,s)\subseteq \kappa'
           \\(\psi,\varphi[\kappa'\mapsto \ssum{j=0}{m}{z_j \beta_j\ket{c_{j}}}],s) 
-      \to (\psi',\varphi[\kappa'\mapsto \ssum{j=0}{m'}{z'_j \beta'_j\ket{c_{j}}}],s') } 
-{(\psi,\varphi[\kappa\uplus\kappa'\mapsto \scha{m}{z_j}{c_{j}}{\beta_j}+q(\kappa,\neg b)],\sifq{b}{s}) \to 
+      \longrightarrow (\psi',\varphi[\kappa'\mapsto \ssum{j=0}{m'}{z'_j \beta'_j\ket{c_{j}}}],s') } 
+{(\psi,\varphi[\kappa\uplus\kappa'\mapsto \scha{m}{z_j}{c_{j}}{\beta_j}+q(\kappa,\neg b)],\sifq{b}{s}) \longrightarrow 
           (\psi',\varphi[\kappa\uplus\kappa'\mapsto \scha{m'}{z'_j}{c_{j}}{\beta'_j}+q(\kappa,\neg b)],\sifq{b}{s'}) }
 
     \inferrule[PIF]{\Omega;\{\kappa' : \tcht\} \vdash Q' \\ \fivepule{\Omega}{\sigma[\kappa' \mapsto \tcht]}{\mmode}{P[\mathpzc{M}(b,\kappa')/ \kappa \uplus \kappa']}{s}{Q * Q'}}

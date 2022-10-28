@@ -5,19 +5,35 @@ We discuss the two compilation dimensions in QNP. First, the \qafny proof system
 \subsection{Translation from \qafny to Dafny}\label{sec:dafny-compilation}
 
 We compile the \qafny proof system to Dafny.
-The \qafny proof rules utilize extra type environment to track sessions as well as state representation forms.
-However, there are no Dafny support for automatic equational rewrites of state forms, neither does Dafny predicate variables permit structures as sessions
+The \qafny proof rules utilize extra type environment to track sessions as well as state representation form transformations.
+However, there are no Dafny support for automatic equational rewrites of state forms, neither does Dafny predicate variables permit session structures.
 All of these require additional constructs and annotations
  to be inserted to the compiled predicates and programs when translating \qafny to Dafny.
 This section shows how additional constructs and annotations are inserted, with no loss of expressiveness.
 Compilation is defined by extending \qafny's
 typing judgment thusly: $\Xi;\Omega;\sigma\vdash_g (P,Q,s) \triangleright (P',Q',s',\sigma')$.
-We now add the pre- and post-conditions $P$ and $Q$ for $s$, as well as the compilation result of the Dafny conditions $P'$ and $Q'$, and compiled program $s'$, such that if the proof $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$ is valid in \qafny, then $\{P'\} s' \{Q'\}$ is valid in Dafny. $\Xi$ is an additional map from sessions to predicate variables in Dafny, holding variables used in $P'$ and $Q'$ to represent sessions. We formalize rules for this judgment in Coq and prove the compilation correctness, i.e., every \qafny quantum program verification can be correctly expressed and proved in a separation logic framework. We also faithfully implement the compiler in Dafny and verify many quantum programs in \Cref{sec:arith-oqasm}.
+We now add the pre- and post-conditions $P$ and $Q$ for $s$, as well as the compilation result of the Dafny conditions $P'$ and $Q'$, and compiled program $s'$, such that if the proof $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$ is valid in \qafny, then $\{P'\} s' \{Q'\}$ is valid in Dafny. $\Xi$ is an additional map from sessions to Dafny predicate variables, holding variables used in $P'$ and $Q'$ to represent sessions. We formalize rules for this judgment in Coq and prove the compilation correctness, i.e., every \qafny quantum program verification can be correctly expressed and proved in a separation logic framework. We also faithfully implement the compiler in Dafny and verify many quantum programs in \Cref{sec:arith-oqasm}.
 Our compilation algorithm is evidence that the \qafny proof system is sound with respect to classical separation logic.
 
-\begin{figure}[t]
+Conceptually, the compilation procedure does three items. First, every time there is a change in sessions, such as qubit position permutation and split/join of sessions, we generate additional variables representing transformed sessions. Second, for a program $s$, if there is a change of state forms, we insert an additional construct to reflect the change so the Dafny proof system can capture the state form transformation. Third, we generate additional Dafny axioms and inference rules for quantum types and state transitions. Assume that $\Omega;\sigma\vdash_g s \triangleright \sigma'$, the compilation essentially is:
+
+{\small
+\begin{center}
+$\fivepule{\Omega}{\sigma}{g}{P}{s}{Q} 
+\;\;
+\tikz\draw[-Latex,line width=2pt,color=orange] (0,0) -- (1,0);
+\;\;
+\{A\wedge T\wedge \overline{P}\} s' \{A\wedge T'\wedge \overline{Q}\}$
+\end{center}
+}
+
+Here, $s'$ is the compiled Dafny program with additional constructs inserted; $\overline{P}$ and $\overline{Q}$ are the compiled conditions of $P$ and $Q$, respectively; $T$ and $T'$ are predicates representing session types in $\sigma$ and $\sigma'$, respectively; and $A$ is a set of axioms for capturing the type and state equations as well as semantic rewrite rules for \qafny operations as shown in \Cref{sec:semantics-proof}.
+
+\vspace*{-1em}
 {\footnotesize
-\[\hspace*{-1em}
+\begin{center}
+$\hspace*{-1.5em}
+\begin{array}{c}
 \begin{array}{lcl}
 \begin{array}{l}
 \Omega;\{x[0..n]:\thadt,y[0..1]:\tnort\}\vdash_g \\[0.1em]
@@ -45,10 +61,7 @@ T_2
 \texttt{ses}(u_3)=\texttt{ses}(u_1)\uplus \texttt{ses}(u_2) * u_3\mapsto\sch{2^n}{}{\tos{j}.\tos{j\,\slt\,5}} \}}
 \end{array}
 \end{array}
-\]
-}
-{\footnotesize
-$
+\\
 \begin{array}{l}
 \Omega=\{x:\qmode{n},y:\qmode{1}\}
 \qquad
@@ -64,31 +77,17 @@ T_2=
 \wedge \texttt{ses}(u_3)=\kappa
 \wedge \texttt{type}(u_1)=\texttt{type}(u_2)= \texttt{type}(u_3)=\tcht
 \end{array}
+\end{array}
 $
-}
-  \caption{\qafny to Dafny Compilation Example}
-  \label{fig:exp-compileex}
-\end{figure}
-
-Conceptually, the compilation procedure does three items. First, every time there is a change in a session, such as qubit position permutation and split/join of sessions, we generate additional variables representing transformed sessions. Second, for a program $s$, if there is a change of state forms, we insert an additional construct to reflect the change so that the Dafny proof system can capture the state form transformation. Third, we generate additional Dafny axioms and inference rules for types and state transitions. Assume that $\Omega;\sigma\vdash_g s \triangleright \sigma'$, the compilation essentially is:
-
-{\small
-\begin{center}
-$\fivepule{\Omega}{\sigma}{g}{P}{s}{Q} 
-\;\;
-\tikz\draw[-Latex,line width=2pt,color=orange] (0,0) -- (1,0);
-\;\;
-\{A\wedge T\wedge \overline{P}\} s' \{A\wedge T'\wedge \overline{Q}\}$
 \end{center}
 }
 
-Here, $s'$ is the compiled Dafny program with additional constructs inserted; $\overline{P}$ and $\overline{Q}$ are the compiled conditions of $P$ and $Q$, respectively; $T$ and $T'$ are predicates representing session types in $\sigma$ and $\sigma'$, respectively; and $A$ is a set of axioms for capturing the type and state equations as well as semantic rewrite rules for \qafny operation as shown in \Cref{sec:semantics-proof}.
-As a highlight of the compilation, we first see how to compile a simple proof of a statement $\ssassign{\{x[0..n],y[0..1]\}}{}{x\,\slt\,5@y[0]}$ that computes the Boolean comparison of $x\,\slt\,5$ and stores the value to $y[0]$ in \Cref{fig:exp-compileex}.
+As a highlight of the compilation, we first see how to compile a simple proof of a statement $\ssassign{\{x[0..n],y[0..1]\}}{}{x\,\slt\,5@y[0]}$ that computes the Boolean comparison of $x\,\slt\,5$ and stores the value to $y[0]$ above.
 %\footnote{The Boolean equation has the same implementation as a \qafny Boolean guard as they are all compiled to \oqasm circuits.},
-The result of the application is an entanglement state having $2^n$ basis states, where for any basis state, the $y[0]$ bit position stores the the result of computing $x<5$.
+The result of the application is an entanglement state having $2^n$ basis states. For every basis state, the $y[0]$ bit position stores the the result of computing $x<5$.
 Since variable $x$ initially is of type $\thadt$, we turn its type to $\tcht$ by a $\texttt{lift}$ statement, and the use a $\texttt{join}$ statement to join the $\tcht$ type ($x$) and $\tnort$ type ($y$) states.
-Notice that we use variables $u_1$, $u_2$ and $u_3$ to refer to the sessions $x[0..n]$, $y[0..1]$, and $\{x[0..n],y[0..1]\}$, respectively, and connect variables with sessions by using the $\texttt{ses}$ function that takes a variable and outputs its pointed-to session. In the \qafny compiler, we use $\Xi$ to track such information. In \Cref{fig:exp-compileex}, we need to generate a new variable $u_3$ to represent the join session $\{x[0..n],y[0..1]\}$ after the $\texttt{join}$ statement. 
-In addition, the compiled result has no type environment, therefore, we use the $\texttt{type}$ function to track the session types.
+Notice that we use variables $u_1$, $u_2$ and $u_3$ to refer to the sessions $x[0..n]$, $y[0..1]$, and $\{x[0..n],y[0..1]\}$, respectively, and connect variables with sessions by using the $\texttt{ses}$ function that takes a variable and outputs its pointed-to session. In the \qafny compiler, we use $\Xi$ to track such information. Here, we need to generate a new variable $u_3$ in $\Xi$ to represent the join session $\{x[0..n],y[0..1]\}$ after the $\texttt{join}$ statement. 
+In addition, the compiled result has no type environment, therefore, we use $\texttt{type}$ functions as predicates to track the session types.
 
 In compiling quantum conditionals, not only we need to do the above type conversion, will we also explicitly insert frozen ($\mathpzc{M}$) and unfrozen ($\mathpzc{U}$) functions; e.g., in computing the conditional $\sifq{x[0]}{y[0]}$ with $x[0]$ and $y[0]$ being types of $\thadt$ and $\tnort$, respectively, $\texttt{lift}$ and $\texttt{join}$ functions are added first, then we also add the $\mathpzc{M}$ and $\mathpzc{U}$ before and after the conditional as:
 
@@ -99,7 +98,7 @@ ${\sseq{\texttt{lift}(x[0..1)}{\sseq{\texttt{join}(x[0..1],y[0..1])}{\sseq{\sseq
 }
 
 %The frozen ($\mathpzc{M}$) and unfrozen ($\mathpzc{U}$) functions freeze the qubits in the Boolean predicate, e.g. $x[0]$, in the conditional body and assemble the conditional result back to the unfrozen state after the conditional computation.
-We implemented the compiler in Dafny and formalize it with the correctness theorem proof in Coq. The target Dafny formalism is separation logic \cite{separationlogic}, where we implemented the proof rules in Coq 
+We implemented the compiler in Dafny and formalize it with the correctness theorem proof in Coq. The target Dafny formalism is separation logic \cite{separationlogic}, and we implemented its proof rules in Coq 
 with additional axioms for the \qafny program semantics in \Cref{sec:semantics-proof}.
 
 \begin{theorem}[\qafny to Dafny compilation correctness]\label{thm:proof-compile-dafny}\rm 
@@ -139,19 +138,10 @@ concrete index chosen from 0 to $n$.
 $\Omega$ is populated through the \qafny type checking in \Cref{fig:exp-sessiontype},
 while $\gamma$ and $n$ are populated when hitting a qubit allocation instruction ($\texttt{init}$) as shown in \Cref{sec:typesystemappx}.
 
-\begin{figure}[t]
+\begin{figure}[h]
 {\Small
 
   \begin{mathpar}
-
-    \inferrule{x\not\in \dom{\Omega} \\\\ \Omega[x\mapsto \cmode];\gamma;n\vdash s[m/x] \to\textcolor{blue}{\epsilon}}
-           {\Omega;\gamma;n\vdash \sexp{x}{m}{s} \to \textcolor{blue}{\epsilon}}
-
-    \inferrule{x\not\in \dom{\Omega} \\\\ \Omega[x\mapsto \mmode];\gamma;n\vdash s[(r,n)/x] \to\textcolor{blue}{\epsilon}}
-           {\Omega;\gamma;n\vdash \sexp{x}{(r,n)}{s} \to \textcolor{blue}{\epsilon}}
-
-    \inferrule{\Omega;\gamma;n\vdash \mu \to \textcolor{blue}{\epsilon} }
-         {\Omega;\gamma;n\vdash \ssassign{\kappa}{}{\mu} \to \textcolor{blue}{\epsilon}}
  
     \inferrule{\Omega;\gamma;n\vdash b@x[i] \to \textcolor{blue}{\epsilon}\\
                 \Omega;\gamma;n\vdash s \to \textcolor{blue}{\epsilon'}}
@@ -162,15 +152,13 @@ while $\gamma$ and $n$ are populated when hitting a qubit allocation instruction
   
   \end{mathpar}
 }
+\vspace*{-1em}
 \caption{Select \qafny to \sqir translation rules (\sqir circuits are marked blue)}
 \label{fig:compile-vqir}
 \end{figure}
 
-\Cref{fig:compile-vqir} depicts a selection of translation rules.\footnote{Translation in fact threads through the typing judgment, but we elide that for simplicity.}
-The first two rules in the first line show how a $\texttt{let}$-binding is handled for a $\cmode$ and $\mmode$ kind variable.
-Similar to the type system, we assume that \texttt{let}-binding introduces new variables probably with proper variable renaming.
-The last rule in the first line describes an oracle application compilation, which is handled by the \oqasm compiler \cite{oracleoopsla}. The \qafny type system ensures that the qubits mentioned in $\mu$ are the same as qubits in session $\kappa$, so that the translation does not rely on $\kappa$ itself.
-The first rule in the second line describes the translation of a quantum conditional to a controlled operation in \sqir.
+\Cref{fig:compile-vqir} depicts two translation rules,\footnote{Translation in fact threads through the typing judgment, but we elide that for simplicity.} while the rest is in \Cref{appx:vqir-compilation}.
+The first rule describes the translation of a quantum conditional to a controlled operation in \sqir.
 %In the conditional translation, the rule assumes that $\instr$'s translation does not affect the $\gamma$ position map.
 %This requirement is assured for well-typed programs per rule \rulelab{TIF} in \Cref{fig:exp-well-typed}.
 Here, we first translate the Boolean guard $b@x[i]$ \footnote{Here, $b$ is $a < a$, $a=a$, or $\texttt{true}$ referring to the Boolean equation parts of $a < a @ x[i]$, $a=a @ x[i] $, or $x[i]$. }, and sequentially we translate the conditional body as an \sqir expression controlled on the $x[i]$ position. \texttt{ctrl} generates the controlled version of an arbitrary \sqir program using standard decompositions \cite[Chapter 4.3]{mike-and-ike}.

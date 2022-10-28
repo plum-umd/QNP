@@ -2010,3 +2010,37 @@ The second step applies rule \textsc{PIF} to substitute session $\{x[0..\snext{j
 \end{figure}
 
 
+\subsection{Translation from \qafny to \sqir Full Rules}\label{appx:vqir-compilation}
+
+\Cref{appxfig:compile-vqir} depicts compilation rules.
+The first two rules in the first line show how a $\texttt{let}$-binding is handled for a $\cmode$ and $\mmode$ kind variable.
+Similar to the type system, we assume that \texttt{let}-binding introduces new variables probably with proper variable renaming.
+The last rule in the first line describes an oracle application compilation, which is handled by the \oqasm compiler \cite{oracleoopsla}. The \qafny type system ensures that the qubits mentioned in $\mu$ are the same as qubits in session $\kappa$, so that the translation does not rely on $\kappa$ itself.
+\begin{figure}[t]
+{\Small
+
+  \begin{mathpar}
+
+    \inferrule{x\not\in \dom{\Omega} \\\\ \Omega[x\mapsto \cmode];\gamma;n\vdash s[m/x] \to\textcolor{blue}{\epsilon}}
+           {\Omega;\gamma;n\vdash \sexp{x}{m}{s} \to \textcolor{blue}{\epsilon}}
+
+    \inferrule{x\not\in \dom{\Omega} \\\\ \Omega[x\mapsto \mmode];\gamma;n\vdash s[(r,n)/x] \to\textcolor{blue}{\epsilon}}
+           {\Omega;\gamma;n\vdash \sexp{x}{(r,n)}{s} \to \textcolor{blue}{\epsilon}}
+
+    \inferrule{\Omega;\gamma;n\vdash \mu \to \textcolor{blue}{\epsilon} }
+         {\Omega;\gamma;n\vdash \ssassign{\kappa}{}{\mu} \to \textcolor{blue}{\epsilon}}
+ 
+    \inferrule{\Omega;\gamma;n\vdash b@x[i] \to \textcolor{blue}{\epsilon}\\
+                \Omega;\gamma;n\vdash s \to \textcolor{blue}{\epsilon'}}
+        {\Omega;\gamma;n\vdash \sifq{b@x[i]}{s} \to \textcolor{blue}{\sseq{\epsilon}{\texttt{ctrl}(\gamma(x[i]),\epsilon')}}}    
+
+    \inferrule{\forall t\in[i,j).\,\Omega;\gamma;n\vdash \sifq{b[t/x]}{s[t/x]} \to \textcolor{blue}{\epsilon_{t}}}
+        {\Omega;\gamma;n\vdash \sqwhile{x}{i}{j}{b}{s} \to \textcolor{blue}{\epsilon_{i}\,;...;\,\epsilon_{j\,\sminus\,1}}}  
+  
+  \end{mathpar}
+}
+\caption{Select \qafny to \sqir translation rules (\sqir circuits are marked blue)}
+\label{appxfig:compile-vqir}
+\end{figure}
+
+
