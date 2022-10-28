@@ -19,7 +19,10 @@ Local Open Scope nat_scope.
 
 Check exp.
 
-Definition in_ses (a: (var* nat*nat)) (b: (var*nat*nat)) :=
+Inductive bound := BVar (v:var) (n:nat) | BNum (n:nat).
+
+
+Definition in_ses (a: (var* bound*bound)) (b: (var*bound*bound)) :=
    match b with (x,lb,rb) =>
           (fst (fst a) =? x) && (lb <=? (snd (fst a))) && ((snd a) <=? rb) 
    end.
