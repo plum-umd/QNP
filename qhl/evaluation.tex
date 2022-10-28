@@ -35,18 +35,20 @@ In terms of human effort, other than Shor's algorithm, which was done before the
 As a comparison, the complete Shor's algorithm correctness proof \cite{shorsprove} was finished by four researchers that spent two years. Even the oracle in the Shor's algorithm, the modulo multiplication circuit, was verified by three researchers that spent four months. We believe that QNP relieves programmers' pain in reasoning about quantum programs.
 Below, we show two examples of helping programmings to understand and integrate quantum algorithms by QNP.
 
-\begin{figure}[t]
+
+\begin{figure}[!hbt]
 {\centering
 {
-\begin{tabular}{c c}
-  \small
+\begin{tabular}[b]{c c}
+
+  \raisebox{3\height}{\small
   \Qcircuit @C=0.5em @R=0.5em {
     \lstick{\ket{0}} & \gate{H} & \qw & \ctrl{1} & \qw & \qw  & \\
     \lstick{\ket{0}} & \qw & \qw & \multigate{3}{\texttt{GHZ}} & \qw &\qw &  \\
     & \vdots &   &  &  & & \\
     & \vdots &  & \dots & & &  \\
     \lstick{\ket{0}} & \qw & \qw & \ghost{\texttt{GHZ}} &\qw &\qw &
-    }
+    }}
 
 &
 {
