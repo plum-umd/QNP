@@ -1,7 +1,7 @@
 \section{Related Work}
 \label{sec:related}
 
-\myparagraph{Quantum Proof Systems and Verification Frameworks}
+\noindent\textbf{\textit{Quantum Proof Systems and Verification Frameworks.}}
 Previous quantum proof systems, including quantum Hoare Logics \cite{qhoare,qhoreusage,10.1145/3456877,10.1007/s00165-018-0465-3},
 quantum separation logics \cite{qseplocal,qsepa}, quantum relational logics \cite{relationlogic,10.1145/3290346}, and probabilistic Hoare logic for quantum programs \cite{10.1007/978-3-642-10622-4_7}, enlightened the development of QNP. The problems of these works are three: 1) their conditionals are solely classical, while QNP has quantum conditionals; 2) most of them are theoretical works or implemented as tactics in an interactive theorem provers, so that it is unclear if they can be implemented in a classical computer and utilize classical SMT solvers for proof automation for verifying comprehensive quantum programs; and 3) they did not compile quantum programs to circuits. 
 Quantum separation logic \cite{qseplocal} discusses a frame rule that indicates a $\thadt$ type quantum state can be split into two parts, which is similar to our $\thadt$ type state split equations but different from the frame rule in QNP that is based directly on classical separation logic frame rule and utilizing the \qafny type system to ensure the separation. 
@@ -9,7 +9,7 @@ Quantum separation logic \cite{qseplocal} discusses a frame rule that indicates 
 There are works on formally verifying quantum programs includes Qwire~\cite{RandThesis}, SQIR~\cite{PQPC}, and QBricks~\cite{qbricks}. These tools have been used to verify a range of quantum algorithms, from Grover's search to quantum phase estimation.
 The former two tools provided libraries in a proof assistant to help verify quantum programs and they have circuit compilation models, while the latter one built a proof system on top of a proof assistant to achieve some proof automation without providing a circuit compilation model. The comparison between QBricks and QNP is given in \Cref{sec:arith-oqasm}.
 
-\myparagraph{Classical Proof Systems}
+\noindent\textbf{\textit{Classical Proof Systems.}}
 The \qafny proof system is enlightened by the classical seapration logic \cite{separationlogic}, and many others \cite{10.1145/3453483.3454087,arxiv.1609.00919,10.1007/978-3-319-89960-2_13,10.1007/978-3-319-89960-2_2,nat-proof-fun}. Especially, the \qafny proof system is compiled to Dafny \cite{10.1007/978-3-642-17511-4_20}, a mechanized separation logic system. The methodology of QNP is enlightened by the natural proof methodology \cite{nat-proof-fun,nat-proof-frame,10.1145/2103621.2103673}, which is discussed in \Cref{sec:background}.
 
 

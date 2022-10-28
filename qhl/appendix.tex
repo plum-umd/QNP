@@ -790,7 +790,7 @@ one can use $\zeta[i]$ to access the $i$-th basis state in the above summation, 
 In the Q-Dafny implementation section, we show how we can represent $\theta_k$ for effective automatic theorem proving.
 
 The QWhile type system has the type judgment: $\Omega,\itau\vdash_g s : \zeta\triangleright \tau$, where $g$ is the context mode, mode environment $\Omega$ maps variables to modes or sessions ($q$ in \Cref{fig:vqimp}), type environment $\itau$ maps a session to its type, $s$ is the statement being typed, $\zeta$ is the session of $s$, and $\tau$ is $\zeta$'s type. 
-The QWhile type system in \Cref{fig:exp-sessiontype} has several tasks. First, it enforces context mode restrictions.
+The QWhile type system in \Cref{fig:exp-sessiontypea} has several tasks. First, it enforces context mode restrictions.
 Context mode $g$ is either \cmode or \qmode.
 $Q$ represents the current expression lives inside a quantum conditional or loop, while \cmode refers to other cases.
 In a $Q$ context, one cannot perform $M$-mode operations, i.e., no measurement is allowed.
@@ -800,7 +800,7 @@ i.e., qubits used in a Boolean guard cannot appear in its conditional/loop body.
 
 Second, the type system enforces mode checking for variables and expressions in \Cref{fig:exp-well-typed}.
 In QWhile, \cmode-mode variables are evaluated to values during type checking.
-In a \texttt{let} statement (\Cref{fig:exp-sessiontype}),
+In a \texttt{let} statement (\Cref{fig:exp-sessiontypea}),
 \cmode-mode expression is evaluated to a value $n$, and the variable $x$ is replaced by $n$ in $s$.
 The expression mode checking (\Cref{fig:exp-well-typed}) has the judgment: $\Omega \vdash (a\mid b) : q$. It takes a mode environment $\Omega$, and an expression ($a$, $b$), and judges if the expression has the mode $g$ if it contains only classical values, or a quantum session $\zeta$ if it contains some quantum values. 
 All the supposedly \cmode-mode locations in an expression are assumed
@@ -1102,7 +1102,7 @@ FV(b@x[j])\cap FV(s) =\emptyset \\\\
   \caption{\qafny type system. $\llbracket \mu \rrbracket c$ is the \oqasm semantics of interpreting reversible expression $\mu$ in \Cref{fig:deno-sem}. Boolean expression $b$ can be $a_1=a_2$, $a_1 < a_2$ or \texttt{true}. $b[\tos{n}/\lambda]$ means that we treat $b$ as a \oqasm $\mu$ expression, replace qubits in array $\lambda$ with bits in bitstring $\tos{n}$, and evaluate it to a Boolean value.
 $\sigma(y)=\{\lambda\mapsto \tau\}$ produces the map entry $\lambda\mapsto \tau$ and the range $y[0..\slen{y}]$ is in $\lambda$.
 $\sigma(\lambda)=\tau$ is an abbreviation of $\sigma(\lambda)=\{\lambda\mapsto \tau\}$. $FV(-)$ produces a session by union all qubits appearing in $-$.}
-  \label{fig:exp-sessiontype}
+  \label{fig:exp-sessiontypea}
 \end{figure}
 
 In \qafny, typing is with respect to a \emph{kind environment} $\Omega$ and a \emph{finite type environment} $\sigma$,
@@ -1113,13 +1113,13 @@ the sessions representing $s$ is exactly the domain of $\sigma'$ as $\dom{\sigma
 and $s$ transforms types for the sessions in $\sigma$ to types in $\sigma'$.
 $\Omega$ describes the kinds for all program variables.
 $\Omega$ is populated through \texttt{let} expressions that introduce variables,
-and the \qafny type system enforces variable scope; such enforcement is neglected in \Cref{fig:exp-sessiontype} for simplicity.
+and the \qafny type system enforces variable scope; such enforcement is neglected in \Cref{fig:exp-sessiontypea} for simplicity.
 We also assume that variables introduced in \texttt{let} expressions are all distinct through proper alpha conversions.
 $\sigma$ and $\sigma'$ describe types for sessions referring to possibly entangled quantum clusters pointed to by quantum variables in $s$. 
 $\sigma$ and $\sigma'$ are both finite and the domain of them contain sessions that do not overlap with each other; $\dom{\sigma}$ is large enough to describe all sessions pointed to by quantum variables in $s$,
 while $\dom{\sigma'}$ should be the exact sessions containing quantum variables in $s$.
 We have partial order relations defined for type environments in \Cref{fig:env-equiv}, which will be explained shortly.
-Selected type rules are given in \Cref{fig:exp-sessiontype}; 
+Selected type rules are given in \Cref{fig:exp-sessiontypea}; 
 the rules not mentioned are similar and listed in \Cref{sec:qafny-app}.
 
 The type system enforces five invariants.  First, well-formed and context restrictions for quantum programs.
@@ -1331,7 +1331,7 @@ $\psem_a$ are the semantics for \itext{Lshift},
 \subsection{Logic Proof System}\label{sec:logical}
 
 
-The reason of having the session type system in \Cref{fig:exp-sessiontype}
+The reason of having the session type system in \Cref{fig:exp-sessiontypea}
 is to enable the proof system given in \Cref{fig:exp-proofsystem}.
 Every proof rule is a structure as $\Omega\vdash_g \fivepule{T}{P}{s}{T'}{Q}$,
 where $g$ and $\Omega$ are the type entities mentioned in \Cref{sec:typesystem}.

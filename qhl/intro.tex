@@ -20,12 +20,14 @@ Not to mention that many of these frameworks have no quantum circuit compilation
 i.e., verified programs require additional efforts to convert to circuits in other platforms. 
 On the other hand, automated verification is an active research fields in classical computation with many frameworks being proposed \cite{HoareLogic,separationlogic,nat-proof-fun,nat-proof,nat-proof-frame,10.1145/3453483.3454087,arxiv.1609.00919,martioliet00rewriting,rosu-stefanescu-2011-nier-icse,rosu-stefanescu-ciobaca-moore-2013-lics,10.1007/978-3-642-17511-4_20,10.1007/978-3-642-03359-9_2}, all of which showed strong results in relieving programmers' pain in verifying classical programs. Is there a way to utilize classical automated verification frameworks in verifying quantum programs?
 
-
-\begin{figure}[t]
-  \includegraphics[width=.8\textwidth]{qnp.pdf}
+\vspace*{-0.5em}
+\begin{figure}[h]
+  \includegraphics[width=.75\textwidth]{qnp.pdf}
+\vspace*{-0.5em}
   \caption{QNP Development Stages and the Key Aspects}
 \label{fig:arch}
 \end{figure}
+\vspace*{-0.5em}
 
 In this paper, we propose \emph{Quantum Natural Proof} (QNP), a framework that help programmers write and verify quantum programs based on the marriage of quantum program semantics and classical automated verification infrastructure. It has several elements, as shown in \Cref{fig:arch}:
 1) Using QNP, an quantum program can be specified in a simple, high-level programming
@@ -56,11 +58,38 @@ QNP is designed to reflect the analogy and has two levels of advantages: the pro
 %In \qafny, we think about program operations as their functionality such as preparing superposition states, applying aggregate oracle operations, quantum conditionals, etc. For example, \Cref{fig:intros-example} is implemented as a state preparation operation, that is compiled to $n$ Hadamard gates, followed by an oracle function $f$. The GHZ \cite{Greenberger1989} implemention in \Cref{fig:background-circuit-example-proof} is a single gate state preparation followed by a for-loop to entangle a list of qubits. 
 % by using Hadamard ($\texttt{H}$) and quantum Fourier transform ($\texttt{QFT}$) operations. \Cref{fig:background-circuit-example-proof} Line 2 applies a $\texttt{H}$ operation on $x[0]$, the $0$-th position of the array $x$, but the application can also be applied on the whole array, to prepare superposition of $n$-qubits, as in \Cref{fig:shorqafny}. After the \texttt{H} operator, in the standard implementation of the Greenberger-Horne-Zeilinger (GHZ) circuit \cite{Greenberger1989}, they applies $n-1$ \emph{controlled-not} (\coqe{CNOT}) gates. as shown in \Cref{fig:background-circuit-examplea}. However, in \qafny, we think of \coqe{CNOT} gate's behavior as an application of $n-1$ for-loop steps of quantum conditionals in \Cref{fig:background-circuit-example-proof} line 4-6. In the $j$-th step, the array $x[0..n]$, 
 
+The second level is the proof system. While most quantum proof systems, such as QHL \cite{qhoreusage}, QBricks \cite{qbricks},  QSL/BI \cite{qsepa}, and QSL \cite{quantumseparation}, built proof systems based on quantum computation theories, QNP tries to connect the \qafny proof system to traditional separation logic; thus, we can then utilize a classical automated proof engine, like Dafny, to automatically verify quantum programs, as our \qafny to Dafny compiler in \Cref{sec:dafny-compilation}.
+The proof system compilation is based on viewing \qafny quantum operations as classical array aggregate operations, i.e., the operations presented in \Cref{fig:intros-example} can be easily verified by Danfy's array operation libraries regardless the exponential state size.
+%Indeed, quantum gate applications are linear in the sense that the whole state effect can be viewed as a synthesized effect of applications on individual basis states. For example, applying a $\texttt{X}$ gate on the first qubit in a Bell pair $\frac{1}{\sqrt{2}}(\ket{00} + \ket{11})$ is equal to $\frac{1}{\sqrt{2}}(\texttt{X}\ket{00} + \texttt{X}\ket{11})$, the sum of applying the gate on the second elment of the individual basis states.
+However, quantum algorithms have more complicated structures than the one in \Cref{fig:intros-example}.
+Let's analyze the GHZ example in \Cref{fig:background-circuit-example-proof}. Before entering the for-loop (line 4-6), the whole quantum array is split into conceptually two parts, analogized in \Cref{fig:background-circuit-analogy}. In each step, we cut one qubit from the blue part and insert it into the white place in the red part.
+During this process, the red array structure might vary depending on the inserted qubit state type.
+Finally, a quantum conditional is applied on the red array.
+This scenario is a standard protocol for many quantum algorithms, such as GHZ \cite{Greenberger1989} and Shor's algorithms. 
+To capture this scenario, we design a type system to track the qubit array bounds and qubit state types and integrate the proof system with the type system. 
+Apparently, tracking bounds in quantum arrays is not as easy as tracking classical array bounds, because qubits from different arrays can be entangled together, i.e., their states are not separable. In QNP, we invented the concept \emph{sessions}, representing groups of qubit array pieces that are possibly entangled with each other. Tracking quantum array bounds is to track the session scopes in our type system that ensures that applications on a session do not interfere with others. 
+We identify several QNP achieves as follows, which are partly indicated in \Cref{fig:arch}.
 
+\begin{itemize}
+
+\item We define the \qafny semantics as a small-step semantics, and the \qafny proof system based on viewing quantum operations as array aggregate operations. Especially, we define a quantifier free proof rule for quantum conditionals and for-loops whose Boolean guards involve quantum variables. To the best of our knowledge, this is the first inference rule definition for quantum conditionals and for-loops. 
+
+\item We proved in Coq the \qafny type system soundness as well as the proof system soundness and completeness with respect to the \qafny semantics on type-correct programs.
+
+\item We proved in Coq the \qafny to separation logic proof system compilation correctness, as a verification for the \qafny to Dafny compiler. To the best of our knowledge, this is the first work that connects a quantum proof system and classical separation logic proof system.
+
+\item We implemented the \qafny proof system on Dafny, a proof framework based on separation logic, and verified many quantum algorithms (\Cref{fig:circ-evaluation}) with automation. For example, users do not need to specify any teal parts in \Cref{fig:background-circuit-example-proof} and \Cref{fig:shorqafny}, as they are inferred by the \qafny proof system. \Cref{sec:arith-oqasm} shows that program specifications in QNP can be a lot shorter than other quantum proof systems and QNP saves human efforts in verifying quantum programs.
+
+\item We also show in \Cref{sec:arith-oqasm} two case studies that QNP can help programmers to construct verification for new quantum algorithms based on the reuse of existing quantum algorithm proofs. Programmers can also learn about the intuitive behaviors of quantum programs that are previously described as physical procedures. 
+
+\item The circuit compilation from \qafny to OQASM is verified in Coq, while the one from \qafny to SQIR is tested by extracting a \qafny interpreter to Ocaml, and we test program behaviors in the interpreter against the extracted OpenQASM code from SQIR.
+\end{itemize}
 
 \begin{figure}[t]
   \centering
     \captionsetup[subfigure]{justification=centering}
+{
+\begin{tabular}{l}
 \begin{minipage}[t]{.5\textwidth}
 \subcaption{State Preparation Circuit}
 {\quad
@@ -83,7 +112,7 @@ QNP is designed to reflect the analogy and has two levels of advantages: the pro
 }
 \label{fig:intro-example-analog}
 \end{minipage}
-
+\\[-1em]
 \begin{tabular}{c c}
 \begin{tabular}{l}
 \begin{minipage}[t]{.38\textwidth}
@@ -174,38 +203,12 @@ QNP is designed to reflect the analogy and has two levels of advantages: the pro
 \end{minipage}
 \end{tabular}
 \end{tabular}
+\end{tabular}
+}
+\vspace*{-1em}
 \caption{Motivating Examples. $\snext{j}=j\,\splus\,1$. Assume that we have $\kappa\mapsto \schii{2}{}{\overline{i}}$, then $\slen{\kappa}$ is the length of $\kappa$, and $\ket{\overline{i}}$ refers to $m$ number of $i\in[0,1]$ bits, where $m=\slen{\kappa}$. $*$ is the separation conjunction in separation logic. In (d), black parts are \qafny programs, while purple and teal parts are state predicates. }
 \label{fig:background-circuit-example}
 \end{figure}
-
-The second level is the proof system. While most quantum proof systems, such as QHL \cite{qhoreusage}, QBricks \cite{qbricks},  QSL/BI \cite{qsepa}, and QSL \cite{quantumseparation}, built proof systems based on quantum computation theories, QNP tries to connect the \qafny proof system to traditional separation logic; thus, we can then utilize a classical automated proof engine, like Dafny, to automatically verify quantum programs, as our \qafny to Dafny compiler in \Cref{sec:dafny-compilation}.
-The proof system compilation is based on viewing \qafny quantum operations as classical array aggregate operations, i.e., the operations presented in \Cref{fig:intros-example} can be easily verified by Danfy's array operation libraries regardless the exponential state size.
-%Indeed, quantum gate applications are linear in the sense that the whole state effect can be viewed as a synthesized effect of applications on individual basis states. For example, applying a $\texttt{X}$ gate on the first qubit in a Bell pair $\frac{1}{\sqrt{2}}(\ket{00} + \ket{11})$ is equal to $\frac{1}{\sqrt{2}}(\texttt{X}\ket{00} + \texttt{X}\ket{11})$, the sum of applying the gate on the second elment of the individual basis states.
-However, quantum algorithms have more complicated structures than the one in \Cref{fig:intros-example}.
-Let's analyze the GHZ example in \Cref{fig:background-circuit-example-proof}. Before entering the for-loop (line 4-6), the whole quantum array is split into conceptually two parts, analogized in \Cref{fig:background-circuit-analogy}. In each step, we cut one qubit from the blue part and insert it into the white place in the red part.
-During this process, the red array structure might vary depending on the inserted qubit state type.
-Finally, a quantum conditional is applied on the red array.
-This scenario is a standard protocol for many quantum algorithms, such as GHZ \cite{Greenberger1989} and Shor's algorithms. 
-To capture this scenario, we design a type system to track the qubit array bounds and qubit state types and integrate the proof system with the type system. 
-Apparently, tracking bounds in quantum arrays is not as easy as tracking classical array bounds, because qubits from different arrays can be entangled together, i.e., their states are not separable. In QNP, we invented the concept \emph{sessions}, representing groups of qubit array pieces that are possibly entangled with each other. Tracking quantum array bounds is to track the session scopes in our type system that ensures that applications on a session do not interfere with others. 
-
-We identify several QNP achieves as follows, which are partly indicated in \Cref{fig:arch}.
-
-\begin{itemize}
-
-\item We define the \qafny semantics as a small-step semantics, and the \qafny proof system based on viewing quantum operations as array aggregate operations. Especially, we define a quantifier free proof rule for quantum conditionals and for-loops whose Boolean guards involve quantum variables. To the best of our knowledge, this is the first inference rule definition for quantum conditionals and for-loops. 
-
-\item We proved in Coq the \qafny type system soundness as well as the proof system soundness and completeness with respect to the \qafny semantics on type-correct programs.
-
-\item We proved in Coq the \qafny to separation logic proof system compilation correctness, as a verification for the \qafny to Dafny compiler. To the best of our knowledge, this is the first work that connects a quantum proof system and classical separation logic proof system.
-
-\item We implemented the \qafny proof system on Dafny, a proof framework based on separation logic, and verified many quantum algorithms (\Cref{fig:circ-evaluation}) with automation. For example, users do not need to specify any teal parts in \Cref{fig:background-circuit-example-proof} and \Cref{fig:shorqafny}, as they are inferred by the \qafny proof system. \Cref{sec:arith-oqasm} shows that program specifications in QNP can be a lot shorter than other quantum proof systems and QNP saves human efforts in verifying quantum programs.
-
-\item We also show in \Cref{sec:arith-oqasm} two case studies that QNP can help programmers to construct verification for new quantum algorithms based on the reuse of existing quantum algorithm proofs. Programmers can also learn about the intuitive behaviors of quantum programs that are previously described as physical procedures. 
-
-\item The circuit compilation from \qafny to OQASM is verified in Coq, while the one from \qafny to SQIR is tested by extracting a \qafny interpreter to Ocaml, and we test program behaviors in the interpreter against the extracted OpenQASM code from SQIR.
-
-\end{itemize}
 
 
 
