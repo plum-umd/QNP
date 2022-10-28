@@ -27,7 +27,7 @@ $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}
 \end{center}
 }
 
-Here, $s'$ is the compiled Dafny program with additional constructs inserted; $\overline{P}$ and $\overline{Q}$ are the compiled conditions of $P$ and $Q$, respectively; $T$ and $T'$ are predicates representing session types in $\sigma$ and $\sigma'$, respectively; and $A$ is a set of axioms for capturing the type and state equations as well as semantic rewrite rules for \qafny operations as shown in \Cref{sec:semantics-proof}.
+Here, $s'$ is the compiled Dafny program with additional constructs inserted; $\overline{P}$ and $\overline{Q}$ are the compiled conditions of $P$ and $Q$, respectively; $T$ and $T'$ are predicates representing session types in $\sigma$ and $\sigma'$, respectively; and $A$ is a set of axioms for capturing the type and state equations as well as the array aggregate operations that support the \qafny operation semantic rewrites rules, as those shown in \Cref{sec:semantics-proof}.
 
 \vspace*{-1em}
 {\footnotesize
@@ -99,7 +99,7 @@ ${\sseq{\texttt{lift}(x[0..1)}{\sseq{\texttt{join}(x[0..1],y[0..1])}{\sseq{\sseq
 
 %The frozen ($\mathpzc{M}$) and unfrozen ($\mathpzc{U}$) functions freeze the qubits in the Boolean predicate, e.g. $x[0]$, in the conditional body and assemble the conditional result back to the unfrozen state after the conditional computation.
 We implemented the compiler in Dafny and formalize it with the correctness theorem proof in Coq. The target Dafny formalism is separation logic \cite{separationlogic}, and we implemented its proof rules in Coq 
-with additional axioms for the \qafny program semantics in \Cref{sec:semantics-proof}.
+with additional axioms for the array aggregate operations for capturing \qafny operation semantics in \Cref{sec:semantics-proof}.
 
 \begin{theorem}[\qafny to Dafny compilation correctness]\label{thm:proof-compile-dafny}\rm 
 If a proof $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$ is valid to derive in \qafny, and through the compilation process $\Xi;\Omega;\sigma\vdash_g (P,Q,s) \triangleright (P',Q',s',\sigma')$, the proof $\{P'\} \, s' \,\{Q'\}$ is valid in Dafny.
