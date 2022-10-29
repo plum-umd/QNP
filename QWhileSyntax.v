@@ -25,7 +25,9 @@ Local Open Scope nat_scope.
 (* Classical State including variable relations that may be quantum *)
 
 (* we want to include all the single qubit gates here in the U below. *)
-Inductive atype := CT : atype | MT :atype | QT (n:nat).
+Inductive atype := CT : atype | MT : atype.
+
+Inductive ktype := Mo (a:atype) | QT (n:nat).
 
 Definition aty_eq  (t1 t2:atype) : bool := 
    match t1 with CT => match t2 with CT  => true
@@ -33,9 +35,6 @@ Definition aty_eq  (t1 t2:atype) : bool :=
                         end
                | MT => match t2 with MT => true 
                            | _ => false
-                        end
-               | QT n => match t2 with QT m => (n =? m)
-                                     | _ => false
                         end
    end.
 
@@ -51,18 +50,16 @@ Notation "i '=a=' j" := (aty_eq i j) (at level 50).
 Lemma aty_eqb_eq : forall a b, a =a= b = true -> a = b.
 Proof.
  intros. unfold aty_eq in H.
- destruct a. destruct b. easy. easy. easy.
- destruct b. 1-3:easy.
- destruct b. 1-2: easy. apply Nat.eqb_eq in H. subst. easy.
+ destruct a. destruct b. easy. easy.
+ destruct b. 1-2:easy.
 Qed.
 
 Lemma aty_eqb_neq : forall a b, a =a= b = false -> a <> b.
 Proof.
  intros. unfold aty_eq in H.
  destruct a. destruct b. easy.
- easy. easy.
- destruct b. easy. easy. easy.
- destruct b. 1-2: easy. apply Nat.eqb_neq in H. intros R. inv R. easy.
+ easy.
+ destruct b. easy. easy.
 Qed.
 
 Lemma aty_eq_reflect : forall r1 r2, reflect (r1 = r2) (aty_eq r1 r2). 
@@ -79,14 +76,23 @@ Qed.
 
 Definition meet_atype (a1 a2: atype) := 
        match a1 with CT => a2
-                | MT => match a2 with QT n => QT n | _ => MT end
-                | QT n => match a2 with QT m => QT (n+m) | _ => QT n end
-        end.
+                | MT => MT end.
 
-Definition session := list (var * nat * nat).
+Definition meet_ktype (a1 a2: ktype) := 
+       match a1 with Mo t => a2
+                | QT n => match a2 with QT m => QT (n+m) | _ => QT n end end.
+
+Inductive bound := BVar (v:var) (n:nat) | BNum (n:nat).
+
+Definition simple_bound (b:bound) :=
+   match b with BNum n => True | BVar x n => False end.
+
+Definition range : Set := var * bound * bound.
+
+Definition session : Type := list range.
 
 Inductive aexp := BA (x:var) | Num (n:nat) | MNum (r:R) (n:nat)
-         | APlus (e1:aexp) (e2:aexp) | AMult (e1:aexp) (e2:aexp) | Select (s:session) (n:aexp).
+         | APlus (e1:aexp) (e2:aexp) | AMult (e1:aexp) (e2:aexp).
 
 Coercion BA : var >-> aexp.
 
@@ -104,7 +110,10 @@ Notation "e0 [ e1 ]" := (Index e0 e1) (at level 50) : pexp_scope.
 
 Inductive singleGate := H_gate | X_gate | RZ_gate (f:nat) (*representing 1/2^n of RZ rotation. *).
 
-Inductive bexp := | BEq (x:varia) (y:varia) (i:var) (a:aexp)
+Inductive cbexp := CEq (x:varia) (y:varia) | CLt (x:varia) (y:varia).
+
+Inductive bexp :=  CB (c:cbexp)
+                  | BEq (x:varia) (y:varia) (i:var) (a:aexp)
                     (* x = n @ z[i] --> conpare x and n --> put result in z[i] *)
                   | BLt (x:varia) (y:varia) (i:var) (a:aexp) 
                     (* x < n @ z[i] --> conpare x and n --> put result in z[i] *)
@@ -124,7 +133,7 @@ Inductive type_rotation := TV (b:aexp) | Infty.
 (* Ethan: I don't remember what is this tuple... *)
 
 
-Inductive maexp := AE (n:aexp) | Init (a:nat) | Meas (x:var).
+Inductive maexp := AE (n:aexp) | Meas (x:var).
 
 Coercion AE : aexp >-> maexp.
 
@@ -165,7 +174,6 @@ Inductive pexp := PSKIP
                        the second arguments a is the phase of the post-state of x,
                        the third is the state s = f(x) as |x> -> e^2pi i * a *|s>,
                        excluding ancilla qubits  *)
-            | Amplify (x:var) (n:aexp) 
                 (* reflection on x with the form aexp x=n. l is the session. (|n><n| - I) tensor x *)
             | Diffuse (x:varia) 
      (*reflection on x = a_1 ,... x = a_n in al with equal probablity hadamard walk. 

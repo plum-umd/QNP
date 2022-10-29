@@ -8,6 +8,7 @@ Require Import QPE.
 Require Import BasicUtility.
 Require Import Classical_Prop.
 Require Import MathSpec.
+Require Import QWhileSyntax.
 (**********************)
 (** Session Definitions **)
 (**********************)
@@ -19,14 +20,44 @@ Local Open Scope nat_scope.
 
 Check exp.
 
-Inductive bound := BVar (v:var) (n:nat) | BNum (n:nat).
+Inductive simple_ses : session -> Prop :=
+    simple_ses_empty : simple_ses nil
+  | simple_ses_many :  forall a x y l, simple_bound x -> simple_bound y -> simple_ses l -> simple_ses ((a,x,y)::l).
 
 
-Definition in_ses (a: (var* bound*bound)) (b: (var*bound*bound)) :=
-   match b with (x,lb,rb) =>
-          (fst (fst a) =? x) && (lb <=? (snd (fst a))) && ((snd a) <=? rb) 
-   end.
+Inductive ses_eq : session -> session -> Prop :=
+   ses_eq_empty : forall a, ses_eq a a
+ | ses_eq_range_empty : forall x n a b, ses_eq a b -> ses_eq ((x,n,n)::a) b
+ | ses_eq_split: forall x i n m a b, n <= i < m -> 
+        ses_eq ((x,BNum n,BNum i)::((x,BNum i,BNum m)::a)) b -> ses_eq ((x,BNum n,BNum m)::a) b
+ | ses_eq_merge: forall x i n m a b, n <= i < m -> ses_eq ((x,BNum n,BNum m)::a) b
+        -> ses_eq ((x,BNum n,BNum i)::((x,BNum i,BNum m)::a)) b.
 
+
+Inductive ses_sub : session -> session -> Prop :=
+   ses_sub_prop : forall a b b', ses_eq b (a++b') -> ses_sub a b.
+
+Definition in_range (r1 r2:range) :=
+  match r1 with (x,BNum a,BNum b) => 
+    match r2 with (y,BNum c, BNum d) => ((x = y) /\ (c <= a) /\ (b <= d))
+                  | _ => False
+    end
+              | _ => False
+  end.
+
+Inductive ses_dis_aux : range -> session -> Prop := 
+    ses_dis_aux_empty : forall r, ses_dis_aux r nil
+  | ses_dis_aux_many: forall r a l, ~ in_range r a -> ses_dis_aux r l -> ses_dis_aux r (a::l).
+
+
+Inductive ses_dis_aux2 : range -> session -> Prop := 
+    ses_dis_empty : forall r, ses_dis_aux2 r nil
+  | ses_dis_many: forall r a l, ses_dis_aux r (a::l) -> ses_dis_aux2 a l -> ses_dis_aux2 r (a::l).
+
+Definition ses_dis (s:session) :=
+   match s with [] => True | (a::l) => ses_dis_aux2 a l end.
+ 
+(*
 Inductive in_seses  : list (var*nat*nat) -> list (var*nat*nat) -> Prop :=
    in_ses_1 : forall a b l, in_ses a b = true -> in_seses (a::l) (b::l)
  | in_ses_2 : forall a b l, in_ses a b = true -> in_seses (l++([a])) (l++([b])).
@@ -37,7 +68,9 @@ Inductive in_session : list (var*nat*nat) -> list (var*nat*nat) -> Prop :=
 Inductive in_ses_pos : list (var*nat*nat) -> list (var*nat*nat) -> nat * nat -> Prop :=
    find_pos_rule: forall a b c d, b = c++a++d -> in_ses_pos a b (length c, length c + length a).
 
+*)
 
+(*
 Fixpoint find_pos' (p:posi) (l:list (var*nat*nat)) (pos:nat) :=
    match l with [] => 0
               | (x,n,m)::xs => if (x =? fst p) && (n <=? snd p) && (snd p <? m)
@@ -57,12 +90,11 @@ Definition find_range x l := find_range' x l 0.
 Definition type_cfac : Type := nat -> rz_val.
 
 Inductive type_phase :=  Uni.
+*)
 
 (*| Uni (b: nat -> rz_val) | DFT (b: nat -> rz_val). *)
-Inductive se_type : Type := TNor (p : option (rz_val))
-         | TH (r:option type_phase)
-         | CH (t:option (nat * type_cfac))
-         | ExT (t:(nat * type_cfac)) (t1:nat -> se_type).
+Definition type_cfac : Type := nat -> rz_val.
+Inductive se_type : Type := TNor | THad | CH.
 
 (*
 Inductive se_type : Type := THT (n:nat) (t:type_elem).
@@ -70,11 +102,25 @@ Inductive se_type : Type := THT (n:nat) (t:type_elem).
 
 Definition type_map := list (session * se_type).
 
-Fixpoint ses_len (l:list (var * nat * nat)) :=
-   match l with nil => 0 | (x,l,h)::xl => (h - l) + ses_len xl end. 
+Fixpoint ses_len_aux (l:list (var * nat * nat)) :=
+   match l with nil => 0 | (x,l,h)::xl => (h - l) + ses_len_aux xl end. 
 
-Inductive subtype : nat -> se_type -> se_type -> Prop :=
-   | nor_ch_none: forall n, subtype n (TNor None) (CH None)
+Fixpoint get_core_ses (l:session) :=
+   match l with [] => Some nil
+           | (x,BNum n, BNum m)::al => 
+      match get_core_ses al with None => None
+                           | Some xl => Some ((x,n,m)::xl)
+      end
+            | _ => None
+   end.
+
+Definition ses_len (l:session) := match get_core_ses l with None => None | Some xl => Some (ses_len_aux xl) end.
+
+Inductive subtype :  se_type -> se_type -> Prop :=
+   | sub_refl: forall a, subtype a a 
+   | nor_ch:  subtype TNor CH
+   | had_ch:  subtype THad CH.
+(*
    | nor_ch: forall n p, subtype n (TNor (Some p))
            (CH (Some (1,fun i => if i =? 0 then p else allfalse)))
    | ch_nor: forall n b, subtype n (CH (Some (1,b))) (TNor (Some (b 0)))
@@ -82,7 +128,9 @@ Inductive subtype : nat -> se_type -> se_type -> Prop :=
    | ch_had: forall p, p 0 = nat2fb 0 -> p 1 = nat2fb 1 -> 
            subtype 1 (CH (Some (2,p))) (TH None)
    | ch_none: forall n p, subtype n (CH (Some p)) (CH None).
+*)
 
+(*
 Definition join_val {A:Type} (n :nat) (r1 r2:nat -> A) := fun i => if i <? n then r1 n else r2 (i-n).
 
 Definition lshift_fun {A:Type} (f:nat -> A) (n:nat) := fun i => f (i+n).
@@ -112,15 +160,15 @@ Definition join_ch_val (size:nat) (r1 r2:option (nat * type_cfac)) :=
    match (r1,r2) with (Some (n,r1),Some (m,r2)) => Some (m*n,car_fun size n m r1 r2)
                    | (_,_) => None
    end.
+*)
 
-Inductive times_type: nat -> se_type -> se_type -> se_type -> Prop :=
-  | nor_nor_to: forall n p1 p2,
-               times_type n (TNor p1) (TNor p2) (TNor (join_nor_val n p1 p2))
-  | had_had_to: forall n p1 p2,
-               times_type n (TH p1) (TH p2) (TH (join_had_val n p1 p2))
-  | ch_ch_to : forall n p1 p2,
-               times_type n (CH p1)  (CH p2) (CH (join_ch_val n p1 p2)).
+Inductive times_type: se_type -> se_type -> se_type -> Prop :=
+  | nor_nor_to: times_type TNor TNor TNor
+  | had_had_to: times_type THad THad THad
+  | ch_ch_to_1 : forall a, times_type a CH CH
+  | ch_ch_to_2 : forall b, times_type CH b CH.
 
+(*
 Definition split_nor_val (n:nat) (r:option rz_val) :=
    match r with None => (None,None)
              | Some ra => (Some (cut_n ra n), Some (lshift_fun ra n))
@@ -130,52 +178,31 @@ Definition split_had_val (n:nat) (r:option type_phase) :=
    match r with None => (None,None)
              | Some Uni => (Some Uni, Some Uni)
    end.
+*)
 
-Inductive split_type: nat -> se_type -> se_type * se_type -> Prop :=
-  | nor_split: forall n r r1 r2, split_nor_val n r = (r1,r2)
-                -> split_type n (TNor (r)) ((TNor r1),(TNor r2))
-  | had_split: forall n r r1 r2, split_had_val n r = (r1,r2)
-                -> split_type n (TH (r)) ((TH r1),((TH r2)))
-  | ch_split: forall n num r r1 r2, join_ch_val n (Some (num,r1)) (Some(1,r2)) = (Some (num,r))
-                -> split_type n (CH (Some (num,r))) ((CH (Some (num,r1))),(CH (Some (1,r2)))).
+Inductive split_type: se_type -> se_type -> Prop :=
+  | nor_split: split_type TNor TNor
+  | had_split: split_type THad THad.
 
-Definition mut_nor_aux (pos n m: nat) (r : rz_val) :=
-    fun i => if i <? pos then r i
-      else if (pos <=? i) && (i <? pos + m) then r (i+n)
-      else if (pos + m <=? i) && (i <? pos + m + n) then r (i - m)
-      else r i.
-
-Definition mut_nor (pos n m:nat) (r: option rz_val) :=
-   match r with None => None | Some ra => Some (mut_nor_aux pos n m ra) end.
-
-
-Definition mut_ch_aux (pos n m: nat) (r : type_cfac) : type_cfac :=
-    fun i => mut_nor_aux pos n m (r i).
-
-Definition mut_ch (pos n m : nat) (r : option (nat * type_cfac)) :=
-  match r with None => None | Some (len,ra) => Some (len, mut_ch_aux pos n m ra) end.
-
+(*
 Inductive mut_type: nat -> nat -> nat -> se_type -> se_type -> Prop :=
   | nor_mut: forall pos n m r,
              mut_type pos n m (TNor (r)) (TNor (mut_nor pos n m r))
   | had_mut: forall pos n m r, mut_type pos n m ((TH (r))) ((TH r))
   | ch_mut: forall pos n m r, mut_type pos n m ((CH r)) ((CH (mut_ch pos n m r))).
-
+*)
 Inductive env_equiv : type_map -> type_map -> Prop :=
      | env_empty : forall v S, env_equiv ((nil,v)::S) S
      | env_comm :forall a1 a2, env_equiv (a1++a2) (a2++a1)
-     | env_ses_split: forall x n m u l v S, n < u < m -> env_equiv ((((x,n,m)::l),v)::S) ((((x,n,u)::(x,u,m)::l),v)::S)
-     | env_ses_merge: forall x n m u l v S, n < u < m -> env_equiv ((((x,n,u)::(x,u,m)::l),v)::S) ((((x,n,m)::l),v)::S)
-     | env_sub: forall x v u a, subtype (ses_len x) v u -> env_equiv ((x,v)::a) ((x,u)::a)
-     | env_mut: forall l1 l2 a b v u S, mut_type (ses_len l1) (ses_len ([a])) (ses_len ([b])) v u ->
-                 env_equiv ((l1++(a::b::l2),v)::S) ((l1++(b::a::l2),u)::S)
-     | env_merge: forall x v y u a vu, times_type (ses_len x) v u vu -> env_equiv ((x,v)::((y,u)::a)) ((x++y,vu)::a)
-     | env_split: forall x y v v1 v2 a, split_type (ses_len x) v (v1,v2) -> env_equiv ((x++y,v)::a) ((x,v1)::(y,v2)::a).
+     | env_ses_eq: forall s s' v S, ses_eq s s' -> env_equiv ((s,v)::S) ((s',v)::S)
+     | env_ses_split: forall s s' v S, split_type v v -> env_equiv ((s++s',v)::S) ((s,v)::(s',v)::S) 
+     | env_ses_merge: forall s s' a b c S, times_type a b c -> env_equiv ((s,a)::(s',b)::S) ((s++s',c)::S)
+     | env_mut: forall l1 l2 a b v S, env_equiv ((l1++(a::b::l2),v)::S) ((l1++(b::a::l2),v)::S).
 
 Inductive find_env {A:Type}: list (session * A) -> session -> option (session * A) -> Prop :=
   | find_env_empty : forall l, find_env nil l None
-  | find_env_many_1 : forall S x y t, in_session x y -> find_env ((y,t)::S) x (Some (y,t))
-  | find_env_many_2 : forall S x y v t, ~ in_session x y -> find_env S y t -> find_env ((x,v)::S) y t.
+  | find_env_many_1 : forall S x y t, ses_sub x y -> find_env ((y,t)::S) x (Some (y,t))
+  | find_env_many_2 : forall S x y v t, ~ ses_sub x y -> find_env S y t -> find_env ((x,v)::S) y t.
 
 Inductive find_type : type_map -> session -> option (session * se_type) -> Prop :=
     | find_type_rule: forall S S' x t, env_equiv S S' -> find_env S' x t -> find_type S x t.
@@ -189,10 +216,9 @@ Inductive update_env {A:Type}: list (session * A) -> session -> A -> list (sessi
 (* Define semantic state equations. *)
 
 Inductive state_elem :=
-                 | Nval (r:rz_val)
+                 | Nval (p:C) (r:rz_val)
                  | Hval (b:nat -> rz_val)
-                 | Cval (m:nat) (b:nat -> R * rz_val * rz_val) 
-                 | Fval (m:nat) (b : nat -> C * rz_val).
+                 | Cval (m:nat) (b : nat -> C * rz_val).
 
 Definition qstate := list (session * state_elem).
 
@@ -205,8 +231,6 @@ Fixpoint sum_rotate (n:nat) (b:nat->bool) (rmax:nat) (r:nat -> rz_val) :=
    match n with 0 => allfalse
              | S m => if b m then n_rotate rmax (sum_rotate m b rmax r) (r m) else sum_rotate m b rmax r
    end.
-Definition sum_rotates (n:nat) (rmax:nat) (r:nat -> rz_val) :=
-    fun i => if i <? 2^n then ( (1/sqrt (2^n))%R,sum_rotate n (nat2fb i) rmax r,nat2fb i) else (0%R,allfalse,allfalse).
 
 Fixpoint r_n_rotate (rmax:nat) (r1 r2:rz_val) :=
    match rmax with 0 => r1
@@ -225,16 +249,21 @@ Definition turn_angle (rval:nat -> bool) (n:nat) : R :=
 Definition get_amplitude (rmax:nat) (r1:R) (r2:rz_val) : C := 
     r1 * Cexp (2*PI * (turn_angle r2 rmax)).
 
+Definition sum_rotates (n:nat) (rmax:nat) (r:nat -> rz_val) :=
+    fun i => if i <? 2^n then 
+        (get_amplitude rmax ((1/sqrt (2^n))%R) (sum_rotate n (nat2fb i) rmax r),nat2fb i) else (C0,allfalse).
+
 Inductive state_same {rmax:nat} : nat -> state_elem -> state_elem -> Prop :=
-   | nor_ch_ssame: forall n r, state_same n (Nval r)
-             (Cval 1 (fun i => if i =? 0 then (0%R,allfalse,r) else (0%R,allfalse,allfalse)))
-   | ch_nor_ssame: forall n r, state_same n (Cval 1 r) (Nval (snd (r 0)))
-   | fch_nor_ssame: forall n r, state_same n (Fval 1 r) (Nval (snd (r 0)))
-   | had_ch_ssame : forall n r, state_same n (Hval r) (Cval (2^n) (sum_rotates n rmax r))
+   | nor_ch_ssame: forall n r c, state_same n (Nval r c)
+             (Cval 1 (fun i => if i =? 0 then (r,c) else (C0,allfalse)))
+   | ch_nor_ssame: forall n r, state_same n (Cval 1 r) (Nval (fst (r 0)) (snd (r 0)))
+   | had_ch_ssame : forall n r, state_same n (Hval r) (Cval (2^n) (sum_rotates n rmax r)).
+(*
    | ch_had_ssame: forall r a e1 e2, r 0 = (a,e1,nat2fb 0) -> 
             r 1 = (a,e2,nat2fb 1) -> state_same 1 (Cval 2 r) (Hval (fun i => r_n_rotate rmax e2 e1))
    | ch_fch_ssame: forall n m r, state_same n (Cval m r) 
                 (Fval m (fun i => (get_amplitude rmax (fst (fst (r i))) (snd (fst (r i))), snd (r i)))).
+*)
 
 Definition mut_had_state (pos n m: nat) (r : (nat -> rz_val)) :=
     fun i => if i <? pos then r i
@@ -242,11 +271,32 @@ Definition mut_had_state (pos n m: nat) (r : (nat -> rz_val)) :=
       else if (pos + m <=? i) && (i <? pos + m + n) then r (i - m)
       else r i.
 
+(*
 Definition mut_ch_state (pos n m:nat) (r : nat -> R * rz_val * rz_val) :=
     fun i => (fst (fst (r i)),snd (fst (r i)), mut_nor_aux pos n m (snd (r i))).
+*)
+Definition mut_nor_aux (pos n m: nat) (r : rz_val) :=
+    fun i => if i <? pos then r i
+      else if (pos <=? i) && (i <? pos + m) then r (i+n)
+      else if (pos + m <=? i) && (i <? pos + m + n) then r (i - m)
+      else r i.
+
+Definition mut_nor (pos n m:nat) (r: option rz_val) :=
+   match r with None => None | Some ra => Some (mut_nor_aux pos n m ra) end.
+
+
+Definition mut_ch_aux (pos n m: nat) (r : type_cfac) : type_cfac :=
+    fun i => mut_nor_aux pos n m (r i).
+
+Definition mut_ch (pos n m : nat) (r : option (nat * type_cfac)) :=
+  match r with None => None | Some (len,ra) => Some (len, mut_ch_aux pos n m ra) end.
 
 Definition mut_fch_state (pos n m:nat) (r : nat -> C * rz_val) :=
     fun i => (fst (r i), mut_nor_aux pos n m (snd (r i))).
+
+Definition join_val {A:Type} (n :nat) (r1 r2:nat -> A) := fun i => if i <? n then r1 n else r2 (i-n).
+
+Definition lshift_fun {A:Type} (f:nat -> A) (n:nat) := fun i => f (i+n).
 
 Definition join_cval (rmax:nat) (m:nat) (r1 r2: R * rz_val * rz_val) :=
      (((fst (fst r1)) * (fst (fst r2)))%R,n_rotate rmax (snd (fst r1)) (snd (fst r2)),join_val m (snd r1) (snd r2)).
@@ -280,45 +330,49 @@ Fixpoint car_fun_fch (size n m:nat) (r1 r2: nat -> C * rz_val) :=
 
 
 Inductive mut_state: nat -> nat -> nat -> state_elem -> state_elem -> Prop :=
-  | nor_mut_state: forall pos n m r,
-             mut_state pos n m (Nval r) (Nval (mut_nor_aux pos n m r))
+  | nor_mut_state: forall pos n m r c,
+             mut_state pos n m (Nval r c) (Nval r (mut_nor_aux pos n m c))
   | had_mut_state: forall pos n m r, mut_state pos n m (Hval r) (Hval (mut_had_state pos n m r))
-  | ch_mut_state: forall pos n m num r, mut_state pos n m (Cval num r) (Cval num (mut_ch_state pos n m r))
-  | fch_mut_state: forall pos n m num r, mut_state pos n m (Fval num r) (Fval num (mut_fch_state pos n m r)).
+  (*| ch_mut_state: forall pos n m num r, mut_state pos n m (Cval num r) (Cval num (mut_ch_state pos n m r)) *)
+  | fch_mut_state: forall pos n m num r, mut_state pos n m (Cval num r) (Cval num (mut_fch_state pos n m r)).
 
 Inductive times_state {rmax:nat}: nat -> state_elem -> state_elem -> state_elem -> Prop :=
-  | state_nor_nor_to: forall n p1 p2,
-               times_state n (Nval p1) (Nval p2) (Nval (join_val n p1 p2))
+  | state_nor_nor_to: forall n r1 r2 p1 p2,
+               times_state n (Nval r1 p1) (Nval r2 p2) (Nval (r1*r2)%C (join_val n p1 p2))
   | state_had_had_to: forall n p1 p2,
                times_state n (Hval p1) (Hval p2) (Hval (join_val n p1 p2))
-  | state_ch_ch_to : forall n m1 m2 p1 p2,
-               times_state n (Cval m1 p1) (Cval m2 p2) (Cval (m1*m2) (car_fun_ch rmax n m1 m2 p1 p2))
+ (* | state_ch_ch_to : forall n m1 m2 p1 p2,
+               times_state n (Cval m1 p1) (Cval m2 p2) (Cval (m1*m2) (car_fun_ch rmax n m1 m2 p1 p2)). *)
   | state_fch_fch_to : forall n m1 m2 p1 p2,
-               times_state n (Fval m1 p1) (Fval m2 p2) (Fval (m1*m2) (car_fun_fch n m1 m2 p1 p2)).
+               times_state n (Cval m1 p1) (Cval m2 p2) (Cval (m1*m2) (car_fun_fch n m1 m2 p1 p2)).
 
 Definition cut_n_rz (f:nat -> rz_val) (n:nat) := fun i => if i <? n then f i else allfalse.
 
 Inductive split_state {rmax:nat}: nat -> state_elem -> state_elem * state_elem -> Prop :=
-  | nor_split_state: forall n r, split_state n (Nval r) (Nval (cut_n r n), Nval (lshift_fun r n))
+  | nor_split_state: forall n r c, split_state n (Nval r c) (Nval r (cut_n c n), Nval C1 (lshift_fun c n))
   | had_split_state: forall n r, split_state n (Hval r) (Hval (cut_n_rz r n), Hval (lshift_fun r n))
-  | ch_split_state: forall n m r r1 r2, car_fun_ch rmax n m 1 r1 r2 = r
-                -> split_state n (Cval m r) (Cval m r1, Cval 1 r2)
+  (*| ch_split_state: forall n m r r1 r2, car_fun_ch rmax n m 1 r1 r2 = r
+                -> split_state n (Cval m r) (Cval m r1, Cval 1 r2) *)
   | fch_split_state: forall n m r r1 r2, car_fun_fch n m 1 r1 r2 = r
-                -> split_state n (Fval m r) (Fval m r1, Fval 1 r2).
+                -> split_state n (Cval m r) (Cval m r1, Cval 1 r2).
 
 
 Inductive state_equiv {rmax:nat} : qstate -> qstate -> Prop :=
      | state_empty : forall v S, state_equiv ((nil,v)::S) S
      | state_comm :forall a1 a2, state_equiv (a1++a2) (a2++a1)
-     | state_ses_split: forall x n m u l v S, n < u < m -> state_equiv (((x,n,m)::l,v)::S) (((x,n,u)::(x,u,m)::l,v)::S)
-     | state_ses_merge: forall x n m u l v S, n < u < m -> state_equiv (((x,n,u)::(x,u,m)::l,v)::S) (((x,n,m)::l,v)::S) 
-     | state_sub: forall x v u a, @state_same rmax (ses_len x) v u -> state_equiv ((x,v)::a) ((x,u)::a)
-     | state_mut: forall l1 l2 a b v u S, mut_state (ses_len l1) (ses_len ([a])) (ses_len ([b])) v u ->
+     | state_ses_eq: forall s s' v S, ses_eq s s' -> state_equiv ((s,v)::S) ((s',v)::S)
+     | state_sub: forall x v n u a, ses_len x = Some n -> @state_same rmax n v u -> state_equiv ((x,v)::a) ((x,u)::a)
+     | state_mut: forall l1 l2 n a n1 b n2 v u S, ses_len l1 = Some n -> ses_len ([a]) = Some n1 -> ses_len ([b]) = Some n2 ->
+                     mut_state n n1 n2 v u ->
                  state_equiv ((l1++(a::b::l2),v)::S) ((l1++(b::a::l2),u)::S)
-     | state_merge: forall x v y u a vu, @times_state rmax (ses_len x) v u vu -> state_equiv ((x,v)::((y,u)::a)) ((x++y,vu)::a)
-     | state_split: forall x y v v1 v2 a, @split_state rmax (ses_len x) v (v1,v2) -> state_equiv ((x++y,v)::a) ((x,v1)::(y,v2)::a).
+     | state_merge: forall x n v y u a vu, ses_len x = Some n -> 
+                       @times_state rmax n v u vu -> state_equiv ((x,v)::((y,u)::a)) ((x++y,vu)::a)
+     | state_split: forall x n y v v1 v2 a, ses_len x = Some n -> 
+                  @split_state rmax n v (v1,v2) -> state_equiv ((x++y,v)::a) ((x,v1)::(y,v2)::a).
+
 
 (* partial measurement list filter.  *)
+(*
 Fixpoint build_type_par (m n v i:nat) (f acc:type_cfac) :=
     match m with 0 => (i,acc)
               | S m' => if a_nat2fb (f i) n =? v
@@ -366,7 +420,7 @@ Definition build_state_ch n v (t : state_elem) :=
 Inductive mask_state {rmax:nat}: session -> nat -> qstate -> qstate -> Prop :=
     mask_state_rule : forall l n l1 t t' S Sa, @state_equiv rmax S ((l++l1,t)::Sa) -> 
               build_state_ch (ses_len l) n t = Some t' -> mask_state l n S ((l1,t')::Sa).
-
+*)
 (* substitution *)
 
 Fixpoint subst_aexp (a:aexp) (x:var) (n:nat) :=
@@ -379,7 +433,6 @@ Fixpoint subst_aexp (a:aexp) (x:var) (n:nat) :=
               | AMult c d => match ((subst_aexp c x n),(subst_aexp d x n)) with (Num q, Num t) =>  Num (q*t)
                                 | _ => AMult (subst_aexp c x n) (subst_aexp d x n) 
                              end
-              | Select s a => Select s (subst_aexp a x n)
     end.
 
 Fixpoint simp_aexp (a:aexp) :=
@@ -392,7 +445,6 @@ Fixpoint simp_aexp (a:aexp) :=
              | AMult c d => match (simp_aexp c,simp_aexp d) with (Some v1,Some v2) => Some (v1*v2)
                                 | (_,_) => None
                             end
-              | Select s a => None
    end.
 
 
@@ -401,12 +453,28 @@ Definition subst_varia (a:varia) (x:var) (n:nat) :=
               | Index x v => Index x (subst_aexp v x n)
    end. 
 
+Definition subst_cbexp (a:cbexp) (x:var) (n:nat) :=
+    match a with CEq c d => CEq (subst_varia c x n) (subst_varia d x n)
+              | CLt c d => CLt (subst_varia c x n) (subst_varia d x n)
+    end.
 
 Definition subst_bexp (a:bexp) (x:var) (n:nat) :=
-    match a with BEq c d i e => BEq (subst_varia c x n) (subst_varia d x n) i (subst_aexp e x n)
-              | BLt c d i e => BEq (subst_varia c x n) (subst_varia d x n) i (subst_aexp e x n)
+    match a with CB b => CB (subst_cbexp b x n)
+              | BEq c d i e => BEq (subst_varia c x n) (subst_varia d x n) i (subst_aexp e x n)
+              | BLt c d i e => BLt (subst_varia c x n) (subst_varia d x n) i (subst_aexp e x n)
               | BTest i e => BTest i (subst_aexp e x n)
     end.
+
+Definition subst_bound (b:bound) (x:var) (n:nat) :=
+   match b with (BVar y m) => if x =? y then BNum (n+m) else (BVar y m) | BNum m => BNum m end.
+
+Definition subst_range (r:range) (x:var) (n:nat) := 
+   match r with (a,b,c) => (a,subst_bound b x n,subst_bound c x n) end.
+
+Fixpoint subst_session (l:session) (x:var) (n:nat) :=
+  match l with nil => nil
+          | y::yl => (subst_range y x n)::(subst_session yl x n)
+  end.
 
 Fixpoint subst_exp (e:exp) (x:var) (n:nat) :=
         match e with SKIP y a => SKIP y (subst_aexp a x n)
@@ -426,7 +494,6 @@ Fixpoint subst_exp (e:exp) (x:var) (n:nat) :=
 
 Definition subst_mexp (e:maexp) (x:var) (n:nat) :=
    match e with AE a => AE (subst_aexp a x n)
-              | Init y => Init y
               | Meas y => Meas y
    end.
 
@@ -440,7 +507,6 @@ Fixpoint subst_pexp (e:pexp) (x:var) (n:nat) :=
                    | If b s => If (subst_bexp b x n) (subst_pexp s x n)
                    | For i l h b p => if i =? x then For i (subst_aexp l x n) (subst_aexp h x n) b p
                                       else For i (subst_aexp l x n) (subst_aexp h x n) (subst_bexp b x n) (subst_pexp p x n)
-                   | Amplify y a => Amplify y (subst_aexp a x n)
                    | Diffuse y => Diffuse y
                    | PSeq s1 s2 => PSeq (subst_pexp s1 x n) (subst_pexp s2 x n)
         end.
@@ -477,10 +543,11 @@ Inductive up_types: type_map -> type_map -> type_map -> Prop :=
 Inductive find_state {rmax} : state -> session -> option (session * state_elem) -> Prop :=
     | find_qstate_rule: forall M S S' x t, @state_equiv rmax S S' -> find_env S' x t -> find_state (M,S) x t.
 
+(*
 Inductive pick_mea {rmax:nat} : state -> var -> nat -> (R * nat) -> Prop :=
    pick_meas : forall s x n l m b i r bl, @find_state rmax s ([(x,0,n)]) (Some (([(x,0,n)])++l, Fval m b))
             -> 0 <= i < m -> b i = (r,bl) -> pick_mea s x n (Cmod r, a_nat2fb bl n).
-
+*)
 
 Definition update_cval (l:state) (a:var) (v: R * nat) := (AEnv.add a v (fst l),snd l).
 
@@ -517,23 +584,21 @@ Fixpoint join_ses (l1 l2:list ((var * nat * nat))) :=
    end.
 
 
-Definition union_f (t1 t2:atype) := meet_atype t1 t2.
+Definition union_f (t1 t2:ktype) := meet_ktype t1 t2.
 
-Inductive type_aexp : aenv -> aexp -> atype -> Prop :=
+Inductive type_aexp : aenv -> aexp -> (ktype*session) -> Prop :=
    | ba_type : forall env b t, AEnv.MapsTo b t env -> type_aexp env b t
    | num_type : forall env n, type_aexp env n CT
    | plus_type : forall env e1 e2 t1 t2, 
                    type_aexp env e1 t1 -> type_aexp env e2 t2 ->  
-                     type_aexp env (APlus e1 e2) (union_f t1 t2)
+                     type_aexp env (APlus e1 e2) (meet_atype t1 t2)
    | mult_type : forall env e1 e2 t1 t2, 
                    type_aexp env e1 t1 -> type_aexp env e2 t2 ->  
-                     type_aexp env (AMult e1 e2) (union_f t1 t2)
-   | mnum_type : forall env r n, type_aexp env (MNum r n) MT
-   | select_type : forall env s a t, type_aexp env a t ->
-                        type_aexp env (Select s a) MT.
+                     type_aexp env (AMult e1 e2) (meet_atype t1 t2)
+   | mnum_type : forall env r n, type_aexp env (MNum r n) MT.
 
 
-Inductive type_vari : aenv -> varia -> atype -> Prop :=
+Inductive type_vari : aenv -> varia -> (ktype*session) -> Prop :=
    | aexp_type : forall env a t, type_aexp env a t -> type_vari env a t
    | index_type : forall env x a b v,
        AEnv.MapsTo x (Ses ([(x,a,b)])) env -> a <= v < b -> type_vari env (Index x (Num v)) (Ses ([(x,v,S v)]))
