@@ -2,6 +2,7 @@
 \label{sec:background}
 
 Here, we provide background information for quantum computing and classical proof systems.
+\ynote{If we're working under page limit, people in the crypto community often move their ``preliminary'' section to the appendix. How do we feel about that in the PL community?}
 
 \noindent\textbf{\textit{Quantum States and Alternative State Representations.}} A quantum state consists of one or more quantum bits (\emph{qubits}). A qubit can be expressed as a two dimensional vector $\begin{psmallmatrix} \alpha \\ \beta \end{psmallmatrix}$ where $\alpha,\beta$ are complex numbers such that $|\alpha|^2 + |\beta|^2 = 1$.  The $\alpha$ and $\beta$ are called \emph{amplitudes}. 
 %
@@ -10,6 +11,7 @@ We can join multiple qubits together to form a larger quantum state with the \em
 Sometimes a multi-qubit state cannot be expressed as the tensor of individual states; such states are called \emph{entangled}. One example is the state $\frac{1}{\sqrt{2}}(\ket{00} + \ket{11})$, known as a \emph{Bell pair}.
 
 $n$-qubit quantum states are typically represented as $2^n$ dimensional vectors. Alternatively, the states can be represented as different forms. For example, a newly generated qubit typically has a state $\ket{0}$ or $\ket{1}$, which is named \textit{normal typed state} ($\tnort$) in QNP. $n$ Qubits that are in superposition but not entangled, such as $\frac{1}{\sqrt{2}}(\ket{0} + \ket{1})\otimes ... \otimes \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})$, can be expressed as a summation of tensor products as $\shad{2^n}{n}{\alpha(r_j)}$, where $\alpha(r_j)=e^{2\pi i r}$ and $r \in \mathbb{R}$, which is named \textit{Hadamard typed state} ($\thadt$) in QNP.
+\ynote{This doesn't feel like it should be in backgrounds. Treating $\tnort$ and $\thadt$ as program types seems like a novelty to me... isn't it?}
 $\alpha(r_j)$ is named the \emph{local phase} of the state, which are special quantum amplitudes (see below) such that the norm is $1$, i.e., $\slen{\alpha(r_j)}=1$. In the above state, we can view the local phase $1$ as $e^{0}$, and $\frac{1}{\sqrt{2^n}}e^{0}$ is the amplitude for every basis state.
 
 The most general representation is to express quantum states as a path-sum formula as: $\sch{m}{z_j}{c_j}$, where $z_j\in \mathbb{C}$ is an amplitude, $c_j$ is an $n$-length bitstring named \emph{basis}, and $m \le 2^n$. The path-sum formula is same as ${z_0}\ket{c_0}+...+{z_{m-1}}\ket{c_{m-1}}$, such that each $j$-th element ${z_j}\ket{c_j}$ represents a \emph{basis state} in the superposition state. 
@@ -31,6 +33,7 @@ The state becomes $\sch{2}{\frac{1}{\sqrt{2}}}{\overline{i}}\ket{0}$. Notice tha
 }
 
 \noindent\textbf{\textit{Quantum Computations and Conditionals.}} High-level quantum programming languages are usually designed to follow the \emph{QRAM model}~\cite{Knill1996}, where quantum computers are used as co-processors to classical computers. The classical computer generates descriptions of circuits to send to the quantum computer and then processes the measurement results.
+\ynote{Wait, that's what QRAM means? We should double check; I had a different picture somehow.}
 Computation on a quantum state consists of a series of \emph{quantum operations}, each of which acts on a subset of qubits in the quantum state. In the standard presentation, quantum computations are expressed as \emph{circuits}, as shown in \Cref{fig:background-circuit-examplea}, which constructs a circuit that prepares the Greenberger-Horne-Zeilinger (GHZ) state \cite{Greenberger1989}, which is an $n$-qubit entangled quantum state of the form: $\ket{\text{GHZ}^n} = \frac{1}{\sqrt{2}}(\ket{0}^{\otimes n}+\ket{1}^{\otimes n})$.
 
 In these circuits, each horizontal wire represents a qubit and boxes on these wires indicate quantum operations, or \emph{gates}. The circuit in \Cref{fig:background-circuit-examplea} uses $n$ qubits and applies $n$ gates: a \emph{Hadamard} (\coqe{H}) gate and $n-1$ \emph{controlled-not} (\coqe{CNOT}) gates.

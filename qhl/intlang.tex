@@ -174,8 +174,13 @@ As a running example, we use the Shor's algorithm~\cite{Shor94} shown in \Cref{f
 Given an integer $N$, Shor's algorithm finds its nontrivial prime factors, which has the following step: (1) randomly pick a number $1 < a < N$ and compute $k=\texttt{gcd}(a,N)$;
 %\footnote{compute the greatest common divisor of $a$ and $N$}
 (2) if $k \neq 1$, $k$ is the factor; (3) otherwise, $a$ and $N$ are coprime and we find the order $p$ of $a$ and $N$;
+\ynote{Order of ``$a$ mod $N$''?}
 % \footnote{the order $p$ is the smallest number such that $a^p \% N = 1$}; 
 (4) if $p$ is even and $a^{\frac{p}{2}} \neq -1 \% N$, $\texttt{gcd}(a^{\frac{p}{2}}\pm 1,N)$ are the factors, otherwise, we repeat the process. Step (2) is the Shor's algorithm's quantum component and \Cref{fig:shorqafny} and \Cref{fig:shorqafny2} show its automated proof in QNP. In \Cref{fig:shorexample}, we show the actual implementation and proof in the Qafny tool.
+\ynote{say a bit more about the pre/post-conditions?
+Intuitively I would've expected to see that $gcd(r, N)\ne1$, as I thought the output $r$ would be a factor of $N$.
+That isn't what the post-condition says.
+Also, the figure title says Q-Dafny while we probably mean Qafny, right?}
 The Shor's pre-measurement quantum steps in \Cref{fig:shorqafny} can be analogized as an efficient array filter operation in \Cref{fig:shorsanalog}.
 The steps before line 14 (steps at line 2, 5 and 9-11) create a $2^n$-length of pairs, each of which is formed as $(i,a^i \% N)$ where $i\in [0,2^n)$. The measurement in line 14 filters the array as a new one ($x[0..n]$) with all elements $i$ satisfying $a^i \% N=u$ where $u$ is a randomly picked number. Notice that modulo multiplication $f(i)=a^i\%N$ is a periodic function. All elements in $x[0..n]$ satisfy $a^i \% N=u$, which means that 1) there is a smallest $t$ such that $a^t \% N=u$, and 2) all elements can be rewritten as $i=t+kp$ and $p$ is the period of the modulo multiplication function, which is given as the post-condition on the right of line 15.
 %The implementation and correctness proof in \Cref{fig:shorqafny} exactly reflects the array analogy aspect.
@@ -248,7 +253,9 @@ $\mmode$-kind classical integers $(r,n)$ with a probability characteristic $r$ r
 
 \qafny utilize \emph{equivalence relations} over quantum sessions, quantum values, type environments and states (as shown in \Cref{fig:qafny-eq}) to facilitate automated program verification, written as $\equiv$ for state equivalence and $\preceq$ for environment partial order. One example is the state predicate rewrite from line 12 to line 13 in \Cref{fig:shorqafny}, where the session state $x[0..0]$ rewrites to $\texttt{true}$, because range $x[0..0]$ is essentially empty.
 The common equivalence relations are state type rewrites, permutations, split and joins. 
-State type rewrites transform state forms, such as the rewrite of session $\{x[0..0],y[0..n]\}$ from type $\tnort$ to $\tcht$ in line 7 and 8 in \Cref{fig:shorqafny}. Another example is to rewrite a $\tcht$-type state $\ssum{j=0}{1}{z_j\beta_j}$ to $\tnort$-type ${z_0\beta_0}$. Permutation equivalence refers to two qubits can mutate their locations. For example, the state in line 13 can be rewritten to $\{y[0..n],x[0..n]\} \mapsto \scha{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{a^{j}\;\%\;N}{\ket{j}}$ \footnote{More aggressively, we can write the state $x[0..2]\mapsto \frac{1}{\sqrt{2}}(\ket{01}+\ket{10})$ to $\{x[1..2],x[0..1]\}\mapsto \frac{1}{\sqrt{2}}(\ket{10}+\ket{01})$.}.
+State type rewrites transform state forms, such as the rewrite of session $\{x[0..0],y[0..n]\}$ from type $\tnort$ to $\tcht$ in line 7 and 8 in \Cref{fig:shorqafny}. Another example is to rewrite a $\tcht$-type state $\ssum{j=0}{1}{z_j\beta_j}$ to $\tnort$-type ${z_0\beta_0}$.
+\ynote{Another instance of ambiguity of $\ssum$. I thought this were $z_0\beta_0+z_1\beta_1$ and got somewhat confused.}
+Permutation equivalence refers to two qubits can mutate their locations. For example, the state in line 13 can be rewritten to $\{y[0..n],x[0..n]\} \mapsto \scha{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{a^{j}\;\%\;N}{\ket{j}}$ \footnote{More aggressively, we can write the state $x[0..2]\mapsto \frac{1}{\sqrt{2}}(\ket{01}+\ket{10})$ to $\{x[1..2],x[0..1]\}\mapsto \frac{1}{\sqrt{2}}(\ket{10}+\ket{01})$.}.
 State joins merge two sessions together. Merging a $\tnort$-type and $\tcht$-type state is analogized to concatenate two qubit arrays.
 An example and its explanation are given in \Cref{fig:background-circuit-example-proof} line 4-6, 
 where the $\tnort$-type qubit $x[\snext{j}]$ is added to the end of $\tcht$-type session $x[0..\snext{j}]$.
@@ -257,7 +264,7 @@ In each loop step in \Cref{fig:shorqafny} line 9-11, we add the $\thadt$ type qu
 Merging two $\tcht$-type states computes the Cartesian product of basis states in the two sessions (\Cref{fig:qafny-eq}).
 State split cuts a session into two individual sessions. The split of $\tnort$ and $\thadt$ types is no more than an array split, while the split of a $\tcht$-type is equal to disentanglement, a hard problem. In quantum algorithms, splitting $\tnort$ and $\thadt$ types are more common than disentanglement, and is permitted in \qafny. For splitting $\tcht$-type, we invent an upgraded type system in \Cref{sec:newtype} to permit few cases. 
 
-\subsection {Syntax and Type Sysem}\label{sec:syntax-types}
+\subsection {Syntax and Type System}\label{sec:syntax-types}
 
 
 \begin{figure}[t]
@@ -337,6 +344,9 @@ $\sexp{x}{\smea{y}}{s}$ measures array piece $y$, stores the result in $\mmode$-
 %The measurement semantic definition relies on a ghost expression $\texttt{ret}$, and it turns $\smea{y}$ to $\sret{y,(r,n)}$, which does not appear in a \qafny source program but appears during semantic evaluation, and it records the intermediate measurement result of group $y$ as $(r,n)$. $\sexp{x}{\sinit{a}}{s}$ initializes an $a$-length qubit group named $x$ with the value $\ket{\overline{0}}$ ($a$ number of bit $0$) and is used in statement $s$, while 
 The last three of the first row are quantum data-flow operations.
 $\ssassign{l}{}{op}$ prepares a quantum superposition state of quantum qubits $l$ through Hadamard $\texttt{H}$ or $\texttt{QFT}$ gates, which are used for state preparation. It is also used to Fourier transform quantum qubit states by a $\texttt{QFT}^{-1}$ gate in quantum phase estimation and Shor's algorithms.
+\ynote{It seems somewhat limiting that we only have Hadamard and QFT for $op$. Or I guess we have Pauli $X$ too by just doing a $+1$, right?
+On a somewhat unrelated topic, this already seem enough to implement quantum key distribution too, though I don't know if we care.
+It's one of those popular algorithms that people like to talk about, but the analysis seems trivial (and mostly classical) if we don't have an adversary or a noise model...}
 The other gate applications are done through $\ssassign{\kappa}{}{\mu}$ that performs an \oqasm quantum oracle computation $\mu$ (\cite{oracleoopsla}) on each basis state of session $\kappa$ as we unveil in \Cref{sec:intro}. Since all quantum reversible arithmetic operations were defined in \oqasm; thus, we permit $\mu$'s description in \qafny to be arithmetic operations, similar to expressions $a$ in \Cref{fig:vqimp}, e.g., \cref{fig:shorqafny} line 5 and 11.
 $\ssassign{l}{}{\sdis}$ is a quantum diffusion operation applying on the parameter $l$, where $l$ may be part of an entangled session.
 The main functionality is to increase and average the occurrence likelihood of some quantum bases in a quantum state.
@@ -352,6 +362,7 @@ $\sqwhile{j}{a_1}{a_2}{b}{\{s\}}$ is a possible quantum for-loop depending on if
 A classical variable $j$ is introduced and initialized as the lower bound $a_1$, incremented in each loop step by $\dplus{j}$, and ended at the upper bound $a_2$.
 For example, the for-loop in \Cref{fig:shorqafny} repeatably entangles the $\thadt$-type qubit $x[j]$ with the $\tcht$-type session $\{x[0..j],y[0..n]\}$ through the modulo multiplication at line 11. 
 \footnote{In the \qafny implementation, $\dplus{j}$ and $j<a_2$ can be arbitrary monotonic increment and comparison functions. For simplicity, we restrict the two to be $\dplus{j}$ and $j<a_2$ in this paper.}
+\ynote{I like this.}
 
 \noindent\textbf{\textit{A Quantum Session Type System.}}\label{sec:type-checking}
 %
@@ -364,6 +375,8 @@ and $s$ transforms types for the sessions in $\sigma$ to types in $\sigma'$.
 $\Omega$ is populated through \texttt{let} expressions that introduce variables,and 
 the type system enforces variable scope; such enforcement is neglected in \Cref{fig:exp-sessiontype} for simplicity.
 %\footnote{In the \qafny implementation, we have an $\sinit{n}$ operation to allocate $n$-number of $\ket{0}$ qubits, which create $\qmode{n}$ variable in $\Omega$; here, we assume that $\qmode{n}$ array piece variables are pre-allocated in $\Omega$. }
+\ynote{I'm not a PL person, so this is a bit difficult for me to read.
+The reviewers will probably have an easier time than I did though, so maybe I shouldn't be worried?}
 We assume that variables introduced in \texttt{let} expressions are all distinct through proper alpha conversions, as in \rulelab{TExp} and \rulelab{TMea}.
 $\dom{\sigma}$ and $\dom{\sigma'}$ are large enough to describe all sessions containing all qubits mentioned in $s$.
 Kinds $g$ are reused as context modes ($\cmode$ and $\mmode$) for enforcing no quantum information leak in a quantum conditional.
@@ -377,6 +390,7 @@ Second, the type system tracks the arrangement of sessions as well as permits th
 Third, the type system enforces that $\cmode$ classical variables can be evaluated to values in the compilation time \footnote{We consider all computation that only needs classical computer is done in the compilation time.}, while tracks $\mmode$ variables. Rule \textsc{TExp} enforces that a classical variable $x$ is replaced with its assignment value $n$ in $s$, where classical expressions containing $x$ are evaluated. See \Cref{sec:qafny-app}.
 Finally, the type system estimates the scopes of entangled sessions. In rule \textsc{TIF}, we use $\kappa'$, the domain of the post type environment, as the estimated session that is large enough to describe all possible qubits directly and indirectly mentioned in $s$ \footnote{This includes all entangled array pieces whose qubits are mentioned in $s$. } and should be in the same session. Based on $\kappa'$, we estimate the conditional's session as $\kappa \uplus \kappa'$.
 The type system keeps such estimation as small as possible.
+\ynote{I don't understand. Does this just contain the qubit used in the conditional plus the qubits used by the loop body? Why or why not?}
 
 \subsection{The Qafny Semantics and Proof System}\label{sec:semantics-proof}
 
@@ -427,6 +441,7 @@ In QNP, a modeling rule has the judgment: $\Omega;\sigma;\psi;\varphi\models_g P
   $\Omega;\sigma \vdash_g \varphi$, iff $\dom{\sigma} = \dom{\varphi}$, $\Omega\vdash\dom{\sigma}$, and:
 \begin{itemize}
 \item For every $\kappa \in \dom{\sigma}$ such that $\sigma(\kappa) = \tnort$, $\varphi(\kappa)=z\ket{c}$ and $\slen{\kappa}\le \slen{c}$ \footnote{$\slen{\kappa}$ and $\slen{c}$ are the lengths of $\kappa$ and $c$. } and $\slen{z}\le 1$; specifically, if $g=\cmode$,  $\slen{\kappa} = \slen{c}$ and $\slen{z} = 1$.
+\ynote{Why $\slen{\kappa}\le \slen{c}$? What is this trying to do?}
 
 \item For every $\kappa \in \dom{\sigma}$ such that $\sigma(\kappa) = \thadt$, $\varphi(\kappa)=\shad{2^n}{n}{\alpha(r_j)}$ and $\slen{\kappa}=n$.
 
@@ -724,6 +739,8 @@ The aggregate operation first applies a reshape, where elements are regrouped in
 Then, we rearrange the state by extending the element number from $n'$ to $m*n$ with probably adding new elements that originally have zero amplitude (the white elements in \Cref{fig:qafny-dis-analog}).
 Here, let's view a basis $c_{t}$ as a small-endian (LSB) number $\tov{c_{t}}$. The rearrangement of changing bases $c_{t}$ (for all $t$) to $\tos{j}.c_{ij}$ is analogized to rewrite a number $\tov{c_{t}}$ to be the form $2^n i+j$, with $j\in [0,2^n)$,
 i.e., the reshape step rearranges the basis states to be a periodical counting sequence, with $2^n$ being the order.
+\ynote{This bit-level construction is difficult to understand without context.
+Hopefully \Cref{sec:quantumwalk} would indeed help.}
 The mean computation analogy (the second arrow in \Cref{fig:qafny-dis-analog}) takes every period in the reshaped state, and for each basis state in a period, we redistribute its amplitude by the formula $(\frac{1}{2^{n-1}}\sum_{u=0}^{2^n}z_{iu} - z_{ij})$.
 Rule \textsc{SDis} is the semantics for diffusion $\ssassign{l}{}{\sdis}$, which applies the $\mathpzc{D}$ function to session $\kappa \uplus \kappa'$, where $\kappa$ contains all qubits in $l$. Proof rule \textsc{PDis} is a separation style rule that does the same as rule \textsc{SDis}.
 \ignore{
@@ -771,6 +788,9 @@ For a well-typed program $s$, such that $\Omega;\sigma\vdash_g s \triangleright 
 \begin{theorem}[proof system relative completeness]\label{thm:proof-completeness}\rm 
 For a well-typed program $s$, such that $\Omega;\sigma\vdash_g s \triangleright \sigma'$, $(\psi,\varphi,s)\longrightarrow^* (\psi',\varphi',\{\})$ and $\Omega;\sigma\vdash_g \varphi$, there is most general state representation $\varphi^*$, such that $(\psi,\varphi,s)\longrightarrow^* (\psi',\varphi',\{\})$ and $\varphi' \equiv \varphi^*$ and $\Omega;\sigma\vdash_g s \triangleright \sigma^*$ and $\Omega;\sigma[\uparrow \sigma^*]\vdash_g \varphi^*$, and there are predicates $P$ and $Q$, such that $\Omega;\sigma;\psi;\varphi\models_g P$ and $\Omega;\sigma[\uparrow\sigma^*];\psi';\varphi^* \models Q$ and $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$.
 \end{theorem}
+
+\ynote{These theorems sound quite interesting and well-motivated from the earlier description, but I'm having difficulty parsing them.
+What is the $\uparrow$ notation?}
 
 
 
