@@ -37,5 +37,6 @@ ExtrOQASM.v
 QWhileSyntax.v
 SessionDef.v
 SessionType.v
+SessionSem.v
 SessionProof.v
 
