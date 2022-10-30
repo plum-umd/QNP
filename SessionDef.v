@@ -465,8 +465,8 @@ Definition subst_varia (a:varia) (x:var) (n:nat) :=
    end. 
 
 Definition subst_cbexp (a:cbexp) (x:var) (n:nat) :=
-    match a with CEq c d => CEq (subst_varia c x n) (subst_varia d x n)
-              | CLt c d => CLt (subst_varia c x n) (subst_varia d x n)
+    match a with CEq c d => CEq (subst_aexp c x n) (subst_aexp d x n)
+              | CLt c d => CLt (subst_aexp c x n) (subst_aexp d x n)
     end.
 
 Definition subst_bexp (a:bexp) (x:var) (n:nat) :=

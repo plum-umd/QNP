@@ -110,7 +110,7 @@ Notation "e0 [ e1 ]" := (Index e0 e1) (at level 50) : pexp_scope.
 
 Inductive singleGate := H_gate | X_gate | RZ_gate (f:nat) (*representing 1/2^n of RZ rotation. *).
 
-Inductive cbexp := CEq (x:varia) (y:varia) | CLt (x:varia) (y:varia).
+Inductive cbexp := CEq (x:aexp) (y:aexp) | CLt (x:aexp) (y:aexp).
 
 Inductive bexp :=  CB (c:cbexp)
                   | BEq (x:varia) (y:varia) (i:var) (a:aexp)

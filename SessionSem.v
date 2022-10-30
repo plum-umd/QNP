@@ -137,6 +137,54 @@ Fixpoint eval_ch (rmax:nat) (env:aenv) (l:session) (m:nat) f (e:exp) :=
           end
    end.
 
+
+Inductive eval_cbexp : stack -> cbexp -> bool -> Prop :=
+    | ceq_sem : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CEq x y) (n1 =? n2)
+    | clt_sem : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CLt x y) (n1 <? n2).
+
+Check xorb.
+
+Fixpoint eval_eq_bool (f:nat -> C * rz_val) (m size v:nat) :=
+  match m with 0 => f
+           | S m' => update (eval_eq_bool f m' size v) m' 
+                   (fst (f m'),update (snd (f m')) size (xorb ((a_nat2fb (snd (f m')) size) =? v) ((snd (f m')) size)))
+  end.
+
+Fixpoint eval_lt_bool (f:nat -> C * rz_val) (m size v:nat) :=
+  match m with 0 => f
+           | S m' => update (eval_lt_bool f m' size v) m' 
+                   (fst (f m'),update (snd (f m')) size (xorb ((a_nat2fb (snd (f m')) size) <? v) ((snd (f m')) size)))
+  end.
+
+Fixpoint grab_bool_elem (f:nat -> C * rz_val) (m i size v:nat) (acc:nat -> C * rz_val) :=
+  match m with 0 => (i,acc)
+           | S m' => if (snd (f m')) size then 
+                  grab_bool_elem f m' (i+1) size v (update acc i (f m'))
+                else grab_bool_elem f m' i size v acc
+   end.
+Definition grab_bool f m size v := grab_bool_elem f m 0 size v (fun _ => (C0,allfalse)).
+
+
+Inductive eval_bexp {rmax:nat} {env:aenv}: state -> bexp -> bool -> Prop :=
+    | beq_sem_1 : forall s x y z i l n t m f, AEnv.MapsTo x (QT n) env -> AEnv.MapsTo z (QT t) env ->
+                @find_state rmax s ((x,BNum 0,BNum n)::[(z,BNum i,BNum (S i))]) 
+                                (Some (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f))
+                   eval_eq_bool 
+                   -> eval_bexp s (BEq (BA x) ((Num y)) z (Num i)) true.
+
+
+Inductive bexp :=  CB (c:cbexp)
+                  | BEq (x:varia) (y:varia) (i:var) (a:aexp)
+                    (* x = n @ z[i] --> conpare x and n --> put result in z[i] *)
+                  | BLt (x:varia) (y:varia) (i:var) (a:aexp) 
+                    (* x < n @ z[i] --> conpare x and n --> put result in z[i] *)
+                  | BTest (i:var) (a:aexp). (* z[i] = 0 or 1 *)
+
+Inductive eval_cbexp : state -> bexp -> bool -> Prop :=
+    | ceq_sem : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CEq x y) (n1 =? n2)
+    | clt_sem : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CLt x y) (n1 <? n2).
+
+
 Inductive qfor_sem {rmax:nat}
            : aenv -> state -> pexp -> state -> Prop :=
   | state_eq_sem: forall aenv e s f f', @state_equiv rmax f f' -> qfor_sem aenv (s,f) e (s,f')
