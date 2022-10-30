@@ -347,7 +347,7 @@ $\sseq{s_1}{s_2}$ is a sequential operation.
 $\sifq{b}{s}$ is a classical or quantum conditional depending on if $b$ contains quantum parameters.
 %Every quantum parameter $l$ appearing in $b$ must not appear in $s$.
 %In the \qafny type system, we define a \texttt{well\_formed} predicate to check such property.
-Quantum reversible Boolean guards $b$ are implemented as \oqasm oracle operations, written as $(a_1 = a_2) @ x[a]$, $(a_1 < a_2) @ x[a]$, and $x[a]$, meaning that for each quantum basis state, we compute $b$'s value $a_1 = a_2$, $a_1 < a_2$, and $\texttt{true}$ \footnote{$a_1$ and $a_2$ can possibly be a quantum array piece $x$ in an entangled session.}, and store the result in the qubit bit $x[a]$ by computing $b \oplus x[a]$.
+Quantum reversible Boolean guards $b$ are implemented as \oqasm oracle operations, written as $(a_1 = a_2) @ x[a]$, $(a_1 < a_2) @ x[a]$, and $x[a]$, meaning that for each quantum basis state, we compute $b$'s value $a_1 = a_2$, $a_1 < a_2$, and $\texttt{false}$ \footnote{$a_1$ and $a_2$ can possibly be a quantum array piece $x$ in an entangled session.}, and store the result in the qubit bit $x[a]$ by computing $b \oplus x[a]$.
 One example quantum Boolean equation is used at the quantum walk algorithm in \Cref{sec:quantumwalk}.
 $\sqwhile{j}{a_1}{a_2}{b}{\{s\}}$ is a possible quantum for-loop depending on if $b$ contains quantum parameters.
 A classical variable $j$ is introduced and initialized as the lower bound $a_1$, incremented in each loop step by $\dplus{j}$, and ended at the upper bound $a_2$.
