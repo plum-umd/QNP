@@ -137,7 +137,7 @@ Fixpoint eval_ch (rmax:nat) (env:aenv) (l:session) (m:nat) f (e:exp) :=
           end
    end.
 
-
+(* functions for defining boolean. *)
 Inductive eval_cbexp : stack -> cbexp -> bool -> Prop :=
     | ceq_sem : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CEq x y) (n1 =? n2)
     | clt_sem : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CLt x y) (n1 <? n2).
@@ -156,34 +156,114 @@ Fixpoint eval_lt_bool (f:nat -> C * rz_val) (m size v:nat) :=
                    (fst (f m'),update (snd (f m')) size (xorb ((a_nat2fb (snd (f m')) size) <? v) ((snd (f m')) size)))
   end.
 
-Fixpoint grab_bool_elem (f:nat -> C * rz_val) (m i size v:nat) (acc:nat -> C * rz_val) :=
+Fixpoint eval_rlt_bool (f:nat -> C * rz_val) (m size v:nat) :=
+  match m with 0 => f
+           | S m' => update (eval_rlt_bool f m' size v) m' 
+                   (fst (f m'),update (snd (f m')) size (xorb (v <? (a_nat2fb (snd (f m')) size)) ((snd (f m')) size)))
+  end.
+
+Fixpoint grab_bool_elem (f:nat -> C * rz_val) (m i size:nat) (acc:nat -> C * rz_val) :=
   match m with 0 => (i,acc)
            | S m' => if (snd (f m')) size then 
-                  grab_bool_elem f m' (i+1) size v (update acc i (f m'))
-                else grab_bool_elem f m' i size v acc
+                  grab_bool_elem f m' (i+1) size (update acc i (f m'))
+                else grab_bool_elem f m' i size acc
    end.
-Definition grab_bool f m size v := grab_bool_elem f m 0 size v (fun _ => (C0,allfalse)).
+Definition grab_bool f m size := grab_bool_elem f m 0 size (fun _ => (C0,allfalse)).
 
-
-Inductive eval_bexp {rmax:nat} {env:aenv}: state -> bexp -> bool -> Prop :=
-    | beq_sem_1 : forall s x y z i l n t m f, AEnv.MapsTo x (QT n) env -> AEnv.MapsTo z (QT t) env ->
+Inductive eval_bexp {rmax:nat} {env:aenv}: state -> bexp -> state -> Prop :=
+    | beq_sem_1 : forall s s' x y z i l n t m f, AEnv.MapsTo x (QT n) env -> AEnv.MapsTo z (QT t) env ->
                 @find_state rmax s ((x,BNum 0,BNum n)::[(z,BNum i,BNum (S i))]) 
-                                (Some (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f))
-                   eval_eq_bool 
-                   -> eval_bexp s (BEq (BA x) ((Num y)) z (Num i)) true.
+                                (Some (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f)) ->
+                   @up_state rmax s ((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l) (Cval m (eval_eq_bool f m n y)) s'
+                   -> eval_bexp s (BEq (BA x) ((Num y)) z (Num i)) s'
+    | beq_sem_2 : forall s s' x y z i l n t m f, AEnv.MapsTo x (QT n) env -> AEnv.MapsTo z (QT t) env ->
+                @find_state rmax s ((x,BNum 0,BNum n)::[(z,BNum i,BNum (S i))]) 
+                                (Some (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f)) ->
+                   @up_state rmax s ((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l) (Cval m (eval_eq_bool f m n y)) s'
+                   -> eval_bexp s (BEq ((Num y)) (BA x) z (Num i)) s'
+    | blt_sem_1 : forall s s' x y z i l n t m f, AEnv.MapsTo x (QT n) env -> AEnv.MapsTo z (QT t) env ->
+                @find_state rmax s ((x,BNum 0,BNum n)::[(z,BNum i,BNum (S i))]) 
+                                (Some (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f)) ->
+                   @up_state rmax s ((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l) (Cval m (eval_lt_bool f m n y)) s'
+                   -> eval_bexp s (BLt (BA x) ((Num y)) z (Num i)) s'
+    | blt_sem_2 : forall s s' x y z i l n t m f, AEnv.MapsTo x (QT n) env -> AEnv.MapsTo z (QT t) env ->
+                @find_state rmax s ((x,BNum 0,BNum n)::[(z,BNum i,BNum (S i))]) 
+                                (Some (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f)) ->
+                   @up_state rmax s ((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l) (Cval m (eval_rlt_bool f m n y)) s'
+                   -> eval_bexp s (BEq ((Num y)) (BA x) z (Num i)) s'
+    | btext_sem : forall s z i, eval_bexp s (BTest z (Num i)) s.
+
+Inductive assem_elem : nat -> nat -> rz_val -> (nat-> C * rz_val) -> list nat -> Prop :=
+    assem_elem_0 : forall size c f, assem_elem 0 size c f nil
+  | assem_elem_st : forall size c f m l, assem_elem m size c f l -> cut_n (snd (f m)) size = c
+                 -> assem_elem (S m) size c f (m::l)
+  | assem_elem_sf : forall size c f m l, assem_elem m size c f l -> cut_n (snd (f m)) size <> c
+                 -> assem_elem (S m) size c f l.
+
+Fixpoint assem_list (i:nat) (s:list nat) (f: nat -> C * rz_val) (acc:nat -> C*rz_val) :=
+    match s with nil => (i,acc) 
+              | (a::l) => (assem_list (i+1) l f (update acc i (f a)))
+    end.
+
+Inductive assem_bool : nat -> nat -> nat -> (nat -> C * rz_val) -> (nat -> C * rz_val) -> (nat * (nat -> C*rz_val)) -> Prop :=
+    assem_bool_0: forall m' size f f', assem_bool 0 m' size f f' (0,fun _ => (C0,allfalse))
+  | assem_bool_sf: forall n i m' size f f' acc, assem_bool n m' size f f' (i,acc) ->
+               assem_elem m' size (cut_n (snd (f n)) size) f' nil -> 
+               assem_bool (S n) m' size f f' (i+1, update acc i (f n))
+  | assem_bool_st: forall n i l m' size f f' acc, assem_bool n m' size f f' (i,acc) ->
+               assem_elem m' size (cut_n (snd (f n)) size) f' l -> l <> nil ->
+               assem_bool (S n) m' size f f' (assem_list i l f' acc).
+
+Fixpoint subst_qstate (l:qstate) (x:var) (n:nat) :=
+  match l with nil => nil
+          | (y,v)::yl => (subst_session y x n,v)::(subst_qstate yl x n)
+  end.
+Definition subst_state (l:state) (x:var) n := (fst l,subst_qstate (snd l) x n).
 
 
-Inductive bexp :=  CB (c:cbexp)
-                  | BEq (x:varia) (y:varia) (i:var) (a:aexp)
-                    (* x = n @ z[i] --> conpare x and n --> put result in z[i] *)
-                  | BLt (x:varia) (y:varia) (i:var) (a:aexp) 
-                    (* x < n @ z[i] --> conpare x and n --> put result in z[i] *)
-                  | BTest (i:var) (a:aexp). (* z[i] = 0 or 1 *)
+(* defining diffusion. *)
+Fixpoint sum_c_list (l:list nat) (f: nat -> C * rz_val) :=
+   match l with nil => C0
+              | a::xl => (fst (f a) + sum_c_list xl f)%C
+   end.
+Definition cal_fc (l:list nat) (f:nat -> C*rz_val) (n:nat) :=
+     ((1/(2^(n-1)))%R * (sum_c_list l f))%C.
 
-Inductive eval_cbexp : state -> bexp -> bool -> Prop :=
-    | ceq_sem : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CEq x y) (n1 =? n2)
-    | clt_sem : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CLt x y) (n1 <? n2).
+Fixpoint trans_nat (l:list nat) (f:nat -> C*rz_val) (size:nat) :=
+  match l with nil => nil
+       | a::xl => (a_nat2fb (snd (f a)) size, fst (f a)):: trans_nat xl f size
+  end.
 
+Fixpoint find_c (l:list (nat * C)) (a:nat) :=
+   match l with nil => None
+       | ((x,y)::xl) => if x =? a then Some y else find_c xl a
+   end.
+
+Definition merge_two (n:nat) (c:rz_val) (size:nat) :=
+   fun i => if i <? size then (nat2fb n) i else c i.
+
+Fixpoint assem_dis (l:list (nat * C)) (c:rz_val) (f:nat -> C*rz_val) (sum:C) (size:nat) (i:nat) (n:nat) :=
+   match n with 0 => f
+             | S m => match find_c l m with None 
+                      => assem_dis l c (update f i (sum,merge_two m c size)) sum size (i+1) m
+                         | Some z => assem_dis l c (update f i ((sum - z)%C,merge_two m c size)) sum size (i+1) m
+                      end
+   end.
+
+Inductive find_same_group : nat -> nat -> nat -> rz_val -> (nat -> C * rz_val) -> list nat -> Prop :=
+   find_same_group_0 : forall pos size c f, find_same_group 0 pos size c f nil
+  | find_same_group_st: forall n pos size c f l, find_same_group n pos size c f l -> 
+       cut_n (lshift_fun (snd (f n)) pos) size = c -> find_same_group (S n) pos size c f (n::l)
+  | find_same_group_sf: forall n pos size c f l, find_same_group n pos size c f l -> 
+       cut_n (lshift_fun (snd (f n)) pos) size <> c -> find_same_group (S n) pos size c f l.
+
+Inductive dis_sem : nat -> nat -> nat -> nat -> (nat -> C * rz_val) -> (list nat) -> (nat * (nat -> C * rz_val)) -> Prop :=
+   dis_sem_0 : forall pos size n f l, dis_sem pos size n 0 f l (0,fun _ => (C0,allfalse))
+  | dis_sem_sf: forall pos size n m f l acc, dis_sem pos size n m f l acc -> In m l -> dis_sem pos size n (S m) f l acc
+  | dis_sem_st: forall pos size n m f l acc la, dis_sem pos size n m f (la++l) acc -> ~ In m l ->
+             find_same_group pos size n (cut_n (lshift_fun (snd (f m)) pos) size) f la ->
+         dis_sem pos size n (S m) f l
+          (fst acc+2^pos,assem_dis (trans_nat la f pos) (snd (f m)) (snd acc) (sum_c_list la f) pos (fst acc) (2^pos)).
 
 Inductive qfor_sem {rmax:nat}
            : aenv -> state -> pexp -> state -> Prop :=
@@ -209,73 +289,28 @@ Inductive qfor_sem {rmax:nat}
   | appu_sem_ch : forall aenv s s' a e l b m ba, @find_state rmax s a (Some (a++l,Cval m b)) ->
                  eval_ch rmax aenv a m b e = Some ba -> 
            (@up_state rmax s (a++l) (Cval m ba) s') -> qfor_sem aenv s (AppU a e) s'
-  | seq_sem: forall aenv e1 e2 s s1 s2, qfor_sem aenv s e1 s1 -> qfor_sem aenv s1 e2 s2 -> qfor_sem aenv s (PSeq e1 e2) s2.
-  | if_sem_1 : forall aenv l x n v v' v'' c e M M' s s' s'', type_pexp qenv aenv e (Ses l) -> add_one_ch rmax v v' (c 0) = Some v''
-                -> qfor_sem aenv (M,(l,v)::s) e (M',(l,v')::s') -> @find_state rmax (M,s) ([(x,n,S n)]) (Some (([(x,n,S n)]),Hval c))
-         -> @up_state rmax (M',s') ((x,n,S n)::l) v'' s'' -> qfor_sem aenv (M,(l,v)::s) (If (BTest x (Num n)) e) s''
-  | if_sem_2 : forall aenv l l1 b x n v v' va c v'' e M M' s s' s'', type_pexp qenv aenv e (Ses l) -> type_bexp aenv b (Ses ((x,n,S n)::l1))
-                -> merge_one_ch rmax v v' va (c 0) = Some v'' -> is_core_var b x n -> @find_state rmax (M,s) ((x,n,S n)::l1) (Some (l1,va))
-                -> @find_state rmax (M,s) ([(x,n,S n)]) (Some (([(x,n,S n)]),Nval c))
-                -> qfor_sem aenv (M,(l,v)::s) e (M',(l,v')::s')
-         -> @up_state rmax (M',s') ((x,n,S n)::l) v'' s'' -> qfor_sem aenv (M,(l,v)::s) (If b e) s''.
-
-
-Inductive eval_aexp : stack -> aexp -> (R * nat) -> Prop :=
-    | var_sem : forall s x r n, AEnv.MapsTo x (r,n) s -> eval_aexp s (BA x) (r,n)
-    | num_sem : forall s n, eval_aexp s (Num n) (1%R,n)
-    | aplus_sem: forall s e1 e2 r n1 n2, eval_aexp s e1 (r,n1) -> eval_aexp s e2 (1%R,n2) -> eval_aexp s (APlus e1 e2) (r,n1 + n2)
-    | amult_sem: forall s e1 e2 r n1 n2, eval_aexp s e1 (r,n1) -> eval_aexp s e2 (1%R,n2) -> eval_aexp s (AMult e1 e2) (r,n1 * n2). 
-
-
-
-Definition add_one_ch_aux_1 (rmax m:nat) (v v' : nat -> R * rz_val * rz_val) (c:rz_val) :=
-   (fun i => if i <? m then v i else (fst (fst (v' (i-m))), n_rotate rmax c (snd (fst (v' (i-m)))), snd (v' (i-m)))).
-
-Definition add_one_ch_aux_2 (rmax m:nat) (v v' : nat -> C * rz_val) (c:rz_val) :=
-   (fun i => if i <? m then v i else (((get_amplitude rmax (1%R) c) + (fst (v' (i-m)%nat)))%C, snd (v' (i-m)))).
-
-Definition add_one_ch (rmax:nat) (v v': state_elem) (c:rz_val) := 
-   match (v,v') with (Cval m f,Cval m' f') => Some (Cval (2*m) (add_one_ch_aux_1 rmax m f f' c))
-                   | (Fval m f,Fval m' f') => Some (Fval (2*m) (add_one_ch_aux_2 rmax m f f' c))
-                   | _ => None
-   end.
-
-Definition is_core_var (b:bexp) (x:var) (n:nat) := 
-   match b with BEq a b y (Num m) => ((x = y) /\ (n = m))
-             | BLt a b y (Num m) => ((x = y) /\ (n = m))
-             | _ => False
-   end. 
-
-Definition merge_one_ch (rmax:nat) (v1 v2 v3 : state_elem) (b:bool) :=
-   match (v1,v2,v3) with (Cval m f,Cval m' f', Cval n f2)
-           => Some (Cval (n*m) (fun i => f2 i))
-                   | _ => None
-   end.
-
-Inductive qfor_sem  {qenv: var -> nat} {rmax:nat}
-           : aenv -> state -> pexp -> state -> Prop :=
-  | skip_sem: forall aenv s, qfor_sem aenv s PSKIP s
-  | let_sem_c : forall aenv s s' x a n e, simp_aexp a = Some n -> qfor_sem aenv s (subst_pexp e x n) s' -> qfor_sem aenv s (Let x (AE a) CT e) s'
-  | let_sem_m : forall aenv s s' x a n e, eval_aexp (fst s) a n -> qfor_sem (AEnv.add x (AType MT) aenv) (update_cval s x n) e s'
-             -> qfor_sem aenv s (Let x (AE a) MT e) s'
-  | let_sem_q : forall aenv s s' s'' x a e r v, @pick_mea rmax s a (qenv a) (r,v) -> @mask_state rmax ([(a,0,qenv a)]) v (snd s) s' ->
-            qfor_sem (AEnv.add x (AType MT) aenv) (update_cval (fst s,s') x (r,v)) e s''
-                  -> qfor_sem aenv s (Let x (Meas a) MT e) s''
-  | appsu_sem_h_nor : forall aenv s s' p a b, @simp_varia qenv p a -> @find_state rmax s ([a]) (Some (([a]),Nval b)) -> 
-                @up_state rmax s ([a]) (Hval (fun i => (update allfalse 0 (b i)))) s' -> qfor_sem aenv s (AppSU (RH p)) s
-  | appsu_sem_h_had : forall aenv s s' p a b, @simp_varia qenv p a -> @find_state rmax s ([a]) (Some (([a]),Hval b)) ->
-           (@up_state rmax s ([a]) (Nval (fun j => b j 0)) s') -> qfor_sem aenv s (AppSU (RH p)) s'
-  (* rewrite the tenv type for oqasm with respect to the ch list type. *)
-  | appu_sem : forall aenv s a e,  qfor_sem aenv s (AppU a e) s
   | seq_sem: forall aenv e1 e2 s s1 s2, qfor_sem aenv s e1 s1 -> qfor_sem aenv s1 e2 s2 -> qfor_sem aenv s (PSeq e1 e2) s2
-  | if_sem_1 : forall aenv l x n v v' v'' c e M M' s s' s'', type_pexp qenv aenv e (Ses l) -> add_one_ch rmax v v' (c 0) = Some v''
-                -> qfor_sem aenv (M,(l,v)::s) e (M',(l,v')::s') -> @find_state rmax (M,s) ([(x,n,S n)]) (Some (([(x,n,S n)]),Hval c))
-         -> @up_state rmax (M',s') ((x,n,S n)::l) v'' s'' -> qfor_sem aenv (M,(l,v)::s) (If (BTest x (Num n)) e) s''
-  | if_sem_2 : forall aenv l l1 b x n v v' va c v'' e M M' s s' s'', type_pexp qenv aenv e (Ses l) -> type_bexp aenv b (Ses ((x,n,S n)::l1))
-                -> merge_one_ch rmax v v' va (c 0) = Some v'' -> is_core_var b x n -> @find_state rmax (M,s) ((x,n,S n)::l1) (Some (l1,va))
-                -> @find_state rmax (M,s) ([(x,n,S n)]) (Some (([(x,n,S n)]),Nval c))
-                -> qfor_sem aenv (M,(l,v)::s) e (M',(l,v')::s')
-         -> @up_state rmax (M',s') ((x,n,S n)::l) v'' s'' -> qfor_sem aenv (M,(l,v)::s) (If b e) s''.
+  | if_sem_ct : forall aenv M s s' b e, eval_cbexp M b true -> qfor_sem aenv (M,s) e s' -> qfor_sem aenv (M,s) (If (CB b) e) s'
+  | if_sem_cf : forall aenv M s b e, eval_cbexp M b false -> qfor_sem aenv (M,s) (If (CB b) e) (M,s)
+  | if_sem_q : forall aenv l l1 n n' s s' sa sa' sac b e m m' f f' fc fc' fa,
+               type_bexp aenv b (QT (n+1),l) -> @eval_bexp rmax aenv s b s' ->
+                @find_state rmax s' l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
+                 mut_state 0 (n+1) n' (Cval (fst (grab_bool f m n)) (snd (grab_bool f m n))) fc ->
+                @up_state rmax s' (l++l1) fc sa -> qfor_sem aenv sa e sa' ->
+                 @find_state rmax sa' l1 (Some (l1, fc')) -> mut_state 0 n' (n+1) fc' (Cval m' f') ->
+                assem_bool m m' (n+1) f f' fa -> @up_state rmax s (l++l1) (Cval (fst fa) (snd fa)) sac ->
+                    qfor_sem aenv s (If b e) sac
+  | for_0 : forall aenv s x l h b p, h <= l -> qfor_sem aenv s (For x (Num l) (Num h) b p) s
+  | for_s : forall aenv s s' sa x l h b p, l < h -> 
+          qfor_sem aenv s (If (subst_bexp b x l)  (subst_pexp p x l)) s' ->
+          qfor_sem aenv s' (For x (Num (l+1)) (Num h) b p) sa ->
+          qfor_sem aenv s (For x (Num l) (Num h) b p) sa
+  | diffuse_a: forall aenv s s' x n l n' l1 m f m' acc, type_vari aenv x (QT n,l) ->
+                @find_state rmax s l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
+                dis_sem n n' m m f nil (m',acc) ->  @up_state rmax s (l++l1) (Cval m' acc) s' ->
+                qfor_sem aenv s (Diffuse x) s'.
+
+
 
 
 
