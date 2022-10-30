@@ -399,7 +399,7 @@ Finally, the type system estimates the scopes of entangled sessions \footnote{Re
       \\   \varphi \bot \varphi' \\ \Omega;\sigma; \psi; \varphi \models_g P  \\ \Omega;\sigma';\psi; \varphi' \models_g Q}
         {\Omega;\sigma \cup \sigma';\psi; \varphi \cup \varphi'\models_g P * Q }
 
-    \inferrule[TCon]{\sigma \preceq \sigma' \\  \fivepule{\Omega}{\sigma'}{g}{P'}{s}{Q'}}
+    \inferrule[PCon]{\sigma \preceq \sigma' \\ P \Rightarrow P'\\  \fivepule{\Omega}{\sigma'}{g}{P'}{s}{Q'}}
                 {\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}}
 
     \inferrule[]{\forall j.\,\slen{\kappa}=\slen{c_j}}
@@ -422,7 +422,7 @@ QNP intends to create a proof system that utilizes classical automated reasoning
 To materialize such analogy, \qafny sessions play two roles, both as variable names representing quantum arrays and as qubit array structure indicators. We enforce the correctness by well-formedness and well-typed restrictions on states and proof system predicates.
 \Cref{appx:well-formed} describes the well-formedness: well-formed domains ($\Omega\vdash \dom{\sigma}$) guarantee that every range variable in a session in $\dom{\sigma}$ is mentioned in $\Omega$, and well-formed predicates ($\Omega,\sigma \vdash P$) guarantee that every session mentioned in $P$ is in $\dom{\sigma}$.
 \qafny semantics is formalized as a small-step transition $(\psi,\varphi,s) \longrightarrow (\psi',\varphi',s')$, where $\psi$ and $\psi'$ are stacks storing local classical variables, and $\varphi$ and $\varphi'$ are quantum states. A \qafny proof triple is written as: $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$, where $P$ and $Q$ are the verification conditions, $\Omega$, $\sigma$, and $g$ are type entities. Any QNP proof judgment, which merges the \qafny type system into proof rules, has a hidden type restriction stated as predicate $TC$ in \Cref{fig:exp-proofsystem-1}.
-The restriction is required not only at the bottom proof tree, but also at all levels, e.g., rule \rulelab{TCon} describes the typing consequence rule by replacing $\sigma$ with $\sigma'$. We require that $P$ and $Q$ satisfy $TC(\sigma,P,Q)$, as well as $P'$ and $Q'$ satisfy $TC(\sigma',P',Q')$.
+The restriction is required not only at the bottom proof tree, but also at all levels, e.g., rule \rulelab{PCon} describes the typing consequence rule by replacing $\sigma$ with $\sigma'$. We require that $P$ and $Q$ satisfy $TC(\sigma,P,Q)$, as well as $P'$ and $Q'$ satisfy $TC(\sigma',P',Q')$.
 We place the type restrictions because 1) we can track the scope of an entangled session that an operation is applied on; and 2) we can utilize the type environment and state equivalence rewrites to enforce the state representation forms that we want in an application, due to states and type environments being required to have the same domains.
 %The type restrictions have two roles. First, the type environments permit the knowledge of entangled session scopes. In quantum computing, an operation might have side-effects on all qubits in an entangled session, even if the qubits are not directly mentioned in the operation. Second, the type restrictions enforce state representations of sessions, so that proof rules are designed based on the knowledge of the state representations. Third, states and type environments are required to have the same domains so that we can utilize the type environment partial order equivalence rewrites to direct the equivalence rewrites of states to forms that we want in an application.
 

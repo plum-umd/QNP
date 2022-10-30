@@ -78,6 +78,53 @@ Definition celem_subst_l t x v :=
           | a => a end.
 *)
 
+  Inductive triple {qenv: var -> nat} {rmax:nat} : 
+          atype -> aenv -> type_map -> (var * cpred) -> pexp -> (var * cpred) -> Prop :=
+      | triple_comm: forall q env tenv S P Q e R, triple q env tenv (S,Q++P) e R -> triple q env tenv (S,P++Q) e R.
+      | triple_split: forall q env tenv S x y v v1 v2 sv sv1 sv2 P e Q,
+          env_equiv ((x++y,v)::tenv) ((x,v1)::(y,v2)::tenv) -> @state_equiv rmax ([(x++y,sv)]) ((x,sv1)::(y,sv2)::[])
+       -> triple q env ((x,v1)::(y,v2)::tenv) (S,(SEq (SV x) (ST sv1))::(SEq (SV y) (ST sv2))::P) e Q
+        -> triple q env ((x++y,v)::tenv) (S,(SEq (SV (x++y)) (ST sv))::P) e Q
+      | triple_merge: forall q env tenv S x y v v1 v2 sv sv1 sv2 P e Q,
+          env_equiv ((x,v1)::(y,v2)::tenv) ((x++y,v)::tenv) -> @state_equiv rmax ((x,sv1)::(y,sv2)::[]) ([(x++y,sv)])
+        -> triple q env ((x++y,v)::tenv) (S,(SEq (SV (x++y)) (ST sv))::P) e Q
+       -> triple q env ((x,v1)::(y,v2)::tenv) (S,(SEq (SV x) (ST sv1))::(SEq (SV y) (ST sv2))::P) e Q
+      | skip_pf: forall q env tenv P, triple q env tenv P PSKIP P
+      | let_c_pf: forall q env tenv P x v e Q,
+            triple q env tenv P (subst_pexp e x v) Q -> triple q env tenv P (Let x (AE (Num v)) e) Q
+      | let_m_pf: forall q env tenv P x a e Q, type_aexp env a (AType MT) ->
+            triple q env tenv (fst P, ((CBeq (BA x) a))::(snd P)) e Q
+                  -> triple q env tenv P (Let x (AE a) e) Q
+      | let_q_pf:  forall q env tenv P x n e Q,
+            triple q (AEnv.add x (Ses ([(x,0,n)])) env) ((([(x,0,n)]),TNor (Some allfalse))::tenv) P e Q
+            -> triple q env tenv P (Let x (Init n) e) Q
+      | mea_q_pf:  forall q env tenv S P x y l m t,
+            find_type tenv ([(y,0,qenv y)]) (Some (([(y,0,qenv y)])++l,CH (Some (m,t)))) -> 
+            triple q env tenv (S,(cpred_subst_m P x (Select (([(y,0,qenv y)])++l) (Num (qenv y)))))
+               (Meas x y) (fresh S,(SEq (SV l) (Mask (SV ((([(y,0,qenv y)])++l))) (qenv y) (BA x)))::P)
+      | app_1 : forall q env tenv S P P' l e, cpred_subst_q P l (AppA e (SV l)) P'
+                -> triple q env tenv (S, P') (AppU l e) (S,P)
+      | qwhile : forall q env tenv N N' P i l h b e iv,
+          triple q env tenv (N,(CBlt (Num iv) (Num h))::(cpred_subst_c P i iv))
+                       (If b e) (N',cpred_subst_c P i (S iv)) ->
+                 triple q env tenv (N,cpred_subst_c P i l) (For i (Num l) (Num h) b e) (N',cpred_subst_c P i h)
+      | if_bit : forall q env tenv N N' P P' P'' x v e E l t, 
+              @type_pexp qenv env e (Ses l) ->
+             find_type tenv ((x,v,S v)::l) (Some (((x,v,S v)::l),CH t)) -> 
+              cpred_subst_q P ((x,v,S v)::l) E P' -> cpred_subst_q P ((x,v,S v)::l) (FSL E ((x,v,S v)::l) 1) P'' ->
+              triple q env tenv (N,P') e (N',P) -> triple q env tenv (N,P'') (If (BTest x (Num v)) e) (N',P)
+      | if_b : forall q env tenv N N' P P' P'' b e E l1 x v l2 t, 
+              @type_pexp qenv env e (Ses l2) ->
+              @type_pexp qenv env (If b e) (Ses (l1++(x,v, S v)::l2)) ->
+             find_type tenv (l1++(x,v, S v)::l2) (Some ((l1++(x,v, S v)::l2),CH t)) -> 
+              cpred_subst_q P (l1++(x,v, S v)::l2) E P'
+               -> cpred_subst_q P (l1++(x,v, S v)::l2) (SSL E (SV (l1++(x,v, S v)::l2)) b (l1++[(x,v, S v)]) l2) P'' ->
+              triple q env tenv (N,P') e (N',P) -> triple q env tenv (N,P'') (If b e) (N',P)
+      | seq_pf: forall q env tenv tenv' tenv'' N N' N'' P R Q e1 e2,
+             @session_system qenv rmax q env tenv e1 tenv' -> up_types tenv tenv' tenv'' ->
+             triple q env tenv (N,P) e1 (N',R) -> triple q env tenv'' (N',R) e1 (N'',Q) -> 
+              triple q env tenv (N,P) (PSeq e1 e2) (N'',Q).
+
 Definition cpred_subst_c l x v := map (fun a => celem_subst_c a x v) l.
 
 Fixpoint subst_aexp_m (a:aexp) (x:var) (n:aexp) :=
@@ -156,52 +203,7 @@ Definition state_syn (l:type_map) (t:cpred) := Forall (fun x => state_syn_elem (
 (*TODO: define the model function of a state, and claim that the type and model function of a state should match. *)
 Section Triple. 
 
-  Inductive triple {qenv: var -> nat} {rmax:nat} : 
-          atype -> aenv -> type_map -> (var * cpred) -> pexp -> (var * cpred) -> Prop :=
-      | triple_comm: forall q env tenv S P Q e R, triple q env tenv (S,Q++P) e R -> triple q env tenv (S,P++Q) e R
-      | triple_split: forall q env tenv S x y v v1 v2 sv sv1 sv2 P e Q,
-          env_equiv ((x++y,v)::tenv) ((x,v1)::(y,v2)::tenv) -> @state_equiv rmax ([(x++y,sv)]) ((x,sv1)::(y,sv2)::[])
-       -> triple q env ((x,v1)::(y,v2)::tenv) (S,(SEq (SV x) (ST sv1))::(SEq (SV y) (ST sv2))::P) e Q
-        -> triple q env ((x++y,v)::tenv) (S,(SEq (SV (x++y)) (ST sv))::P) e Q
-      | triple_merge: forall q env tenv S x y v v1 v2 sv sv1 sv2 P e Q,
-          env_equiv ((x,v1)::(y,v2)::tenv) ((x++y,v)::tenv) -> @state_equiv rmax ((x,sv1)::(y,sv2)::[]) ([(x++y,sv)])
-        -> triple q env ((x++y,v)::tenv) (S,(SEq (SV (x++y)) (ST sv))::P) e Q
-       -> triple q env ((x,v1)::(y,v2)::tenv) (S,(SEq (SV x) (ST sv1))::(SEq (SV y) (ST sv2))::P) e Q
-      | skip_pf: forall q env tenv P, triple q env tenv P PSKIP P
-      | let_c_pf: forall q env tenv P x v e Q,
-            triple q env tenv P (subst_pexp e x v) Q -> triple q env tenv P (Let x (AE (Num v)) e) Q
-      | let_m_pf: forall q env tenv P x a e Q, type_aexp env a (AType MT) ->
-            triple q env tenv (fst P, ((CBeq (BA x) a))::(snd P)) e Q
-                  -> triple q env tenv P (Let x (AE a) e) Q
-      | let_q_pf:  forall q env tenv P x n e Q,
-            triple q (AEnv.add x (Ses ([(x,0,n)])) env) ((([(x,0,n)]),TNor (Some allfalse))::tenv) P e Q
-            -> triple q env tenv P (Let x (Init n) e) Q
-      | mea_q_pf:  forall q env tenv S P x y l m t,
-            find_type tenv ([(y,0,qenv y)]) (Some (([(y,0,qenv y)])++l,CH (Some (m,t)))) -> 
-            triple q env tenv (S,(cpred_subst_m P x (Select (([(y,0,qenv y)])++l) (Num (qenv y)))))
-               (Meas x y) (fresh S,(SEq (SV l) (Mask (SV ((([(y,0,qenv y)])++l))) (qenv y) (BA x)))::P)
-      | app_1 : forall q env tenv S P P' l e, cpred_subst_q P l (AppA e (SV l)) P'
-                -> triple q env tenv (S, P') (AppU l e) (S,P)
-      | qwhile : forall q env tenv N N' P i l h b e iv,
-          triple q env tenv (N,(CBlt (Num iv) (Num h))::(cpred_subst_c P i iv))
-                       (If b e) (N',cpred_subst_c P i (S iv)) ->
-                 triple q env tenv (N,cpred_subst_c P i l) (For i (Num l) (Num h) b e) (N',cpred_subst_c P i h)
-      | if_bit : forall q env tenv N N' P P' P'' x v e E l t, 
-              @type_pexp qenv env e (Ses l) ->
-             find_type tenv ((x,v,S v)::l) (Some (((x,v,S v)::l),CH t)) -> 
-              cpred_subst_q P ((x,v,S v)::l) E P' -> cpred_subst_q P ((x,v,S v)::l) (FSL E ((x,v,S v)::l) 1) P'' ->
-              triple q env tenv (N,P') e (N',P) -> triple q env tenv (N,P'') (If (BTest x (Num v)) e) (N',P)
-      | if_b : forall q env tenv N N' P P' P'' b e E l1 x v l2 t, 
-              @type_pexp qenv env e (Ses l2) ->
-              @type_pexp qenv env (If b e) (Ses (l1++(x,v, S v)::l2)) ->
-             find_type tenv (l1++(x,v, S v)::l2) (Some ((l1++(x,v, S v)::l2),CH t)) -> 
-              cpred_subst_q P (l1++(x,v, S v)::l2) E P'
-               -> cpred_subst_q P (l1++(x,v, S v)::l2) (SSL E (SV (l1++(x,v, S v)::l2)) b (l1++[(x,v, S v)]) l2) P'' ->
-              triple q env tenv (N,P') e (N',P) -> triple q env tenv (N,P'') (If b e) (N',P)
-      | seq_pf: forall q env tenv tenv' tenv'' N N' N'' P R Q e1 e2,
-             @session_system qenv rmax q env tenv e1 tenv' -> up_types tenv tenv' tenv'' ->
-             triple q env tenv (N,P) e1 (N',R) -> triple q env tenv'' (N',R) e1 (N'',Q) -> 
-              triple q env tenv (N,P) (PSeq e1 e2) (N'',Q).
+
 
 
 End Triple.
