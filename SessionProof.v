@@ -38,10 +38,14 @@ TODO: define apply operation with few different applications:
 5. H/QFT state prepreation.
 *)
 
+(*
 Inductive sval := ST (x:state_elem) | SV (s:session)
                | Mask (y:sval) (u:nat) (z:aexp) | AppA (x:exp) (y:sval)
                | FSL (e:sval) (l:session) (s:nat)
                | SSL (e:sval) (a:sval) (b:bexp) (l1:session) (l2:session).
+*)
+
+Inductive sval := SV (s:session) | Frozen (b:bexp) (s:sval) | Unfrozen (b:bexp) (s:sval).
 
 Inductive cpred_elem := PFalse | CBeq (x:aexp) (y:aexp) | CBge (x:aexp) (y:aexp) | CBlt (x:aexp) (y:aexp) | SEq (x:sval) (y:sval).
                              (* x = y|_{u=z} x is a new session from the old y by cutting session u to be value z. *)

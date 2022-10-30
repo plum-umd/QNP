@@ -519,10 +519,9 @@ The other similar rules, such as state preparation rules, can be found in \Cref{
           {\Omega;\sigma;\varphi\models_g \mathpzc{M}(b,\kappa) 
               \mapsto \scha{m}{z_j}{c_{j}}{\beta_j}+q(\kappa,\neg b) }
 
-    \inferrule[]{R
-            \\\Omega;\sigma,\varphi\models_g \kappa \mapsto \scha{m'}{z'_j}{c_{j}}{\beta'_j}+q(\kappa,\neg b)}
-          {\Omega;\sigma,\varphi\models_g \mathpzc{U}(\neg b,\kappa) \mapsto \scha{m}{z_j}{c_{j}}{\beta_j}+q(\kappa,\neg b)
-  \\\\ \\ * \mathpzc{U}(b,\kappa) \mapsto \ssum{j=0}{m'}{z'_j \beta'_j\ket{c_{j}}} }
+    \inferrule[]{\forall j.\,n=\slen{c_j}\\\Omega;\sigma,\varphi\models_g \kappa \mapsto \scha{m'}{z'_j}{c_{j}}{\beta'_j}+q(\kappa,\neg b)}
+          {\Omega;\sigma,\varphi\models_g \mathpzc{U}(n,\neg b,\kappa) \mapsto \scha{m}{z_j}{c_{j}}{\beta_j}+q(\kappa,\neg b)
+  \\\\ \\ * \mathpzc{U}(n,b,\kappa) \mapsto \ssum{j=0}{m'}{z'_j \beta'_j\ket{c_{j}}} }
 
 \inferrule[SIF]{ R \\ FV(\emptyset,s)\subseteq \kappa'
           \\(\psi,\varphi[\kappa'\mapsto \ssum{j=0}{m}{z_j \beta_j\ket{c_{j}}}],s) 
@@ -531,7 +530,7 @@ The other similar rules, such as state preparation rules, can be found in \Cref{
           (\psi',\varphi[\kappa\uplus\kappa'\mapsto \scha{m'}{z'_j}{c_{j}}{\beta'_j}+q(\kappa,\neg b)],\sifq{b}{s'}) }
 
     \inferrule[PIF]{\Omega;\{\kappa' : \tcht\} \vdash Q' \\ \fivepule{\Omega}{\sigma[\kappa' \mapsto \tcht]}{\mmode}{P[\mathpzc{M}(b,\kappa')/ \kappa \uplus \kappa']}{s}{Q * Q'}}
-                {\fivepule{\Omega}{\sigma[\kappa \uplus \kappa' \mapsto \tcht]}{g}{P}{\sifq{b}{s}}{P[\mathpzc{U}(\neg b,\kappa \uplus \kappa')/\kappa \uplus \kappa')] * Q'[\mathpzc{U}(b,\kappa \uplus \kappa')/\kappa']}}
+                {\fivepule{\Omega}{\sigma[\kappa \uplus \kappa' \mapsto \tcht]}{g}{P}{\sifq{b}{s}}{P[\mathpzc{U}(\slen{\kappa},\neg b,\kappa \uplus \kappa')/\kappa \uplus \kappa')] * Q'[\mathpzc{U}(\slen{\kappa},b,\kappa \uplus \kappa')/\kappa']}}
 
 \mprset{flushleft}
     \inferrule[SLOOP]{ n_1 < n_2 \\ b'=b[n_1/j] \\ s' =s[n_1/j] }
