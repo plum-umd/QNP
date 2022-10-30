@@ -158,11 +158,9 @@ $\tos{i}$ turns a number $i$ to a bitstring. }
 
 We designed \qafny, the core language of QNP,
 to express quantum programs with
-high-level operations that are abstracted away low-level circuit gates.
-The operations in \qafny are analogized to classical array 
-aggregate operations so that automated verification is feasible.
-\qafny's type system tracks the transformation of sessions
-with three types representing the sessions' quantum states.
+high-level operations that abstracts away low-level circuit gates.
+The \qafny type system tracks the transformation of sessions
+with three types representing the sessions' quantum three different state representations, as shown in \Cref{sec:background}.
 The \qafny proof system captures the analogy of viewing quantum 
 operations as classical aggregate operations 
 by utilizing the type system to ensure the session state forms.
@@ -170,7 +168,9 @@ All of these features are novel to quantum languages and proof systems.
 This section presents \qafny states and the language's syntax, typing, 
 semantics, proof system, and soundness/completeness results.  
 
-As a running example, we use the Shor's algorithm~\cite{Shor94} shown in \Cref{fig:shorqafny}. 
+As a running example, we use the pre-measurement steps of the order finding portion of Shor's algorithm~\cite{Shor94} shown in \Cref{fig:shorqafny}. 
+\ignore{
+we use the Shor's algorithm~\cite{Shor94} shown in \Cref{fig:shorqafny}. 
 Given an integer $N$, Shor's algorithm finds its nontrivial prime factors, which has the following step: (1) randomly pick a number $1 < a < N$ and compute $k=\texttt{gcd}(a,N)$;
 %\footnote{compute the greatest common divisor of $a$ and $N$}
 (2) if $k \neq 1$, $k$ is the factor; (3) otherwise, $a$ and $N$ are coprime and we find the order $p$ of $a$ and $N$;
@@ -181,17 +181,19 @@ Given an integer $N$, Shor's algorithm finds its nontrivial prime factors, which
 Intuitively I would've expected to see that $gcd(r, N)\ne1$, as I thought the output $r$ would be a factor of $N$.
 That isn't what the post-condition says.
 Also, the figure title says Q-Dafny while we probably mean Qafny, right?}
+}
 The Shor's pre-measurement quantum steps in \Cref{fig:shorqafny} can be analogized as an efficient array filter operation in \Cref{fig:shorsanalog}.
-The steps before line 14 (steps at line 2, 5 and 9-11) create a $2^n$-length of pairs, each of which is formed as $(i,a^i \% N)$ where $i\in [0,2^n)$. The measurement in line 14 filters the array as a new one ($x[0..n]$) with all elements $i$ satisfying $a^i \% N=u$ where $u$ is a randomly picked number. Notice that modulo multiplication $f(i)=a^i\%N$ is a periodic function. All elements in $x[0..n]$ satisfy $a^i \% N=u$, which means that 1) there is a smallest $t$ such that $a^t \% N=u$, and 2) all elements can be rewritten as $i=t+kp$ and $p$ is the period of the modulo multiplication function, which is given as the post-condition on the right of line 15.
+The steps before line 14 (steps at line 2, 5 and 9-11) create a $2^n$-length of pairs, each of which is formed as $\ket{i}\ket{a^i \% N}$ where $i\in [0,2^n)$. The measurement in line 14 filters the array as a new one ($x[0..n]$) with all elements $i$ satisfying $a^i \% N=u$ and $u$ is a randomly picked number. Notice that modulo multiplication $f(i)=a^i\%N$ is a periodic function. All elements in $x[0..n]$ satisfy $a^i \% N=u$, which means that 1) there is a smallest $t$ such that $a^t \% N=u$, and 2) all elements can be rewritten as $i=t+kp$ and $p$ is the period of the modulo multiplication function, which is given as the post-condition on the right of line 15.
 %The implementation and correctness proof in \Cref{fig:shorqafny} exactly reflects the array analogy aspect.
 \ignore{
 One of the biggest advantage of using \qafny is that we can analogize quantum operations to classical array operations, so that we can utilize the existing automated proof infrastructure in many tools, such as Dafny.
 In the Qafny implementation, verifying a quantum program usually requires only the user input of the pre-, post-, and loop invariant. For example, the proof of \Cref{fig:shorqafny} in \qafny requires none of the states marked teal, but only the conditions marked black and purple. \footnote{The purple is also not needed if we combine the Shor's first and second half algorithms together.}
 Here, we step by step discuss the states, program syntax, and proofs of the aspect.
 }
-Notice that only the black and purple parts in \Cref{fig:shorqafny} are required to input in the \qafny implementation, and the teal parts can be inferred by the \qafny proof system. \footnote{The purple is also not needed if we verify the whole Shor's algorithm in \Cref{fig:shorexample}.}
-
+Constructing such a proof outline by hand is tedious and error-prone.
+Fortunately, programmers only need to provide the program and specifications in the black and purple parts in \Cref{fig:shorqafny}; then, the \qafny proof system will infer and verify the teal parts for free.
 We first introduce \qafny states, syntax, and type system. Then, we discuss its semantics and proof system and metatheories.
+
 
 \subsection {Classical Values and Quantum State and Equations}\label{sec:quantum-state}
 
@@ -243,52 +245,19 @@ We first introduce \qafny states, syntax, and type system. Then, we discuss its 
 \end{figure}
 
 \qafny has three \emph{kinds} \footnote{$\cmode$ and $\mmode$ kinds are also used as context modes in type checking. See \Cref{fig:exp-sessiontype}. } of parameters in \Cref{fig:qafny-state}: $\cmode$-kind classical integers \footnote{In the \qafny implementation, one can use any classical types in Dafny. For simplicity, we only allow integers in this paper.}; 
-$\mmode$-kind classical integers $(r,n)$ with a probability characteristic $r$ representing the theoretical probability of the measurement resulting in the natural number $n$; and $(\qmode{n})$-kind quantum parameters, where $n$ represents the number of qubits in a qubit array piece.
+$\mmode$-kind classical integers $(r,n)$ with a probability field $r$ representing the theoretical probability of measurement with outcome $n$; and $(\qmode{n})$-kind quantum parameters, where $n$ represents the number of qubits in a qubit array piece.
 
-Quantum parameters represent qubit array pieces that are appeared as parts of virtual quantum arrays and represent consecutive physical qubit array segments. \qafny represents virtual qubit arrays as \emph{sessions} ($\kappa$), which consist of different \emph{disjoint ranges}, each of which describes an array fragment $x[n..m]$, where $x$ is a parameter and $[n..m]$ represents the array fragment from position $n$ to $m$ (exclusive) in array piece $x$. For simplicity, we assume that there are no aliasing variables in this paper, i.e., two distinct variables represent disjoint array pieces. We view ranges are subsets of session, so that we can abbreviate a singleton session $\{x[n..m]\}$ as a range $x[n..m]$. We can also abbreviate range $x[j,\snext{j}]$ to $x[j]$.
+Quantum parameters represent qubit array pieces that are appeared as parts of virtual quantum arrays and represent consecutive physical qubit array segments. \qafny represents virtual qubit arrays as \emph{sessions} ($\kappa$), which consist of different \emph{disjoint ranges}, each of which describes an array fragment $x[n..m]$, where $x$ is a parameter and $[n..m]$ represents the array fragment from position $n$ to $m$ (exclusive) in array piece $x$. For simplicity, we assume that there are no variable alias in this paper, i.e., two distinct variables represent disjoint array pieces. We view ranges are subsets of session, so that we can abbreviate a singleton session $\{x[n..m]\}$ as a range $x[n..m]$, and we can also abbreviate range $x[j,\snext{j}]$ to $x[j]$.
 
-\qafny quantum type environments (or states) are finite maps from sessions to types (or state representations), and their domains do not overlap \footnote{ For all $\kappa, \kappa' \in \dom{\sigma}$ (or $\dom{\varphi}$), $\kappa \neq \kappa' \Rightarrow \kappa \cap \kappa' = \emptyset$.}.
+\qafny quantum type environments ($\sigma$) and states ($\varphi$) are finite maps from sessions to types and state representations, respectively; and their domains do not overlap \footnote{ For all $\kappa, \kappa' \in \dom{\sigma}$ (or $\dom{\varphi}$), $\kappa \neq \kappa' \Rightarrow \kappa \cap \kappa' = \emptyset$.}.
 Quantum state representations are classified as three types: $\tnort$, $\thadt$, or $\tcht$, representing the three types of state representations in \Cref{sec:background}. We have subtyping relations over quantum types, i.e., $\tnort$ and $\thadt$ are subtypes of $\tcht$, representing that $\tnort$ and $\thadt$ typed quantum values can be rewritten as $\tcht$-type state forms. 
+We analogize the three state representations as arrays when mapping them to Dafny, but the elements have different connotations.
+The elements in a $\tnort$ and $\thadt$ type state are qubits, but the former one has the form $\ket{0}$ or $\ket{1}$, and the latter one has the form $\frac{1}{\sqrt{2}}(\ket{0}+\alpha(r)\ket{1})$.
+In a $\tcht$ type state, the elements are basis states, written as $z\ket{c}$.
 
 %qubit values are always associated with sessions, where a length-$n$ session is associated with a $\tnort$-type state $z\beta$, $\thadt$-type state $\shad{2^n}{n}{\alpha(r_j)}$, or $\tcht$-type state $\ssum{j=0}{m}{z_j\beta_j}$. 
 %In a $\tnort$-type or $\tnort$-type state, the qubit  length $\slen{\beta}$ (or $\slen{\beta_j}$) \footnote{The length of $\beta$ is defined as the sum of all length of basis bitstrings in $\beta$.} are the same and $\slen{\beta} \ge n$ (or $\slen{\beta_j} \ge n$); in $\thadt$-type state, the session length is the same as the qubit array length $n$.
 %\qafny type environments and states are finite, and the domain sessions do not overlap, i.e., for all $\kappa, \kappa' \in \dom{\sigma}$ (or $\varphi$), $\kappa \neq \kappa' \Rightarrow \kappa \cap \kappa' = \emptyset$.
-
-\qafny utilize \emph{equivalence relations} over quantum sessions, quantum state representations, type environments and states (as shown in \Cref{fig:qafny-eq}) to facilitate automated program verification, written as $\equiv$ for state equivalence and $\preceq$ for environment partial order. One example is the state predicate rewrite from line 12 to line 13 in \Cref{fig:shorqafny}, where the session state $x[0..0]$ rewrites to $\texttt{true}$, because range $x[0..0]$ is essentially empty.
-The common equivalence relations are state type rewrites, permutations, split and joins. 
-State type rewrites transform state forms, such as the rewrite of session $\{x[0..0],y[0..n]\}$ from type $\tnort$ to $\tcht$ in line 7 and 8 in \Cref{fig:shorqafny}. Another example is to rewrite a $\tcht$-type state $\ssum{j=0}{1}{z_j\beta_j}$ to $\tnort$-type ${z_0\beta_0}$.
-
-Permutation equivalence refers to two qubits can mutate their locations. One possible permutation can happen in line 13 for write a session $\{x[0..0],y[0..n]\}$ to the form $\{y[0..n],x[0..0]\}$, as:
-
-{\footnotesize
-\begin{center}
-$\begin{array}{lcl}
-\{x[0..0],y[0..n]\}\mapsto \tcht &\preceq& \{y[0..n],x[0..0]\}\mapsto \tcht 
-\\
-\{x[0..n],y[0..n]\} \mapsto \textcolor{teal}{\schai{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{i}{\ket{a^{i}\;\%\;N}}} &\equiv& \{y[0..n],x[0..n]\} \mapsto \textcolor{teal}{\schai{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{a^{i}\;\%\;N}{\ket{i}}}
-\end{array}
-$
-\end{center}
-}
-
-Notice that the domains of a state and type environment are required to be the same in the \qafny proof system, as the above example.
-State joins merge two sessions together. Merging a $\tnort$-type and $\tcht$-type state is analogized to concatenate two qubit arrays.
-An example and its explanation are given in \Cref{fig:background-circuit-example-proof} line 4-6, 
-where the $\tnort$-type qubit $x[\snext{j}]$ is added to the end of $\tcht$-type session $x[0..\snext{j}]$.
-Merging a $\thadt$-type and $\tcht$-type state doubles the $\tcht$-type basis states. 
-In each loop step in \Cref{fig:shorqafny} line 9-11, we add a $\thadt$ type qubit $x[j]$ to the middle of a $\tcht$ type session $\{x[0..j],y[0..n]\}$, and the state becomes:
-
-{\footnotesize
-\begin{center}
-$
-\{x[0..\snext{j}],y[0..n]\} \mapsto \textcolor{teal}{\schai{2^j}{\frac{1}{\sqrt{2^j}}}{i}{\ket{0}\ket{a^{i}\;\%\;N}}+\scha{2^j}{\frac{1}{\sqrt{2^j}}}{i}{\ket{1}\ket{a^{i}\;\%\;N}}}
-$
-\end{center}
-}
-
-Notice that the basis states are still all distinct because the two parts above are distinguished by the $\ket{0}$ and $\ket{1}$ of the $x[j]$ position.
-Merging two $\tcht$-type states computes the Cartesian product of basis states in the two sessions (\Cref{fig:qafny-eq}).
-State split cuts a session into two individual sessions. The split of $\tnort$ and $\thadt$ types is no more than an array split, while the split of a $\tcht$-type is equal to disentanglement, a hard problem. In quantum algorithms, splitting $\tnort$ and $\thadt$ types are more common than disentanglement, and is permitted in \qafny. For splitting $\tcht$-type, we invent an upgraded type system in \Cref{sec:newtype} to permit few cases. 
 
 \subsection {Syntax and Type System}\label{sec:syntax-types}
 
@@ -362,17 +331,13 @@ $FV(\Omega, -)$ produces a session by union all qubits in $-$ with info in $\Ome
   \label{fig:exp-sessiontype}
 \end{figure}
 
-One key \qafny principle permits programmers thinking of quantum programs as sequences of functional operations that are analogized to array aggregate operations, reflected by the \qafny syntax in \Cref{fig:vqimp}.
-A program consists of a sequence of C-like statements $s$ that end at a skip ($\sskip$).
+\qafny programs provide high level operations and consist of a sequence of C-like statements $s$ that end at a skip ($\sskip$).
 The let operation ($\sexp{x}{e}{s}$) in the first row binds a new classical variable $x$ with $e$, which is used in $s$. If $e$ is an arithmetic expression ($a$), it introduces a $\cmode$/$\mmode$ kind classical variable.
 %\footnote{For simplicity, we assume that $\mmode$-kind arithmetic operations manipulates the \texttt{nat} number parts, so that $(r,n_1)+n_2=(r,n_1+n_2)$; and we only interacts $\mmode$ kinds with $\cmode$ kinds in an arithmetic operation, i.e., the $(r_1,n_1)+(r_2,n_2)$ is disallowed in \qafny.}
 $\sexp{x}{\smea{y}}{s}$ measures array piece $y$, stores the result in $\mmode$-kind variable $x$ that is used in $s$.
 %The measurement semantic definition relies on a ghost expression $\texttt{ret}$, and it turns $\smea{y}$ to $\sret{y,(r,n)}$, which does not appear in a \qafny source program but appears during semantic evaluation, and it records the intermediate measurement result of group $y$ as $(r,n)$. $\sexp{x}{\sinit{a}}{s}$ initializes an $a$-length qubit group named $x$ with the value $\ket{\overline{0}}$ ($a$ number of bit $0$) and is used in statement $s$, while 
 The last three of the first row are quantum data-flow operations.
 $\ssassign{l}{}{op}$ prepares a quantum superposition state of quantum qubits $l$ through Hadamard $\texttt{H}$ or $\texttt{QFT}$ gates, which are used for state preparation. It is also used to Fourier transform quantum qubit states by a $\texttt{QFT}^{-1}$ gate in quantum phase estimation and Shor's algorithms.
-\ynote{It seems somewhat limiting that we only have Hadamard and QFT for $op$. Or I guess we have Pauli $X$ too by just doing a $+1$, right?
-On a somewhat unrelated topic, this already seem enough to implement quantum key distribution too, though I don't know if we care.
-It's one of those popular algorithms that people like to talk about, but the analysis seems trivial (and mostly classical) if we don't have an adversary or a noise model...}
 The other gate applications are done through $\ssassign{\kappa}{}{\mu}$ that performs an \oqasm quantum oracle computation $\mu$ (\cite{oracleoopsla}) on each basis state of session $\kappa$ as we unveil in \Cref{sec:intro}. Since all quantum reversible arithmetic operations were defined in \oqasm; thus, we permit $\mu$'s description in \qafny to be arithmetic operations, similar to expressions $a$ in \Cref{fig:vqimp}, e.g., \cref{fig:shorqafny} line 5 and 11.
 $\ssassign{l}{}{\sdis}$ is a quantum diffusion operation applying on the parameter $l$, where $l$ may be part of an entangled session.
 The main functionality is to increase and average the occurrence likelihood of some quantum bases in a quantum state.
@@ -396,27 +361,26 @@ In \qafny, typing is with respect to a \emph{kind environment} $\Omega$ and a \e
 which map \qafny variables to kinds and map sessions to types, respectively.
 The typing judgment is written as $\Omega; \sigma\vdash_{g} s \triangleright \sigma'$,
 which states that statements $s$ is well-typed under the context mode $g$ and environments $\Omega$ and $\sigma$,
-the sessions representing $s$ is exactly the domain of $\sigma'$ ($\dom{\sigma'}$),
-and $s$ transforms types for the sessions in $\sigma$ to types in $\sigma'$.
-$\Omega$ is populated through \texttt{let} expressions that introduce variables,and 
+the sessions containing all qubits that will be directly or indirectly affected by executing $s$ is exactly the domain of $\sigma'$ ($\dom{\sigma'}$), and $s$ transforms types for the sessions in $\sigma$ to types in $\sigma'$.
+$\Omega$ is populated through \texttt{let} statements that introduce variables,and 
 the type system enforces variable scope; such enforcement is neglected in \Cref{fig:exp-sessiontype} for simplicity.
 %\footnote{In the \qafny implementation, we have an $\sinit{n}$ operation to allocate $n$-number of $\ket{0}$ qubits, which create $\qmode{n}$ variable in $\Omega$; here, we assume that $\qmode{n}$ array piece variables are pre-allocated in $\Omega$. }
-\ynote{I'm not a PL person, so this is a bit difficult for me to read.
-The reviewers will probably have an easier time than I did though, so maybe I shouldn't be worried?}
-We assume that variables introduced in \texttt{let} expressions are all distinct through proper alpha conversions, as in \rulelab{TExp} and \rulelab{TMea}.
-$\dom{\sigma}$ and $\dom{\sigma'}$ are large enough to describe all sessions containing all qubits mentioned in $s$.
-Kinds $g$ are reused as context modes ($\cmode$ and $\mmode$) for enforcing no quantum information leak in a quantum conditional.
+We assume that variables introduced in \texttt{let} expressions are all fresh variables, as in \rulelab{TExp} and \rulelab{TMea}.
+%$\dom{\sigma}$ and $\dom{\sigma'}$ are large enough to describe all sessions containing all qubits mentioned in $s$.
+Kinds $g$ are reused as context modes ($\cmode$ and $\mmode$) for enforcing no quantum information leak in a quantum conditional, explained shortly below.
 Selected type rules are given in \Cref{fig:exp-sessiontype}; the rules not mentioned are similar and listed in \Cref{sec:qafny-app}.
 
 The type system enforces four invariants.  First, we place well-formed and context restrictions on quantum programs.
 Well-formedness refers to the No-cloning theorem, such that qubits mentioned in a quantum conditional Boolean guard cannot be accessed in the conditional body; while context restriction refers to no quantum information leak, such that quantum conditional bodies cannot create and measure (\texttt{measure}) qubits.
 For example, the $FV$ checks in rule \textsc{TIF} enforces that the session for the Boolean and the conditional body does not overlap.
 Context mode $\cmode$ permits most \qafny operations. Once a type rule turns it to $\mmode$, as in \textsc{TIF}, we disallow measurement operations, as rules \textsc{TMea} is valid only if the input context mode is $\cmode$.
-Second, the type system tracks the arrangement of sessions as well as permits the session equivalence relations through rule $\textsc{TPar}$. In rule \textsc{TA-CH}, the session appearing in $\mu$ is $\kappa$, which is the prefix of a session $\kappa \uplus \kappa'$. To type check the case when we apply $\mu$ on other locations, we utilize the $\textsc{TPar}$ to transform the session structure by the session permutation equivalence. For example, in \Cref{fig:background-circuit-example} line 5, we want to apply addition on $x[\snext{j}]$, but the session is arranged as $x[0..j\,\splus\,2]$. In type checking the statement, we first rewrite the session through rule $\textsc{TPar}$ to $\{x[\snext{j}..j\,\splus\,2],x[0..\snext{j}]\}$, then apply the \textsc{TA-CH} rule.
-Third, the type system enforces that $\cmode$ classical variables can be evaluated to values in the compilation time \footnote{We consider all computation that only needs classical computer is done in the compilation time.}, while tracks $\mmode$ variables. Rule \textsc{TExp} enforces that a classical variable $x$ is replaced with its assignment value $n$ in $s$, where classical expressions containing $x$ are evaluated. See \Cref{sec:qafny-app}.
-Finally, the type system estimates the scopes of entangled sessions. In rule \textsc{TIF}, we use $\kappa'$, the domain of the post type environment, as the estimated session that is large enough to describe all possible qubits directly and indirectly mentioned in $s$ \footnote{This includes all entangled array pieces whose qubits are mentioned in $s$. } and should be in the same session. Based on $\kappa'$, we estimate the conditional's session as $\kappa \uplus \kappa'$.
-The type system keeps such estimation as small as possible.
-\ynote{I don't understand. Does this just contain the qubit used in the conditional plus the qubits used by the loop body? Why or why not?}
+Second, the type system tracks the arrangement of sessions as well as permits the session type environment partial order relations through rule $\textsc{TPar}$. The type environment and state equivalence relations enforce them to be formatted in a preferred way for automated reasoning, which will be explained shortly in \Cref{sec:semantics-proof}. 
+In rule \textsc{TA-CH}. The qubits mentioned in $\mu$ and session $\kappa$ are equal, and $\kappa$ is the prefix of a larger session $\kappa \uplus \kappa'$ that contains all qubits directly and indirectly affected by the $\mu$ application.
+If the qubits in $\mu$ happen not to be arranged as the prefix of $\kappa \uplus \kappa'$, such as in the middle of the session, we utilize the $\textsc{TPar}$ to transform the session structure by the session permutation equivalence. For example, in \Cref{fig:background-circuit-example} line 5, we want to apply addition on $x[\snext{j}]$, but the session is arranged as $x[0..j\,\splus\,2]$. In type checking the statement, we first rewrite the session through rule $\textsc{TPar}$ to $\{x[\snext{j}..j\,\splus\,2],x[0..\snext{j}]\}$, then apply the \textsc{TA-CH} rule.
+Third, the type system enforces that $\cmode$ classical variables can be evaluated to values in the compilation time \footnote{We consider all computation that only needs classical computer is done in the compilation time.}, while tracks $\mmode$ variables in $\Omega$. Rule \textsc{TExp} enforces that a classical variable $x$ is replaced with its assignment value $n$ in $s$, where classical expressions containing $x$ are evaluated. See \Cref{sec:qafny-app}.
+Finally, the type system estimates the scopes of entangled sessions \footnote{Referring to the qubits in a session.}. In rule \textsc{TIF}, we use $\kappa'$, the domain of the post type environment, as the estimated session that is large enough to describe all possible qubits directly and indirectly mentioned in $s$ \footnote{This includes all entangled array pieces whose qubits are mentioned in $s$. } and should be in the same session. Since $\kappa'$ are the session representing all qubits in $s$, and $\kappa$ represents all qubits in $b$, the qubits in the conditional are captured by session $\kappa \uplus \kappa'$.
+%The type system keeps such estimation as small as possible.
+
 
 \subsection{The Qafny Semantics and Proof System}\label{sec:semantics-proof}
 
@@ -452,13 +416,14 @@ TC(\sigma,P,Q)\triangleq\Omega;\sigma\vdash_g s \triangleright \sigma_1
 \label{fig:exp-proofsystem-1}
 \end{figure*}
 
-QNP intends to create a proof system that utilizes classical automated reasoning infrastructure in analyzing quantum programs, through prototyping classical separation logic \cite{separationlogic}, by analogizing quantum operations to array aggregate operations.
-To materialize such analogy, \qafny sessions play two roles, both as variable names representing quantum arrays and as qubit array structure indicators, through the enforcement of well-formedness and well-typed restrictions on states and proof system predicates.
-\Cref{appx:well-formed} describes the well-formedness: well-formed domains ($\Omega\vdash \dom{\sigma}$) mean that every range variables in a session in $\dom{\sigma}$ are mentioned in $\Omega$, and well-formed predicates ($\Omega,\sigma \vdash P$) mean that every sessions mentioned in $P$ are in $\dom{\sigma}$.
-\qafny semantics is a small-step transition $(\psi,\varphi,s) \longrightarrow (\psi',\varphi',s')$, where $\psi$ and $\psi'$ are stacks storing local classical variables, and $\varphi$ and $\varphi'$ are quantum states. A \qafny proof triple is written as: $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$, where $P$ and $Q$ are the pre- and post-conditions, $\Omega$, $\sigma$, and $g$ are the type entities. Apparently, any QNP proof judgment, which merges the \qafny type system into proof rules, has a hidden type restriction stated as predicate $TC$ in \Cref{fig:exp-proofsystem-1}.
+QNP intends to create a proof system that utilizes classical automated reasoning infrastructure in analyzing quantum programs, through mimicking classical separation logic \cite{separationlogic}, by analogizing quantum operations to array aggregate operations.
+To materialize such analogy, \qafny sessions play two roles, both as variable names representing quantum arrays and as qubit array structure indicators. We enforce the correctness by well-formedness and well-typed restrictions on states and proof system predicates.
+\Cref{appx:well-formed} describes the well-formedness: well-formed domains ($\Omega\vdash \dom{\sigma}$) guarantee that every range variable in a session in $\dom{\sigma}$ is mentioned in $\Omega$, and well-formed predicates ($\Omega,\sigma \vdash P$) guarantee that every session mentioned in $P$ is in $\dom{\sigma}$.
+\qafny semantics is formalized as a small-step transition $(\psi,\varphi,s) \longrightarrow (\psi',\varphi',s')$, where $\psi$ and $\psi'$ are stacks storing local classical variables, and $\varphi$ and $\varphi'$ are quantum states. A \qafny proof triple is written as: $\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}$, where $P$ and $Q$ are the pre- and post-conditions, $\Omega$, $\sigma$, and $g$ are type entities. Any QNP proof judgment, which merges the \qafny type system into proof rules, has a hidden type restriction stated as predicate $TC$ in \Cref{fig:exp-proofsystem-1}.
 The restriction is required not only at the bottom proof tree, but also at all levels, e.g., rule \rulelab{TCon} describes the typing consequence rule by replacing $\sigma$ with $\sigma'$. We require that $P$ and $Q$ satisfy $TC(\sigma,P,Q)$, as well as $P'$ and $Q'$ satisfy $TC(\sigma',P',Q')$.
-Similarly, the \rulelab{Frame} rule is no more than a separation logic frame rule \footnote{We use $FV(s)\cap FV(R)=\emptyset$ here because $FV(s)$ produces the session that $s$ modifies in \qafny. }, other than the additional type restrictions, where we separate the type environment into $\sigma$ and $\sigma'$; on the above level of the \rulelab{Frame} rule, the conditions $P$ and $Q$ also need to satisfy the type restriction with respect to $\Omega$ and $\sigma$.
+The type restrictions have two roles. First, the type environments permit the knowledge of entangled session scopes. In quantum computing, an operation might have side-effects on all qubits in an entangled session, even if the qubits are not directly mentioned in the operation. Second, the type restrictions enforce state representations of sessions, so that proof rules are designed based on the knowledge of the state representations. Third, states and type environments are required to have the same domains so that we can utilize the type environment partial order equivalence rewrites to direct the equivalence rewrites of states to forms that we want in an application.
 
+Similarly, the \rulelab{Frame} rule is no more than a separation logic frame rule \footnote{We use $FV(s)\cap FV(R)=\emptyset$ here because $FV(s)$ produces the session that $s$ modifies in \qafny. }, other than the additional type restrictions, where we separate the type environment into $\sigma$ and $\sigma'$; on the above level of the \rulelab{Frame} rule, the conditions $P$ and $Q$ also need to satisfy the type restriction with respect to $\Omega$ and $\sigma$.
 The rule besides rule \rulelab{Frame} in \Cref{fig:exp-proofsystem-1} is the modeling rule for a separable state $P$ and $Q$.
 In QNP, a modeling rule has the judgment: $\Omega;\sigma;\psi;\varphi\models_g P$, with the above well-formed restrictions, additionally requiring $\dom{\psi} \subseteq \dom{\Omega}$, and $\Omega;\sigma\vdash_g \varphi$, defined as follows:
 
@@ -475,9 +440,46 @@ In QNP, a modeling rule has the judgment: $\Omega;\sigma;\psi;\varphi\models_g P
 \end{itemize}
 \end{definition}
 
-The reason that we place a relaxed well-formedness for a $\mmode$-mode state is that the program location in $\mmode$-mode is inside a quantum conditional where parts of the sessions and states are frozen, whereas once the quantum conditional finishes execution and the program is transitioned back to $\cmode$-mode, the frozen parts are added back to the state and the united state is required to satisfy the quantum state principles, which are described as the $\cmode$-mode restrictions in \Cref{def:well-formed}. The frozen states are described in \Cref{sec:conditionals}.
-There are other rules in \Cref{appx:proof-rules} that are similar the rules in a separation logic framework with additional \qafny type restrictions. We now discuss few interesting cases.
+The reason that we place a relaxed well-formedness for a $\mmode$-mode state is that the program location in $\mmode$-mode is inside a quantum conditional where parts of the sessions and states are frozen, whereas once the quantum conditional finishes execution and the program is transitioned back to $\cmode$-mode, the frozen parts are added back to the state and the united state is required to satisfy the quantum state principles, which are described as the $\cmode$-mode restrictions in \Cref{def:well-formed}. The frozen states are described shortly below.
+There are other rules in \Cref{appx:proof-rules} that are similar the rules in a separation logic framework with additional \qafny type restrictions. We now discuss \qafny equivalence relations and few interesting rules.
 
+\noindent\textbf{\textit{Equivalence Rewrites.}}\label{sec:conditionals}
+In \qafny, we invent equivalence relations for type environments (partial order $\preceq$) and states ($\equiv$) to permit the automated rewrites of state representations to ideal forms that can facilitate automated verification tool to pattern match them with the proof rules.
+We utilize \emph{equivalence relations} over quantum sessions, quantum state representations, type environments and states (as shown in \Cref{fig:qafny-eq}). One example is the state predicate rewrite from line 12 to line 13 in \Cref{fig:shorqafny}, where the state of session $x[0..0]$ rewrites to $\texttt{true}$, because $x[0..0]$ is essentially empty.
+The common equivalence relations are state type rewrites, permutations, split and joins. 
+State type rewrites transform state forms, such as the rewrite of session $\{x[0..0],y[0..n]\}$ from type $\tnort$ to $\tcht$ in line 7 and 8 in \Cref{fig:shorqafny}. Another example is to rewrite a $\tcht$-type state $\ssum{j=0}{1}{z_j\beta_j}$ to $\tnort$-type ${z_0\beta_0}$.
+
+Permutation equivalence refers to two qubits can mutate their locations. One possible permutation can happen in line 13 for write a session $\{x[0..0],y[0..n]\}$ to the form $\{y[0..n],x[0..0]\}$, as:
+
+{\footnotesize
+\begin{center}
+$\begin{array}{lcl}
+\{x[0..0],y[0..n]\}\mapsto \tcht &\preceq& \{y[0..n],x[0..0]\}\mapsto \tcht 
+\\
+\{x[0..n],y[0..n]\} \mapsto \textcolor{teal}{\schai{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{i}{\ket{a^{i}\;\%\;N}}} &\equiv& \{y[0..n],x[0..n]\} \mapsto \textcolor{teal}{\schai{2^{n}}{\frac{1}{\sqrt{2^{n}}}}{a^{i}\;\%\;N}{\ket{i}}}
+\end{array}
+$
+\end{center}
+}
+
+Notice that the domains of a state and type environment are required to be the same in the \qafny proof system, as the above example.
+State joins merge two sessions together. Merging a $\tnort$-type and $\tcht$-type state is analogized to concatenate two qubit arrays.
+An example and its explanation are given in \Cref{fig:background-circuit-example-proof} line 4-6, 
+where the $\tnort$-type qubit $x[\snext{j}]$ is added to the end of $\tcht$-type session $x[0..\snext{j}]$.
+Merging a $\thadt$-type and $\tcht$-type state doubles the $\tcht$-type basis states. 
+In each loop step in \Cref{fig:shorqafny} line 9-11, we add a $\thadt$ type qubit $x[j]$ to the middle of a $\tcht$ type session $\{x[0..j],y[0..n]\}$, and the state becomes:
+
+{\footnotesize
+\begin{center}
+$
+\{x[0..\snext{j}],y[0..n]\} \mapsto \textcolor{teal}{\schai{2^j}{\frac{1}{\sqrt{2^j}}}{i}{\ket{0}\ket{a^{i}\;\%\;N}}+\scha{2^j}{\frac{1}{\sqrt{2^j}}}{i}{\ket{1}\ket{a^{i}\;\%\;N}}}
+$
+\end{center}
+}
+
+Notice that the basis states are still all distinct because the two parts above are distinguished by the $\ket{0}$ and $\ket{1}$ of the $x[j]$ position.
+Merging two $\tcht$-type states computes the Cartesian product of basis states in the two sessions (\Cref{fig:qafny-eq}).
+State split cuts a session into two individual sessions. The split of $\tnort$ and $\thadt$ types is no more than an array split, while the split of a $\tcht$-type is equal to disentanglement, a hard problem. In quantum algorithms, splitting $\tnort$ and $\thadt$ types are more common than disentanglement, and is permitted in \qafny. For splitting $\tcht$-type, we invent an upgraded type system in \Cref{sec:newtype} to permit few cases. 
 
 \begin{figure*}[t]
 {\footnotesize
@@ -503,7 +505,7 @@ $
 \end{figure*}
 
 \noindent\textbf{\textit{Oracle Applications.}}\label{sec:oracle-state}
-The oracle application $\ssassign{\kappa}{}{\mu}$ is analogized to classical array map operation as discussed in \Cref{fig:intro-example-analog}. Assume that $\mu$ works on session $\kappa\uplus \kappa'$. For each element $z_j\ket{c_{j}}{\beta_j}$ in the $\tcht$ type state, we first find $c_{j}$ as the corresponding basis state bitstring for the $\kappa$ session fragment \footnote{ $\kappa$ and $c_{j}$ have the same length and are the prefix session and basis state, respectively.}, then we apply $\mu$ only on $c_{j}$, which is described in the semantic rule \textsc{SA-CH}. Rule \textsc{PA-CH} describes the proof rule for capturing the array map analogy, which has the exact behavior as the semantic rule.
+The oracle application $\ssassign{\kappa}{}{\mu}$ is analogized to classical array map operation as discussed in \Cref{fig:intro-example-analog}. Assume that $\mu$ works on a $\tcht$ type state having session $\kappa\uplus \kappa'$. For each element $z_j\ket{c_{j}}{\beta_j}$ in the state, we first find $c_{j}$ as the corresponding basis state bitstring for the $\kappa$ session fragment \footnote{ $\kappa$ and $c_{j}$ have the same length and are the prefix session and basis state in $\kappa\uplus \kappa'$ and $z_j\ket{c_{j}}{\beta_j}$, respectively.}, then we apply $\mu$ only on $c_{j}$, which is described in the semantic rule \textsc{SA-CH}. Rule \textsc{PA-CH} describes the proof rule for capturing the array map analogy, which has the exact behavior as the semantic rule.
 %For example, in the loop body in \Cref{fig:shorqafny} line 11, we apply $\ssassign{y}{}{a^{2^j}y\;\%\; N}$ to a state $y[0..n] \mapsto \schai{2^{j}}{\frac{1}{\sqrt{2^{j}}}}{\tos{a^{\tos{i}}\;\%\;N}}{\ket{\tos{i}.1}}$  \footnote{The state is inside a quantum conditional so the $x[0..j]$ part is masked, and the original one is $\{x[0..j],y[0..n]\} \mapsto \schai{2^{j}}{\frac{1}{\sqrt{2^{j}}}}{\tos{i}.0}{\ket{a^{\tos{i}}\;\%\;N}}+ \schai{2^{j}}{\frac{1}{\sqrt{2^{j}}}}{\tos{i}.1}{\ket{a^{\tos{i}}\;\%\;N}}$ and $\tos{i}$ has $j$ bits. }.  The result is $\schai{2^{j}}{\frac{1}{\sqrt{2^{j}}}}{\tos{a^{\tos{j}.1}\;\%\;N}}{\ket{\tos{i}.1}}$  \footnote{We take the bitstring exponent formula as: $a^{c}= a^{\sum_{j}^{2^{c[j]}}}$, where $c[j]$ is the $j$-th position of $c$. }.
 The other similar rules, such as state preparation rules, can be found in \Cref{sec:qafny-app}. 
 
@@ -551,27 +553,27 @@ R = FV(\emptyset,b)=\kappa \wedge \forall j.\; \slen{c_{j}}=\slen{\kappa}\wedge\
 \label{fig:qafny-mu-rules}
 \end{figure*}
 
-
-\noindent\textbf{\textit{Rules for Conditionals and For-Loops.}}\label{sec:conditionals}
-\Cref{fig:qafny-con-analog} describes the analogy of quantum conditionals in \qafny, which are partial map functions that only apply applications on the red parts and freeze the black parts.
-It contains two levels of freezing. For each basis state in a session $\kappa_b\uplus \kappa_a$, it freezes the $\kappa_b$ part of the state, which is indicated as the marked black items in the second line in \Cref{fig:qafny-con-analog}.
-
 \begin{wrapfigure}{r}{5.2cm}
   \includegraphics[width=0.38\textwidth]{conditional}
   \caption{Conditional Analogy}
 \label{fig:qafny-con-analog}
 \end{wrapfigure} 
 
+\noindent\textbf{\textit{Rules for Conditionals and For-Loops.}}\label{sec:conditionals}
+\Cref{fig:qafny-con-analog} describes the analogy of quantum conditionals in \qafny, which are conditional map functions that only apply applications on the red parts and freeze the black parts.
+In modeling the quantum conditional proof rule, one key difficulty is that we know that the conditional body $s$ is applying on some elements of the array but we do not know its exact semantics, but we can sieve the state elements that $s$ is applying on by evaluating $b$. Hence, we develop the frozen ($\mathpzc{M}$) and unfrozen ($\mathpzc{U}$) operations, in the session type category (\Cref{fig:vqimp}) to freeze the state elements that do not join the $s$'s computation before entering to the conditional body, and unfreeze the elements when leaving the conditional.
+
+It contains two levels of freezing. For each basis state in a session $\kappa_b\uplus \kappa_a$, it freezes the $\kappa_b$ part of the state, which is indicated as the marked black items in the second line in \Cref{fig:qafny-con-analog}.
  For each basis state in $\textcolor{teal}{\scha{m}{z_j}{c_{j}}{\beta_j}}$ with $\slen{c_{j}} = \slen{\kappa_b}$, we freeze the $c_{j}$ part by pushing it to the end of the basis state as $\textcolor{teal}{z_j\beta_j}\textcolor{purple}{\ket{c_{j}}}$, which is indicated in rule \textsc{SIF} (\Cref{fig:qafny-mu-rules}). 
-During the process, the state session is transformed from $\kappa_b\uplus \kappa_a$ to $\kappa_a$ when evaluating the conditional body $s$. This indicates that the $\kappa_b$/$\ket{c_{j}}$ part is frozen, because the session is shorter, the $\ket{c_{j}}$ part is stored in a location beyond the reachable of session $\kappa_a$; therefore, in evaluating $s$, no operation can touch the $\ket{c_{j}}$ part.
+During the process, the state session is transformed from $\kappa_b\uplus \kappa_a$ to $\kappa_a$ when evaluating the conditional body $s$. This indicates that session $\kappa_b$ and its corresponding basis state $\ket{c_{j}}$ are frozen, because the session is shorter, the $\ket{c_{j}}$ part is stored in a location beyond the reachable of session $\kappa_a$; therefore, in evaluating $s$, no operation can touch the $\ket{c_{j}}$ part.
 The second level of freezing happens in selecting valid basis states by evaluating the Boolean condition $b$ on basis state bitstrings. Predicate $R$ in rule\textsc{SIF} reflects the task.
 Here, we divide the state into two parts as $\scha{m}{z_j}{c_{j}}{\beta_j}$ and $q(\kappa,\neg b)$, where the first part contains all basis states satisfying $b$, i.e., if we replace the qubit variables in $b$ with $c_{j}$, the evaluation $\denote{b[c_{j}/\kappa]}$ is true; while the second part $q(\kappa,\neg b)$ contains all basis states that evaluate $b$ to false.
 After the freezing step, we execute $s$ only on the selected unfrozen parts of the state, and merge the execution results ($z'_j$ and $\beta'_j$) back to the whole state.
 The result state element number $m'$ might be different from the pre-execution one ($m$) because applications in $s$ might increase the state numbers such as applying a quantum diffusion operation.
 
-To design a proof rule for such partial map, we develop the frozen ($\mathpzc{M}$) and unfrozen ($\mathpzc{U}$) operations with the session types. Both take a Boolean expression $b$ and a quantum state as arguments. As shown on top of \Cref{fig:qafny-mu-rules}, $\mathpzc{M}$'s modeling materializes the freezing mechanism above. For a state $\scha{m}{z_j}{c_{j}}{\beta_j}+q(\kappa,\neg b)$, we only keep basis states satisfying $b$, as shown in predicate $R$, remove the unsatisfied basis states $q(\kappa,\neg b)$, and push the basis bitstrings $c_{j}$ to the ends of the basis states, which are similar to stacks that store frozen bitstrings.
+To design a proof rule for such partial map, we develop the $\mathpzc{U}$ and $\mathpzc{U}$ operations. Both take a Boolean expression $b$ and a quantum state as arguments. As shown on top of \Cref{fig:qafny-mu-rules}, $\mathpzc{M}$'s modeling materializes the freezing mechanism above. For a state $\scha{m}{z_j}{c_{j}}{\beta_j}+q(\kappa,\neg b)$, we only keep basis states satisfying $b$, as shown in predicate $R$, remove the unsatisfied basis states $q(\kappa,\neg b)$, and push the basis bitstrings $c_{j}$ to the ends of the basis states, which are similar to stacks that store frozen bitstrings.
 In the pre-condition manipulation of rule \textsc{PIF}, we substitute $\kappa \uplus \kappa'$ with $\mathpzc{M}(b,\kappa')$. During the process, the session type in $\sigma$ is changed from $\kappa \uplus \kappa'$ to $\kappa'$.
-Function $\mathpzc{U}$ unfreezes the state by assembling the result state, of applying $s$, back to the frozen $\kappa \uplus \kappa'$ state (the black part in \Cref{fig:qafny-con-analog}). It is always appeared as a pair with both the $b$ and $\neg b$ cases, referring to the two state divisions above. In the post-condition manipulation, we substitute $\kappa \uplus \kappa'$ with $\mathpzc{U}(\neg b,\kappa \uplus \kappa')$ in $P$, representing the unchanged and frozen state; and substitute $\kappa'$ with $\mathpzc{U}(b,\kappa \uplus \kappa')$ in $Q'$, representing the result of applying $s$ on the unfrozen part, and assemble them together through the separation operation $*$. 
+Function $\mathpzc{U}$ unfreezes the state by assembling the result state, of applying $s$, back to the frozen $\kappa \uplus \kappa'$ state (the black part in \Cref{fig:qafny-con-analog}). It is always appeared as a pair with both the $b$ and $\neg b$ cases, referring to the two state divisions above. In the post-condition manipulation, we first substitute $\kappa \uplus \kappa'$ with $\mathpzc{U}(\neg b,\kappa \uplus \kappa')$ in $P$, representing the unchanged and frozen state. Then, we substitute $\kappa'$ with $\mathpzc{U}(b,\kappa \uplus \kappa')$ in $Q'$, representing the result of applying $s$ on the unfrozen part; and assemble them together through the separation operation $*$. 
 $\Omega;\{\kappa' : \tcht\} \vdash Q'$ ensures that $Q'$ only mentions session $\kappa'$.
 $\mathpzc{U}$'s modeling in the first line of \Cref{fig:qafny-mu-rules} captures the assemble procedure by merging two $\mathpzc{U}$ constructs together. Notice that $c_{j}$ appears in two $\mathpzc{U}$ constructs, meaning that we actually utilize $c_j$ to distinguish the frozen and unfrozen basis states without using $b$.
 Rules \textsc{SLOOP} and \textsc{PLOOP} are the semantic and proof rules for a for-loop, which is a simplified version of while-loop in classical separation logic, because for-loop is guaranteed to terminate.
@@ -691,10 +693,10 @@ $
 
 \noindent\textbf{\textit{Measurement Rules.}}\label{sec:measurement}
 %
-As \Cref{fig:qafny-mea-analog} describes, quantum measurement is a two-step array filter: 1) The session is partitioned into two parts, so do all the basis states, and we randomly pick a basis state first part as a key (the pink part); and 2) we create a new array by cutting all elements' first parts with keeping the elements whose original first part is equal to the key.
+As \Cref{fig:qafny-mea-analog} describes, quantum measurement is a two-step array filter: 1) The $\tcht$ type session is partitioned into two parts, so do all the basis states, and we randomly pick a basis state first part as a key (the pink part); and 2) we create a new array by removing all elements' first parts with keeping the elements whose original first part is equal to the key.
 Notice that the the red basis states appear in a periodical pattern in the whole array. This behavior is universally true for quantum operations, and many quantum algorithms utilize the periodical pattern.
 
-In rule \textsc{SMea} in \Cref{fig:qafny-mea-rules}, we pick an $n$-length bitstring $c$ as the pink key and collect $m$ basis states $\scha{m}{z_j}{c}{\ket{c_{j}}}$ that has the key $c$. In the post-state, we update the remaining session $\kappa$ to $\sch{m}{\frac{z_j}{\sqrt{r}}}{c_{j}}$ with the adjustment of amplitude $\frac{1}{\sqrt{r}}$, and replace the variable $x$ in the statement $s$ with the value $(r,\tov{c})$.
+In rule \textsc{SMea} in \Cref{fig:qafny-mea-rules}, we randomly pick an $n$-length bitstring $c$ as the pink key and collect $m$ basis states $\scha{m}{z_j}{c}{\ket{c_{j}}}$ that has the key $c$. In the post-state, we update the remaining session $\kappa$ to $\sch{m}{\frac{z_j}{\sqrt{r}}}{c_{j}}$ with the adjustment of amplitude $\frac{1}{\sqrt{r}}$, and replace the variable $x$ in the statement $s$ with the value $(r,\tov{c})$.
 In designing the proof rule \textsc{PMea}, a session type operation $\mathpzc{F}(x,n,\kappa)$ is invented to do exactly the two steps above by selecting an $n$-length prefix bitstring $c$ in a basis state for range $y[0..n]$, computing the probability $r$, and assigning $(r,\tov{c})$ to variable $x$.
 Rule \textsc{PMea} replaces session $y[0..n]\cup \kappa$ in $P$ with the measurement result session $\mathpzc{F}(x,n,\kappa)$ and updates the type state $\Omega$ and $\sigma$ by replacing $y[0..n]\cup \kappa$ with $\kappa$. 
 
