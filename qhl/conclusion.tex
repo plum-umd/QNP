@@ -1,7 +1,0 @@
-\section{Conclusion}
-
-We present QNP, a system for expressing and automatically verifying classical quantum hybrid programs, whose quantum components can be compiled to quantum circuits. QNP's methodology is to develop a proof system that views quantum operations as classical array aggregate operations, e.g., viewing quantum measurements as array filters, so that we can map the proof system to classical verification infrastructure. 
-The key component of QNP is \qafny, a quantum programming language admitting a proof system, which allows programmers to specify quantum programs and logic properties that are automatically verified against the programs.
-The \qafny proof system is sound and complete with respect to the \qafny semantics for well-typed \qafny programs. 
-We have verified the soundness of the translator from \qafny to Dafny, and utilized the Dafny proof infrastructure to verify many quantum programs. We also compile \qafny programs to SQIR, which allows the quantum components to run on a quantum computer.
-We have demonstrated the ability of using QNP to develop and verify new quantum algorithms and we believe that the classical interpretation of quantum operations help programmers to understand quantum computation. 
