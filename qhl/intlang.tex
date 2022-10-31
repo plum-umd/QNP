@@ -399,7 +399,7 @@ Finally, the type system estimates the scopes of entangled sessions \footnote{Re
       \\   \varphi \bot \varphi' \\ \Omega;\sigma; \psi; \varphi \models_g P  \\ \Omega;\sigma';\psi; \varphi' \models_g Q}
         {\Omega;\sigma \cup \sigma';\psi; \varphi \cup \varphi'\models_g P * Q }
 
-    \inferrule[PCon]{\sigma \preceq \sigma' \\ P \Rightarrow P'\\  \fivepule{\Omega}{\sigma'}{g}{P'}{s}{Q'}}
+    \inferrule[PCon]{\sigma \preceq \sigma' \\\\ P \Rightarrow P'\\  \fivepule{\Omega}{\sigma'}{g}{P'}{s}{Q'} \\ Q' \Rightarrow Q}
                 {\fivepule{\Omega}{\sigma}{g}{P}{s}{Q}}
 
     \inferrule[]{\forall j.\,\slen{\kappa}=\slen{c_j}}

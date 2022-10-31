@@ -56,6 +56,10 @@ Inductive ses_dis_aux2 : range -> session -> Prop :=
 
 Definition ses_dis (s:session) :=
    match s with [] => True | (a::l) => ses_dis_aux2 a l end.
+
+Inductive two_ses_dis : session -> session -> Prop :=
+   two_ses_empty : forall s, two_ses_dis nil s
+ | two_ses_many: forall a l s, ses_dis_aux a s -> two_ses_dis l s -> two_ses_dis (a::l) s. 
  
 (*
 Inductive in_seses  : list (var*nat*nat) -> list (var*nat*nat) -> Prop :=
@@ -469,11 +473,12 @@ Definition subst_cbexp (a:cbexp) (x:var) (n:nat) :=
               | CLt c d => CLt (subst_aexp c x n) (subst_aexp d x n)
     end.
 
-Definition subst_bexp (a:bexp) (x:var) (n:nat) :=
+Fixpoint subst_bexp (a:bexp) (x:var) (n:nat) :=
     match a with CB b => CB (subst_cbexp b x n)
               | BEq c d i e => BEq (subst_varia c x n) (subst_varia d x n) i (subst_aexp e x n)
               | BLt c d i e => BLt (subst_varia c x n) (subst_varia d x n) i (subst_aexp e x n)
               | BTest i e => BTest i (subst_aexp e x n)
+              | BNeg b => BNeg (subst_bexp b x n)
     end.
 
 Definition subst_bound (b:bound) (x:var) (n:nat) :=
@@ -567,30 +572,32 @@ Inductive up_state {rmax:nat} : state -> session -> state_elem -> state -> Prop 
     | up_state_rule : forall S M M' M'' l t, @state_equiv rmax M M' -> update_env M' l t M'' -> up_state (S,M) l t (S,M'').
 
 
-Definition join_two_ses (a:(var * nat * nat)) (b:(var*nat*nat)) :=
-   match a with (x,n1,n2) => 
-      match b with (y,m1,m2) => 
+Definition join_two_ses (a:(var * bound * bound)) (b:(var*bound*bound)) :=
+   match a with (x,BNum n1,BNum n2) => 
+      match b with (y,BNum m1,BNum m2) => 
             if x =? y then (if n1 <=? m1 then 
                                (if n2 <? m1 then None
-                                else if n2 <? m2 then Some (x,n1,m2)
-                                else Some(x,n1,n2))
+                                else if n2 <? m2 then Some (x,BNum n1,BNum m2)
+                                else Some(x,BNum n1,BNum n2))
                             else if m2 <? n1 then None
-                            else if n2 <? m2 then Some (x,m1,m2)
-                            else Some (x,m1,n2))
+                            else if n2 <? m2 then Some (x,BNum m1,BNum m2)
+                            else Some (x,BNum m1,BNum n2))
             else None
+            | _ => None
      end
+          | _ => None
    end.
 
 Definition dom {A:Type} (l: list (session * A)) := fst (split l).
 
-Fixpoint join_ses_aux (a:(var * nat * nat)) (l:list ((var * nat * nat))) :=
+Fixpoint join_ses_aux (a:(var * bound * bound)) (l:list ((var * bound * bound))) :=
      match l with [] => ([a])
            | (x::xs) => match join_two_ses a x with None => x::join_ses_aux a xs
                                          | Some ax => ax::xs
                         end
      end.
 
-Fixpoint join_ses (l1 l2:list ((var * nat * nat))) :=
+Fixpoint join_ses (l1 l2:list ((var * bound * bound))) :=
     match l1 with [] => l2
                | x::xs => join_ses_aux x (join_ses xs l2)
    end.
@@ -656,51 +663,22 @@ Inductive type_exp : aenv -> exp -> (ktype*session) -> Prop :=
    | seq_fa : forall env e1 t1 e2 t2 t3, type_exp env e1 t1 -> type_exp env e2 t2 -> union_f t1 t2 t3 ->
                  type_exp env (Seq e1 e2) t3.
 
-(*
-Definition gen_ses (qenv: var -> nat) (p:varia) :=
-   match p with (AExp (BA x)) => Some (([(x,0,qenv x)]),qenv x)
-             | Index x (Num n) => Some (([(x,n,n+1)]), 1)
-             | _ => None
-   end.
 
-Fixpoint remove_ses (s:session) (a: (var * nat * nat)) :=
-   match s with [] => []
-            | b::xl => if in_ses b a then xl else b::(remove_ses xl a)
-   end.
+Inductive fv_su : aenv -> single_u -> session -> Prop :=
+   fv_su_h : forall env a n s, type_vari env a (QT n, s) -> fv_su env (RH a) s
+  | fv_su_qft : forall env x n, AEnv.MapsTo x (QT n) env -> fv_su env (SQFT x) ([(x,BNum 0,BNum n)])
+  | fv_su_rqft : forall env x n, AEnv.MapsTo x (QT n) env -> fv_su env (SRQFT x) ([(x,BNum 0,BNum n)]).
 
-Definition remove_ses_env (env:aenv) (a:(var*nat*nat)) :=
- AEnv.map (fun f => match f with AType b => AType b | Ses b => Ses (remove_ses b a) end) env.
-
-Inductive Fold_all {P : (var -> nat) -> aenv -> pexp -> factor -> Prop} (qenv:var -> nat): nat -> nat -> aenv -> pexp -> factor -> Prop :=
-      | Forall_nil : forall n aenv e, Fold_all qenv n 0 aenv e (Ses nil)
-      | Forall_cons : forall n m aenv e t1 t2, P qenv aenv e t1 -> Fold_all qenv (S n) m aenv e t2 -> Fold_all qenv n (S m) aenv e (union_f t1 t2).
-
-
-Inductive type_pexp (qenv : var -> nat) : aenv -> pexp -> factor -> Prop :=
-  | pskip_fa: forall env, type_pexp qenv env (PSKIP) (Ses nil)
-  | let_fa_c : forall env x a v e t2, type_aexp env a (AType CT) -> simp_aexp a = Some v ->
-                   type_pexp qenv env (subst_pexp e x v) t2 -> type_pexp qenv env (Let x (AE a) e) t2
-  | let_fa_1 : forall env x a e t2, type_aexp env a (AType MT) ->
-                   type_pexp qenv env e t2 -> type_pexp qenv env (Let x (AE a) e) (union_f MT t2)
-  | let_fa_2 : forall env x y e t2, 
-                   type_pexp qenv (AEnv.add x (Ses ([(x,0,y)])) env) e t2 
-                     -> type_pexp qenv env (Let x (Init y) e) t2
-  | let_fa_3 : forall env x y e t2, 
-                   type_pexp qenv env e t2 
-                     -> type_pexp qenv env (Let x (Meas y) e) t2
-  | appsu_fa_h: forall env a x lb rb,
-          type_aexp env a (Ses ([(x,lb,rb)])) -> type_pexp qenv env (AppSU (RH a)) (Ses ([(x,lb,rb)]))
-  | appsu_fa_qft: forall env x s, AEnv.MapsTo x (Ses s) env
-             -> type_pexp qenv env (AppSU (SQFT x)) (Ses s)
-  | appsu_fa_rqft: forall env x s, AEnv.MapsTo x (Ses s) env
-             -> type_pexp qenv env (AppSU (SRQFT x)) (Ses s)
-  | appu_fa: forall env e t, type_exp qenv env e (Ses t) -> type_pexp qenv env (AppU t e) (Ses t)
-  | pseq_fa : forall env e1 e2 t1 t2, type_pexp qenv env e1 t1 -> type_pexp qenv env e2 t2 -> type_pexp qenv env (PSeq e1 e2) (union_f t1 t2)
-  | if_fa : forall env e b t1 t2, type_bexp env b t1 -> type_pexp qenv env e t2 -> type_pexp qenv env (If b e) (union_f t1 t2)
-  | for_fa : forall env x l h b e t, @Fold_all type_pexp qenv l h env (If b e) t -> type_pexp qenv env (For x (Num l) (Num h) b e) t
-  | amplify_fa: forall env x n b s, type_aexp env n (AType b) -> AEnv.MapsTo x (Ses s) env -> 
-                         type_pexp qenv env (Amplify x n) (Ses s)
-  | diffuse_fa: forall env x s, AEnv.MapsTo x (Ses s) env -> type_pexp qenv env (Diffuse x) (Ses s)
-  | permu_fa_p: forall env e t1 t2, Permutation t1 t2 -> type_pexp qenv env e (Ses t1) -> type_pexp qenv env e (Ses t2).
-
-*)
+Inductive fv_pexp : aenv -> pexp -> session -> Prop :=
+  | pskip_fa: forall env, fv_pexp env (PSKIP) nil
+  | let_fa_c : forall env x a e, fv_pexp env (Let x (AE a) e) nil
+  | let_fa_m : forall env x a e n, AEnv.MapsTo x (QT n) env -> fv_pexp env (Let x (Meas a) e) ([(x,BNum 0,BNum n)])
+  | appsu_fa: forall env e s,  fv_su env e s -> fv_pexp env (AppSU e) s
+  | appu_fa : forall env l e, fv_pexp env (AppU l e) l
+  | if_fa : forall env t l l1 b e, type_bexp env b (t,l) -> fv_pexp env e l1 -> fv_pexp env (If b e) (l++l1)
+  | for_fa : forall env t l h x b e, (forall i, l <= i < h -> 
+                 fv_pexp env (If (subst_bexp b x i) (subst_pexp e x i)) (subst_session t x i))
+                              -> fv_pexp env (For x (Num l) (Num h) b e) (subst_session t x h)
+  | pseq_fa : forall env e1 e2 l1 l2, fv_pexp env e1 l1 -> fv_pexp env e2 l2 
+                              -> fv_pexp env (PSeq e1 e2) (join_ses l1 l2)
+  | dis_fa : forall env x n, AEnv.MapsTo x (QT n) env -> fv_pexp env (Diffuse x) ([(x,BNum 0,BNum n)]).

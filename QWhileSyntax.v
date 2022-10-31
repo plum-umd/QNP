@@ -117,7 +117,8 @@ Inductive bexp :=  CB (c:cbexp)
                     (* x = n @ z[i] --> conpare x and n --> put result in z[i] *)
                   | BLt (x:varia) (y:varia) (i:var) (a:aexp) 
                     (* x < n @ z[i] --> conpare x and n --> put result in z[i] *)
-                  | BTest (i:var) (a:aexp). (* z[i] = 0 or 1 *)
+                  | BTest (i:var) (a:aexp) (* z[i] = 0 or 1 *)
+                  | BNeg (b:bexp).
 
 Notation "e0 [=] e1 @ e3 [ e4 ]" := (BEq e0 e1 e3 e4) (at level 50) : pexp_scope.
 

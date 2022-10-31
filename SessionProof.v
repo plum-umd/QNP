@@ -47,7 +47,7 @@ Inductive sval := ST (x:state_elem) | SV (s:session)
 
 Inductive sval := SV (s:session) | Frozen (b:bexp) (s:sval) | Unfrozen (b:bexp) (s:sval).
 
-Inductive cpred_elem := PFalse | CBeq (x:aexp) (y:aexp) | CBge (x:aexp) (y:aexp) | CBlt (x:aexp) (y:aexp) | SEq (x:sval) (y:sval).
+Inductive cpred_elem := PFalse | CP (b:cbexp) | SEq (x:sval) (y:state_elem).
                              (* x = y|_{u=z} x is a new session from the old y by cutting session u to be value z. *)
 
 
@@ -55,19 +55,15 @@ Definition cpred := list cpred_elem.
 Definition fresh (l:nat) := l +1.
 
 Fixpoint sval_subst_c t x v :=
-  match t with ST a => ST a | SV s => SV s
-              | Mask s u z => Mask (sval_subst_c s x v) u (subst_aexp z x v)
-              | AppA a b => AppA a (sval_subst_c b x v)
-              | FSL e l s => FSL (sval_subst_c e x v) l s
-              | SSL e a b l1 l2 => SSL (sval_subst_c e x v) (sval_subst_c a x v) (subst_bexp b x v) l1 l2
+  match t with SV s => SV (subst_session s x v)
+              | Frozen b s => Frozen (subst_bexp b x v) (sval_subst_c s x v)
+              | Unfrozen b s => Frozen (subst_bexp b x v) (sval_subst_c s x v)
   end.
 
 Definition celem_subst_c t x v := 
   match t with PFalse => PFalse 
-          | CBeq a b => CBeq (subst_aexp a x v) (subst_aexp b x v) 
-          | CBge a b => CBge (subst_aexp a x v) (subst_aexp b x v)
-          | CBlt a b => CBlt (subst_aexp a x v) (subst_aexp b x v)
-          | SEq a b => (SEq (sval_subst_c a x v) (sval_subst_c b x v)) end.
+          | CP b => CP (subst_cbexp b x v)
+          | SEq a y => (SEq (sval_subst_c a x v) y) end.
 
 (*
 Definition selem_subst_val (s:sval) x v :=
@@ -82,9 +78,78 @@ Definition celem_subst_l t x v :=
           | a => a end.
 *)
 
+Inductive sublist : list var -> aenv -> Prop :=
+  sublist_empty : forall l, sublist nil l
+ | sublist_many : forall a l1 l2, AEnv.In a l2 -> sublist l1 l2 -> sublist (a::l1) l2.
+
+Fixpoint freeVarsAExp (a:aexp) := match a with BA x => ([x]) | Num n => nil | MNum r n => nil
+            | APlus e1 e2 => (freeVarsAExp e1)++(freeVarsAExp e2)
+            | AMult e1 e2 => (freeVarsAExp e1)++(freeVarsAExp e2)
+  end.
+Definition freeVarsVari (a:varia) := match a with AExp x => freeVarsAExp x
+            | Index x v => (x::freeVarsAExp v)
+  end.
+Definition freeVarsCBexp (a:cbexp) := match a with CEq x y => (freeVarsAExp x)++(freeVarsAExp y)
+         | CLt x y => (freeVarsAExp x)++(freeVarsAExp y)
+  end.
+Fixpoint freeVarsBexp (a:bexp) := match a with CB b => (freeVarsCBexp b)
+         | BEq x y i a => i::((freeVarsVari x)++(freeVarsVari y)++(freeVarsAExp a))
+         | BLt x y i a => i::((freeVarsVari x)++(freeVarsVari y)++(freeVarsAExp a))
+         | BTest i a => i::(freeVarsAExp a)
+         | BNeg b => freeVarsBexp b
+  end.
+
+Fixpoint freeSesSV (a:sval) := match a with SV s => [s]
+         | Frozen b s => freeSesSV s
+         | Unfrozen b s => freeSesSV s
+  end.
+
+Definition freeSesCElem (a:cpred_elem) := match a with PFalse => nil
+         | CP b => nil
+         | SEq x y => freeSesSV x
+  end.
+
+Fixpoint freeSesCPred (a:cpred) := match a with nil => nil | (x::xl) => (freeSesCElem x)++(freeSesCPred xl) end.
+
+Fixpoint ses_in (s:session) (l:list session) :=
+  match l with nil => False
+       | (a::xl) => ((ses_eq a s) \/ (ses_in s xl))
+  end.
+
+Fixpoint ses_sublist (s:list session) (l:list session) :=
+  match s with nil => True
+       | (a::xl) => ((ses_in a l) \/ (ses_sublist xl l))
+  end.
+
+Inductive sval_check : atype -> aenv -> type_map -> sval -> Prop :=
+  sval_check_sv: forall g env T s, ses_in s (dom T) -> sval_check g env T (SV s)
+ | sval_check_frozen: forall g env T b s, sublist (freeVarsBexp b) env
+             -> sval_check g env T s -> sval_check g env T (Frozen b s)
+ | sval_check_unfrozen: forall g env T b s, sublist (freeVarsBexp b) env
+             -> sval_check g env T s -> sval_check g env T (Unfrozen b s).
+
+Inductive pred_check_elem : atype -> aenv -> type_map -> cpred_elem -> Prop :=
+   pred_check_f: forall g env T, pred_check_elem g env T (PFalse)
+ | pred_check_cb: forall g env T b, sublist (freeVarsCBexp b) env -> pred_check_elem g env T (CP b)
+ | pred_check_sv: forall g env T x y, sval_check g env T x -> pred_check_elem g env T (SEq  x y).
+
+Fixpoint pred_check (g:atype) (env:aenv) (T:type_map) (l:cpred) :=
+   match l with nil => True | (c::cl) => (pred_check_elem g env T c) \/ (pred_check g env T cl) end.
+
+Fixpoint dom_to_ses (l : list session) :=
+  match l with nil => nil
+        | (a::al) => a++(dom_to_ses al)
+  end.
+
+Axiom imply : cpred -> cpred -> Prop.
+
   Inductive triple {qenv: var -> nat} {rmax:nat} : 
-          atype -> aenv -> type_map -> (var * cpred) -> pexp -> (var * cpred) -> Prop :=
-      | triple_comm: forall q env tenv S P Q e R, triple q env tenv (S,Q++P) e R -> triple q env tenv (S,P++Q) e R.
+          atype -> aenv -> type_map -> cpred -> pexp -> cpred -> Prop :=
+      | triple_comm: forall q env tenv P Q e R, triple q env tenv (Q++P) e R -> triple q env tenv (P++Q) e R
+      | triple_frame: forall q env T T' l P Q e R, fv_pexp env e l -> two_ses_dis (dom_to_ses (freeSesCPred R)) l ->
+               ses_sub l (dom_to_ses(dom T)) -> triple q env T P e Q -> triple q env (T++T') (P++R) e (Q++R)
+      | triple_con: forall q env T, imply P P' -> 
+
       | triple_split: forall q env tenv S x y v v1 v2 sv sv1 sv2 P e Q,
           env_equiv ((x++y,v)::tenv) ((x,v1)::(y,v2)::tenv) -> @state_equiv rmax ([(x++y,sv)]) ((x,sv1)::(y,sv2)::[])
        -> triple q env ((x,v1)::(y,v2)::tenv) (S,(SEq (SV x) (ST sv1))::(SEq (SV y) (ST sv2))::P) e Q
