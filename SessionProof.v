@@ -11,6 +11,7 @@ Require Import MathSpec.
 Require Import QWhileSyntax.
 Require Import SessionDef.
 Require Import SessionType.
+Require Import SessionSem.
 (**********************)
 (** Unitary Programs **)
 (**********************)
@@ -45,9 +46,9 @@ Inductive sval := ST (x:state_elem) | SV (s:session)
                | SSL (e:sval) (a:sval) (b:bexp) (l1:session) (l2:session).
 *)
 
-Inductive sval := SV (s:session) | Frozen (b:bexp) (s:sval) | Unfrozen (b:bexp) (s:sval).
+Inductive sval := SV (s:session) | Frozen (b:bexp) (s:sval) | Unfrozen (b:bexp) (s:sval) | FM (x:var) (n:nat) (s:sval).
 
-Inductive cpred_elem := PFalse | CP (b:cbexp) | SEq (x:sval) (y:state_elem).
+Inductive cpred_elem := PFalse | CP (b:cbexp) | SEq (x:sval) (y:state_elem) | CNeg (b:cbexp).
                              (* x = y|_{u=z} x is a new session from the old y by cutting session u to be value z. *)
 
 
@@ -58,12 +59,17 @@ Fixpoint sval_subst_c t x v :=
   match t with SV s => SV (subst_session s x v)
               | Frozen b s => Frozen (subst_bexp b x v) (sval_subst_c s x v)
               | Unfrozen b s => Frozen (subst_bexp b x v) (sval_subst_c s x v)
+              | FM y n s => FM y n (sval_subst_c s x v)
   end.
 
 Definition celem_subst_c t x v := 
   match t with PFalse => PFalse 
           | CP b => CP (subst_cbexp b x v)
-          | SEq a y => (SEq (sval_subst_c a x v) y) end.
+          | SEq a y => (SEq (sval_subst_c a x v) y)
+          | CNeg b => CNeg (subst_cbexp b x v) end.
+Fixpoint cpred_subst_c t x v := 
+   match t with nil => nil | (a::al) => (celem_subst_c a x v)::(cpred_subst_c al x v) end.
+
 
 (*
 Definition selem_subst_val (s:sval) x v :=
@@ -102,14 +108,34 @@ Fixpoint freeVarsBexp (a:bexp) := match a with CB b => (freeVarsCBexp b)
 Fixpoint freeSesSV (a:sval) := match a with SV s => [s]
          | Frozen b s => freeSesSV s
          | Unfrozen b s => freeSesSV s
+         | FM x n s => freeSesSV s
   end.
 
 Definition freeSesCElem (a:cpred_elem) := match a with PFalse => nil
          | CP b => nil
+         | CNeg b => nil
          | SEq x y => freeSesSV x
   end.
 
 Fixpoint freeSesCPred (a:cpred) := match a with nil => nil | (x::xl) => (freeSesCElem x)++(freeSesCPred xl) end.
+
+Inductive subst_ses_sval : sval -> session -> sval -> sval -> Prop :=
+   subst_ses_svt : forall x v, subst_ses_sval (SV x) x v v
+   | subst_ses_svf : forall x y v, x <> y -> subst_ses_sval (SV y) x v v
+   | subst_ses_fro : forall x v s b v', subst_ses_sval s x v v' -> subst_ses_sval (Frozen b s) x v (Frozen b v')
+   | subst_ses_unf : forall x v s b v', subst_ses_sval s x v v' -> subst_ses_sval (Unfrozen b s) x v (Unfrozen b v')
+   | subst_ses_fm : forall x v s y n v', subst_ses_sval s x v v' -> subst_ses_sval (FM y n s) x v (FM y n v').
+
+Inductive subst_ses_celem : cpred_elem -> session -> sval -> cpred_elem -> Prop :=
+   subst_ses_pf : forall x v, subst_ses_celem PFalse x v PFalse
+ | subst_ses_cp : forall b x v, subst_ses_celem (CP b) x v (CP b)
+ | subst_ses_cneg : forall b x v, subst_ses_celem (CNeg b) x v (CNeg b)
+ | subst_ses_seq: forall a b x v v', subst_ses_sval a x v v' -> subst_ses_celem (SEq a b) x v (SEq v' b).
+
+Inductive subst_ses_cpred : cpred -> session -> sval -> cpred -> Prop :=
+   subst_ses_empty: forall x v, subst_ses_cpred nil x v nil
+ | subst_ses_many: forall x v a l a' l', subst_ses_celem a x v a' -> subst_ses_cpred l x v l' -> subst_ses_cpred (a::l) x v (a'::l').
+
 
 Fixpoint ses_in (s:session) (l:list session) :=
   match l with nil => False
@@ -126,11 +152,13 @@ Inductive sval_check : atype -> aenv -> type_map -> sval -> Prop :=
  | sval_check_frozen: forall g env T b s, sublist (freeVarsBexp b) env
              -> sval_check g env T s -> sval_check g env T (Frozen b s)
  | sval_check_unfrozen: forall g env T b s, sublist (freeVarsBexp b) env
-             -> sval_check g env T s -> sval_check g env T (Unfrozen b s).
+             -> sval_check g env T s -> sval_check g env T (Unfrozen b s)
+ | sval_check_fm: forall g env T x n s, sval_check g env T s -> sval_check g env T (FM x n s).
 
 Inductive pred_check_elem : atype -> aenv -> type_map -> cpred_elem -> Prop :=
    pred_check_f: forall g env T, pred_check_elem g env T (PFalse)
  | pred_check_cb: forall g env T b, sublist (freeVarsCBexp b) env -> pred_check_elem g env T (CP b)
+ | pred_check_cneg: forall g env T b, sublist (freeVarsCBexp b) env -> pred_check_elem g env T (CNeg b)
  | pred_check_sv: forall g env T x y, sval_check g env T x -> pred_check_elem g env T (SEq  x y).
 
 Fixpoint pred_check (g:atype) (env:aenv) (T:type_map) (l:cpred) :=
@@ -141,54 +169,41 @@ Fixpoint dom_to_ses (l : list session) :=
         | (a::al) => a++(dom_to_ses al)
   end.
 
+Definition class_bexp (b:bexp) := match b with CB a => Some a | _ => None end.
+
 Axiom imply : cpred -> cpred -> Prop.
 
-  Inductive triple {qenv: var -> nat} {rmax:nat} : 
+  Inductive triple {rmax:nat} : 
           atype -> aenv -> type_map -> cpred -> pexp -> cpred -> Prop :=
       | triple_comm: forall q env tenv P Q e R, triple q env tenv (Q++P) e R -> triple q env tenv (P++Q) e R
       | triple_frame: forall q env T T' l P Q e R, fv_pexp env e l -> two_ses_dis (dom_to_ses (freeSesCPred R)) l ->
                ses_sub l (dom_to_ses(dom T)) -> triple q env T P e Q -> triple q env (T++T') (P++R) e (Q++R)
-      | triple_con: forall q env T, imply P P' -> 
-
-      | triple_split: forall q env tenv S x y v v1 v2 sv sv1 sv2 P e Q,
-          env_equiv ((x++y,v)::tenv) ((x,v1)::(y,v2)::tenv) -> @state_equiv rmax ([(x++y,sv)]) ((x,sv1)::(y,sv2)::[])
-       -> triple q env ((x,v1)::(y,v2)::tenv) (S,(SEq (SV x) (ST sv1))::(SEq (SV y) (ST sv2))::P) e Q
-        -> triple q env ((x++y,v)::tenv) (S,(SEq (SV (x++y)) (ST sv))::P) e Q
-      | triple_merge: forall q env tenv S x y v v1 v2 sv sv1 sv2 P e Q,
-          env_equiv ((x,v1)::(y,v2)::tenv) ((x++y,v)::tenv) -> @state_equiv rmax ((x,sv1)::(y,sv2)::[]) ([(x++y,sv)])
-        -> triple q env ((x++y,v)::tenv) (S,(SEq (SV (x++y)) (ST sv))::P) e Q
-       -> triple q env ((x,v1)::(y,v2)::tenv) (S,(SEq (SV x) (ST sv1))::(SEq (SV y) (ST sv2))::P) e Q
+      | triple_con: forall q env T T' P P' Q Q' e, imply P P' -> imply Q Q' -> env_equiv T T' -> pred_check q env T' P' ->
+                 triple q env T' P' e Q' -> triple q env T P e Q
       | skip_pf: forall q env tenv P, triple q env tenv P PSKIP P
       | let_c_pf: forall q env tenv P x v e Q,
             triple q env tenv P (subst_pexp e x v) Q -> triple q env tenv P (Let x (AE (Num v)) e) Q
-      | let_m_pf: forall q env tenv P x a e Q, type_aexp env a (AType MT) ->
-            triple q env tenv (fst P, ((CBeq (BA x) a))::(snd P)) e Q
-                  -> triple q env tenv P (Let x (AE a) e) Q
-      | let_q_pf:  forall q env tenv P x n e Q,
-            triple q (AEnv.add x (Ses ([(x,0,n)])) env) ((([(x,0,n)]),TNor (Some allfalse))::tenv) P e Q
-            -> triple q env tenv P (Let x (Init n) e) Q
-      | mea_q_pf:  forall q env tenv S P x y l m t,
-            find_type tenv ([(y,0,qenv y)]) (Some (([(y,0,qenv y)])++l,CH (Some (m,t)))) -> 
-            triple q env tenv (S,(cpred_subst_m P x (Select (([(y,0,qenv y)])++l) (Num (qenv y)))))
-               (Meas x y) (fresh S,(SEq (SV l) (Mask (SV ((([(y,0,qenv y)])++l))) (qenv y) (BA x)))::P)
-      | app_1 : forall q env tenv S P P' l e, cpred_subst_q P l (AppA e (SV l)) P'
-                -> triple q env tenv (S, P') (AppU l e) (S,P)
-      | qwhile : forall q env tenv N N' P i l h b e iv,
-          triple q env tenv (N,(CBlt (Num iv) (Num h))::(cpred_subst_c P i iv))
-                       (If b e) (N',cpred_subst_c P i (S iv)) ->
-                 triple q env tenv (N,cpred_subst_c P i l) (For i (Num l) (Num h) b e) (N',cpred_subst_c P i h)
-      | if_bit : forall q env tenv N N' P P' P'' x v e E l t, 
-              @type_pexp qenv env e (Ses l) ->
-             find_type tenv ((x,v,S v)::l) (Some (((x,v,S v)::l),CH t)) -> 
-              cpred_subst_q P ((x,v,S v)::l) E P' -> cpred_subst_q P ((x,v,S v)::l) (FSL E ((x,v,S v)::l) 1) P'' ->
-              triple q env tenv (N,P') e (N',P) -> triple q env tenv (N,P'') (If (BTest x (Num v)) e) (N',P)
-      | if_b : forall q env tenv N N' P P' P'' b e E l1 x v l2 t, 
-              @type_pexp qenv env e (Ses l2) ->
-              @type_pexp qenv env (If b e) (Ses (l1++(x,v, S v)::l2)) ->
-             find_type tenv (l1++(x,v, S v)::l2) (Some ((l1++(x,v, S v)::l2),CH t)) -> 
-              cpred_subst_q P (l1++(x,v, S v)::l2) E P'
-               -> cpred_subst_q P (l1++(x,v, S v)::l2) (SSL E (SV (l1++(x,v, S v)::l2)) b (l1++[(x,v, S v)]) l2) P'' ->
-              triple q env tenv (N,P') e (N',P) -> triple q env tenv (N,P'') (If b e) (N',P)
+      | let_m_pf: forall q env tenv P x a e Q, type_aexp env a (Mo MT,nil) ->
+            triple q env tenv (CP (CEq (BA x) a)::P) e Q -> triple q env tenv P (Let x (AE a) e) Q
+      | let_q_pf:  forall q env tenv tenv' P P' x y n l e Q, AEnv.MapsTo y (QT n) env
+             -> find_type tenv ([(y,BNum 0,BNum n)]) (Some ((y,BNum 0,BNum n)::l,CH)) ->
+            subst_ses_cpred P ((y,BNum 0,BNum n)::l) (FM x n (SV l)) P' ->
+            up_type tenv l CH tenv' ->
+            triple q (AEnv.add x (Mo MT) env) tenv' P' e Q
+            -> triple q env tenv P (Let x (Meas y) e) Q
+      | apph_pf: forall q env T x n l b, type_vari env x (QT n,l) -> find_type T l (Some (l,TNor)) ->
+            triple q env T ([SEq (SV l) (Nval (C1) b)]) (AppSU (RH x)) ([SEq (SV l) (Hval (fun i => (update allfalse 0 (b i))))])
+      | appu_pf : forall q env T l l1 m b e ba,  find_type T l (Some (l++l1,CH)) ->
+                eval_ch rmax env l m b e = Some ba ->
+                triple q env T ([SEq (SV (l++l1)) (Cval m b)]) (AppU l e) ([SEq (SV l) (Cval m ba)])
+      | for_pf : forall q env T x l h b p P i, l <= i < h ->
+            triple q env T (cpred_subst_c P x i) (If (subst_bexp b x i) (subst_pexp p x i)) (cpred_subst_c P x (i+1)) ->
+            triple q env T (cpred_subst_c P x l) (For x (Num l) (Num h) b p) (cpred_subst_c P x h)
+      | if_c : forall q env T P Q a b e, class_bexp b = Some a ->
+                 triple q env T (CP a::P) e Q -> triple q env T (CNeg a::P) PSKIP Q -> triple q env T P (If b e) Q
+      | if_q : forall q env T T' P P' Q Q' b e n l l1, type_bexp env b (QT n,l) -> find_type T l (Some (l++l1,CH)) ->
+                  up_type T l1 CH T' -> subst_ses_cpred P (l++l1) (Frozen b (SV l1)) P' -> pred_check q env ([(l1,CH)]) Q' ->
+                  triple q env T' P' e (Q++Q') -> triple q env T P (If b e) Q.
       | seq_pf: forall q env tenv tenv' tenv'' N N' N'' P R Q e1 e2,
              @session_system qenv rmax q env tenv e1 tenv' -> up_types tenv tenv' tenv'' ->
              triple q env tenv (N,P) e1 (N',R) -> triple q env tenv'' (N',R) e1 (N'',Q) -> 

@@ -529,7 +529,7 @@ The other similar rules, such as state preparation rules, can be found in \Cref{
 {(\psi,\varphi[\kappa\uplus\kappa'\mapsto \scha{m}{z_j}{c_{j}}{\beta_j}+q(\kappa,\neg b)],\sifq{b}{s}) \longrightarrow 
           (\psi',\varphi[\kappa\uplus\kappa'\mapsto \scha{m'}{z'_j}{c_{j}}{\beta'_j}+q(\kappa,\neg b)],\sifq{b}{s'}) }
 
-    \inferrule[PIF]{\Omega;\{\kappa' : \tcht\} \vdash Q' \\ \fivepule{\Omega}{\sigma[\kappa' \mapsto \tcht]}{\mmode}{P[\mathpzc{M}(b,\kappa')/ \kappa \uplus \kappa']}{s}{Q * Q'}}
+    \inferrule[PIF]{ FV(b) = \kappa \\ \Omega;\{\kappa' : \tcht\} \vdash_g Q' \\ \fivepule{\Omega}{\sigma[\kappa' \mapsto \tcht]}{\mmode}{P[\mathpzc{M}(b,\kappa')/ \kappa \uplus \kappa']}{s}{Q * Q'}}
                 {\fivepule{\Omega}{\sigma[\kappa \uplus \kappa' \mapsto \tcht]}{g}{P}{\sifq{b}{s}}{P[\mathpzc{U}(\slen{\kappa},\neg b,\kappa \uplus \kappa')/\kappa \uplus \kappa')] * Q'[\mathpzc{U}(\slen{\kappa},b,\kappa \uplus \kappa')/\kappa']}}
 
 \mprset{flushleft}
