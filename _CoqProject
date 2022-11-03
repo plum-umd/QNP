@@ -39,4 +39,5 @@ SessionDef.v
 SessionType.v
 SessionSem.v
 SessionProof.v
+QafnySQIR.v
 
