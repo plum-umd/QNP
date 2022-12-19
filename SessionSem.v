@@ -266,51 +266,53 @@ Inductive dis_sem : nat -> nat -> nat -> nat -> (nat -> C * rz_val) -> (list nat
           (fst acc+2^pos,assem_dis (trans_nat la f pos) (snd (f m)) (snd acc) (sum_c_list la f) pos (fst acc) (2^pos)).
 
 Inductive qfor_sem {rmax:nat}
-           : aenv -> state -> pexp -> state -> Prop :=
-  | state_eq_sem: forall aenv e s f f', @state_equiv rmax f f' -> qfor_sem aenv (s,f) e (s,f')
-  | skip_sem: forall aenv s, qfor_sem aenv s PSKIP s
-  | let_sem_c : forall aenv s s' x a n e, simp_aexp a = Some n 
-        -> qfor_sem aenv s (subst_pexp e x n) s' -> qfor_sem aenv s (Let x (AE a) e) s'
-  | let_sem_m : forall aenv s s' x a n e, eval_aexp (fst s) a n -> qfor_sem (AEnv.add x (Mo MT) aenv) (update_cval s x n) e s'
-             -> qfor_sem aenv s (Let x (AE a) e) s'
-  | let_sem_q : forall aenv s s' s'' x a n e r v, AEnv.MapsTo x (QT n) aenv ->
-                       @pick_mea rmax s a n (r,v) -> @mask_state rmax ([(a,BNum 0,BNum n)]) v (snd s) s' ->
-            qfor_sem (AEnv.add x (Mo MT) aenv) (update_cval (fst s,s') x (r,v)) e s''
-                  -> qfor_sem aenv s (Let x (Meas a) e) s''
+           : aenv -> state -> pexp -> state -> pexp -> Prop :=
+  | state_eq_sem: forall aenv e s f f', @state_equiv rmax f f' -> qfor_sem aenv (s,f) e (s,f') e
+  | let_sem_c : forall aenv s x a n e, simp_aexp a = Some n 
+        -> qfor_sem aenv s (Let x (AE a) e) s (subst_pexp e x n)
+  | let_sem_m : forall aenv s x a n e, eval_aexp (fst s) a n 
+             -> qfor_sem aenv s (Let x (AE a) e) (update_cval s x n) e
+  | let_sem_q : forall aenv s s' x a n e r v, AEnv.MapsTo x (QT n) aenv ->
+                       @pick_mea rmax s a n (r,v) -> @mask_state rmax ([(a,BNum 0,BNum n)]) v (snd s) s'
+                  -> qfor_sem (AEnv.add x (Mo MT) aenv) s (Let x (Meas a) e) (update_cval (fst s,s') x (r,v)) e
   | appsu_sem_h_nor : forall aenv s s' p a b, @simp_varia aenv p a -> @find_state rmax s ([a]) (Some (([a]),Nval (C1) b)) -> 
-                @up_state rmax s ([a]) (Hval (fun i => (update allfalse 0 (b i)))) s' -> qfor_sem aenv s (AppSU (RH p)) s
-
+                @up_state rmax s ([a]) (Hval (fun i => (update allfalse 0 (b i)))) s' -> qfor_sem aenv s (AppSU (RH p)) s PSKIP
   | appsu_sem_h_had : forall aenv s s' p a b, @simp_varia aenv p a -> @find_state rmax s ([a]) (Some (([a]),Hval b)) ->
-           (@up_state rmax s ([a]) (Nval C1 (fun j => b j 0)) s') -> qfor_sem aenv s (AppSU (RH p)) s'
+           (@up_state rmax s ([a]) (Nval C1 (fun j => b j 0)) s') -> qfor_sem aenv s (AppSU (RH p)) s' PSKIP
   (* rewrite the tenv type for oqasm with respect to the ch list type. *)
   | appu_sem_nor : forall aenv s s' a e l r b ra ba, @find_state rmax s a (Some (a++l,Nval r b)) ->
-                 eval_nor rmax aenv a r b e = Some (ra,ba) -> 
-           (@up_state rmax s (a++l) (Nval ra ba) s') -> qfor_sem aenv s (AppU a e) s'
+      eval_nor rmax aenv a r b e = Some (ra,ba) -> (@up_state rmax s (a++l) (Nval ra ba) s') -> qfor_sem aenv s (AppU a e) s' PSKIP
   | appu_sem_ch : forall aenv s s' a e l b m ba, @find_state rmax s a (Some (a++l,Cval m b)) ->
-                 eval_ch rmax aenv a m b e = Some ba -> 
-           (@up_state rmax s (a++l) (Cval m ba) s') -> qfor_sem aenv s (AppU a e) s'
-  | seq_sem: forall aenv e1 e2 s s1 s2, qfor_sem aenv s e1 s1 -> qfor_sem aenv s1 e2 s2 -> qfor_sem aenv s (PSeq e1 e2) s2
-  | if_sem_ct : forall aenv M s s' b e, eval_cbexp M b true -> qfor_sem aenv (M,s) e s' -> qfor_sem aenv (M,s) (If (CB b) e) s'
-  | if_sem_cf : forall aenv M s b e, eval_cbexp M b false -> qfor_sem aenv (M,s) (If (CB b) e) (M,s)
-  | if_sem_q : forall aenv l l1 n n' s s' sa sa' sac b e m m' f f' fc fc' fa,
+        eval_ch rmax aenv a m b e = Some ba -> (@up_state rmax s (a++l) (Cval m ba) s') -> qfor_sem aenv s (AppU a e) s' PSKIP
+  | seq_sem_1: forall aenv e1 e1' e2 s s1 s2, e1 <> PSKIP -> qfor_sem aenv s e1 s1 e1' -> qfor_sem aenv s (PSeq e1 e2) s2 (PSeq e1' e2)
+  | seq_sem_2: forall aenv e2 s, qfor_sem aenv s (PSeq PSKIP e2) s e2
+  | if_sem_ct : forall aenv M s b e, eval_cbexp M b true -> qfor_sem aenv (M,s) (If (CB b) e) (M,s) e
+  | if_sem_cf : forall aenv M s b e, eval_cbexp M b false -> qfor_sem aenv (M,s) (If (CB b) e) (M,s) PSKIP
+  | if_sem_q_1 : forall aenv l l1 n n' s s' sa sa' sac b e e' m m' f f' fc fc' fa,
                type_bexp aenv b (QT (n+1),l) -> @eval_bexp rmax aenv s b s' ->
                 @find_state rmax s' l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
                  mut_state 0 (n+1) n' (Cval (fst (grab_bool f m n)) (snd (grab_bool f m n))) fc ->
-                @up_state rmax s' (l++l1) fc sa -> qfor_sem aenv sa e sa' ->
+                @up_state rmax s' (l++l1) fc sa -> qfor_sem aenv sa e sa' e' -> e <> PSKIP ->
                  @find_state rmax sa' l1 (Some (l1, fc')) -> mut_state 0 n' (n+1) fc' (Cval m' f') ->
                 assem_bool m m' (n+1) f f' fa -> @up_state rmax s (l++l1) (Cval (fst fa) (snd fa)) sac ->
-                    qfor_sem aenv s (If b e) sac
-  | for_0 : forall aenv s x l h b p, h <= l -> qfor_sem aenv s (For x (Num l) (Num h) b p) s
-  | for_s : forall aenv s s' sa x l h b p, l < h -> 
-          qfor_sem aenv s (If (subst_bexp b x l)  (subst_pexp p x l)) s' ->
-          qfor_sem aenv s' (For x (Num (l+1)) (Num h) b p) sa ->
-          qfor_sem aenv s (For x (Num l) (Num h) b p) sa
+                    qfor_sem aenv s (If b e) sac (If b e')
+  | if_sem_q_2 : forall aenv s b, qfor_sem aenv s (If b PSKIP) s PSKIP
+  | for_0 : forall aenv s x l h b p, h <= l -> qfor_sem aenv s (For x (Num l) (Num h) b p) s PSKIP
+  | for_s : forall aenv s x l h b p, l < h -> 
+          qfor_sem aenv s (For x (Num l) (Num h) b p) s (PSeq (If b p) (For x (Num (l+1)) (Num h) b p))
   | diffuse_a: forall aenv s s' x n l n' l1 m f m' acc, type_vari aenv x (QT n,l) ->
                 @find_state rmax s l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
                 dis_sem n n' m m f nil (m',acc) ->  @up_state rmax s (l++l1) (Cval m' acc) s' ->
-                qfor_sem aenv s (Diffuse x) s'.
+                qfor_sem aenv s (Diffuse x) s' PSKIP.
 
 
+(*
 
+Inductive session_system {rmax:nat}
+           : atype -> aenv -> type_map -> pexp -> type_map -> Prop :=
 
+Inductive qfor_sem {rmax:nat}
+           : aenv -> state -> pexp -> state -> Prop :=
+
+*)
 
