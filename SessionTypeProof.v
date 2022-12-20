@@ -41,10 +41,11 @@ Inductive env_state_eqv {r:nat} : type_map -> qstate ->  Prop :=
 
 
 Lemma session_progress_1 : 
-    forall e rmax t aenv s s' tenv tenv', 
-      @session_system rmax t aenv tenv e tenv' -> e = PSKIP \/ (exists e', @qfor_sem rmax aenv s e s' e').
+    forall e rmax t aenv s tenv tenv', @env_state_eqv rmax tenv (snd s) ->
+      @session_system rmax t aenv tenv e tenv' ->
+           e = PSKIP \/ (exists e' s', @qfor_sem rmax aenv s e s' e' /\ @env_state_eqv rmax tenv' (snd s')).
 Proof.
-  intros. induction H. destruct IHsession_system as [X1 | X2];subst.
+  intros. induction H0. destruct IHsession_system as [X1 | X2];subst.
   left. easy.
   right. destruct n.
 Admitted.
