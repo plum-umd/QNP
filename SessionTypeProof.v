@@ -46,8 +46,10 @@ Lemma session_progress_1 :
            e = PSKIP \/ (exists e' s', @qfor_sem rmax aenv s e s' e' /\ @env_state_eqv rmax tenv' (snd s')).
 Proof.
   intros. induction H0. destruct IHsession_system as [X1 | X2];subst.
-  left. easy.
-  right. destruct n.
+  destruct s; simpl in *. inv H.
+  (* env_equiv T2 l1' *)
+  (* env_state_eqv T2 q0 *)
+  
 Admitted.
 (*
 
