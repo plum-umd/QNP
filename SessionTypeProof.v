@@ -51,7 +51,7 @@ Proof.
   intros. induction H0.
   apply IHsession_system. apply env_state_equiv with (t1 := T1); easy.
   left. easy.
-  
+  admit.
                                  
   (* env_equiv T2 l1' *)
   (* env_state_eqv T2 q0 *)
