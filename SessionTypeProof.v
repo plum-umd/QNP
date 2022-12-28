@@ -39,16 +39,28 @@ Inductive env_state_eqv {r:nat} : type_map -> qstate ->  Prop :=
     env_state_eqv_rule : forall l1 l2 l1' l2', 
       env_equiv l1 l1' -> @state_equiv r l2 l2' -> env_state_eq l1' l2' -> env_state_eqv l1 l2.
 
+Lemma env_state_equiv :
+  forall rmax s t1 t2, @env_state_eqv rmax t1 s -> env_equiv t1 t2 -> @env_state_eqv rmax t2 s.
+  Proof. Admitted.
 
 Lemma session_progress_1 : 
     forall e rmax t aenv s tenv tenv', @env_state_eqv rmax tenv (snd s) ->
       @session_system rmax t aenv tenv e tenv' ->
            e = PSKIP \/ (exists e' s', @qfor_sem rmax aenv s e s' e' /\ @env_state_eqv rmax tenv' (snd s')).
 Proof.
-  intros. induction H0. destruct IHsession_system as [X1 | X2];subst.
-  destruct s; simpl in *. inv H.
+  intros. induction H0.
+  apply IHsession_system. apply env_state_equiv with (t1 := T1); easy.
+  left. easy.
+  
+                                 
   (* env_equiv T2 l1' *)
   (* env_state_eqv T2 q0 *)
+
+  (*env_state_eqv t1 s -> env_equiv t1 t2 -> env_state_eqv t2 s;
+   apply
+   assert
+   specialize (theorem_name T1 T2 (snd s) H H0) as X1. 
+    *)
   
 Admitted.
 (*
