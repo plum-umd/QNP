@@ -69,6 +69,8 @@ Inductive mexp := MSKIP
             | MSeq (s1:mexp) (s2:mexp)
           (*compile to CU / CNOT *)
             | MIf (x:bexp) (s1:mexp)
+            | Mask (x:var) (l:session) (b:bexp)
+            | UnMask (x:var) (l:session) (b:bexp)
             | MFor (x:var) (l:aexp) (h:aexp) (b:bexp) (p:mexp)
                 (* for (int x = l; x < h && b ; x++) p; 
                     --> repeat x in (h-l) times of (If b(c/x) p) *)
@@ -117,21 +119,25 @@ Definition freeVarsInMAExp (a:maexp) :=
    | Meas x  => [x]
    end.
 
-Fixpoint freeVarsInMExp (a:mexp) :=
-  match a with MSKIP => nil | MLet x n e => x::freeVarsInMAExp n ++ freeVarsInMExp e
-             | MAppU l e => [l]
-             | MSeq s1 s2 => freeVarsInMExp s1 ++ freeVarsInMExp s2
-             | MIf x s1 => freeVarsInBExp x ++ freeVarsInMExp s1
-             | MFor x l h b p => x::freeVarsInAExp l ++ freeVarsInAExp h ++ freeVarsInBExp b ++ freeVarsInMExp p
-             | MDiffuse x => [x]
-  end.
-
 Definition freeVarsInBound m := match m with BVar x i => [x] | BNum n => nil end.
 
 Definition freeVarsInRange (a: range) := match a with (x,n,m) => x::freeVarsInBound n++freeVarsInBound m end.
 
 Fixpoint freeVarsInSession (s: session) := match s with nil => nil
                        | a::al => freeVarsInRange a ++ freeVarsInSession al end.
+
+Fixpoint freeVarsInMExp (a:mexp) :=
+  match a with MSKIP => nil | MLet x n e => x::freeVarsInMAExp n ++ freeVarsInMExp e
+             | MAppU l e => [l]
+             | MSeq s1 s2 => freeVarsInMExp s1 ++ freeVarsInMExp s2
+             | MIf x s1 => freeVarsInBExp x ++ freeVarsInMExp s1
+             | Mask x l b => x::freeVarsInSession l ++ freeVarsInBExp b
+             | UnMask x l b => x::freeVarsInSession l ++ freeVarsInBExp b
+             | MFor x l h b p => x::freeVarsInAExp l ++ freeVarsInAExp h ++ freeVarsInBExp b ++ freeVarsInMExp p
+             | MDiffuse x => [x]
+  end.
+
+
 
 Definition freeVarsInPPredElem (p:ppred_elem) :=
    match p with PPFalse => nil | CPP b => freeVarsInCBExp b
@@ -153,7 +159,9 @@ Fixpoint same_ses_set_dlist (s:ses_set) (xl yl:list var) :=
       | ptriple_comm: forall q env tenv P Q e R, ptriple q env tenv (Q++P) e R -> ptriple q env tenv (P++Q) e R
       | ptriple_frame: forall q env T P Q e R, same_ses_set_dlist T (freeVarsInMExp e) (freeVarsInPPred R) ->
                ptriple q env T P e Q -> ptriple q env T (P++R) e (Q++R)
-      | skip_pf: forall q env tenv P, ptriple q env tenv P MSKIP P.
+      | pskip_pf: forall q env tenv P, ptriple q env tenv P MSKIP P
+
+(*
       | let_c_pf: forall q env tenv P x v e Q,
             triple q env tenv P (subst_pexp e x v) Q -> triple q env tenv P (Let x (AE (Num v)) e) Q
       | let_m_pf: forall q env tenv P x a e Q, type_aexp env a (Mo MT,nil) ->
@@ -166,9 +174,12 @@ Fixpoint same_ses_set_dlist (s:ses_set) (xl yl:list var) :=
             -> triple q env tenv P (Let x (Meas y) e) Q
       | apph_pf: forall q env T x n l b, type_vari env x (QT n,l) -> find_type T l (Some (l,TNor)) ->
             triple q env T ([SEq (SV l) (Nval (C1) b)]) (AppSU (RH x)) ([SEq (SV l) (Hval (fun i => (update allfalse 0 (b i))))])
-      | appu_pf : forall q env T l l1 m b e ba,  find_type T l (Some (l++l1,CH)) ->
+*)
+      | pappu_pf : forall q env T x l l1 m b e ba,  
                 eval_ch rmax env l m b e = Some ba ->
-                triple q env T ([SEq (SV (l++l1)) (Cval m b)]) (AppU l e) ([SEq (SV (l++l1)) (Cval m ba)])
+                ptriple q env T ((TPEq x l)::[SPEq ( (l++l1)) (Cval m b)]) (MAppU x e) ((TPEq x l)::[SPEq ( (l++l1)) (Cval m ba)]).
+
+(*
       | dis_pf : forall q env T x n l l1 n' m f m' acc, type_vari env x (QT n,l) -> find_type T l (Some (l++l1,CH)) ->
                  ses_len l1 = Some n' -> dis_sem n n' m m f nil (m',acc) -> 
                 triple q env T ([SEq (SV (l++l1)) (Cval m f)]) (Diffuse x) ([SEq (SV (l++l1)) (Cval m' acc)])
@@ -178,11 +189,15 @@ Fixpoint same_ses_set_dlist (s:ses_set) (xl yl:list var) :=
             triple q env T (cpred_subst_c P x l) (For x (Num l) (Num h) b p) (cpred_subst_c P x h)
       | if_c : forall q env T P Q a b e, class_bexp b = Some a ->
                  triple q env T (CP a::P) e Q -> triple q env T (CNeg a::P) PSKIP Q -> triple q env T P (If b e) Q
-      | if_q : forall q env T T' P P' Pa Q Q' Qa b e n l l1, type_bexp env b (QT n,l) -> find_type T l (Some (l++l1,CH)) ->
+*)
+
+      | pif_q : forall q env T T' P P' Pa Q Q' Qa b e n l l1, type_bexp env b (QT n,l) -> find_type T l (Some (l++l1,CH)) ->
                   up_type T l1 CH T' -> subst_ses_cpred P (l++l1) (Frozen b (SV l1)) P' -> pred_check q env ([(l1,CH)]) Q' ->
                 subst_ses_cpred P (l++l1) (Unfrozen n (BNeg b) (SV (l++l1))) Pa ->
                 subst_ses_cpred Q' l1 (Unfrozen n b (SV (l++l1))) Qa ->
-                  triple q env T' P' e (Q++Q') -> triple q env T P (If b e) (Pa++Qa)
+                  ptriple q env T P (MIf x b e) (Pa++Qa)
+
+
       | seq_pf: forall q env tenv tenv' tenv'' P R Q e1 e2,
              @session_system rmax q env tenv e1 tenv' -> up_types tenv tenv' tenv'' -> pred_check q env tenv'' R ->
              triple q env tenv P e1 R -> triple q env tenv'' R e1 Q -> triple q env tenv P (PSeq e1 e2) Q.
