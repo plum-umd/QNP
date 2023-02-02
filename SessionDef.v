@@ -107,6 +107,11 @@ Fixpoint ses_map_dom (l1 : list session) :=
 
 
 (*| Uni (b: nat -> rz_val) | DFT (b: nat -> rz_val). *)
+(* Below is the def for types and type environment. 
+   We have subtype relations for types. Nor and Had are subtypes of CH. 
+   Types are corresponding to the three quantum state forms. 
+   type_env is a map from sessions to types. 
+   Similar to session equations above, type_env domains (session) can also be joined and split. *)
 Definition type_cfac : Type := nat -> rz_val.
 Inductive se_type : Type := TNor | THad | CH.
 
@@ -195,6 +200,10 @@ Inductive update_env {A:Type}: list (session * A) -> session -> A -> list (sessi
   | up_env_many_2 : forall S S' x y t t', ~ ses_sub x y -> update_env S x t' S' -> update_env ((y,t)::S) x t' ((y,t)::S').
 
 (* Define semantic state equations. *)
+(* Below is the def for states .
+   States include two parts: stacks mapping from variables to classical numbers,
+   while qstate mapping from sessions to quantum state forms.
+   Similar to type env above, qstate domains (session) can also be joined and split. *)
 
 Inductive state_elem :=
                  | Nval (p:C) (r:rz_val)
@@ -504,13 +513,10 @@ Fixpoint subst_pexp (e:pexp) (x:var) (n:nat) :=
                    | PSeq s1 s2 => PSeq (subst_pexp s1 x n) (subst_pexp s2 x n)
         end.
 
-(* Session Type. *)
-(*Inductive factor := AType (a:atype) | Ses (a:session).
-
-Coercion AType : atype >-> factor.
-
-Coercion Ses : session  >-> factor.
-*)
+(* Below is the kind checking system in Qanfy. It determines three kinds of variables:
+   competely classical variables, classical variables as the result of quantum measurement,
+   and quantum variables representing sessions. 
+   The kind checking system infers kinds for variables, which is the FV function in the paper.*)
 Module AEnv := FMapList.Make Nat_as_OT.
 Module AEnvFacts := FMapFacts.Facts (AEnv).
 Definition aenv := AEnv.t ktype.
