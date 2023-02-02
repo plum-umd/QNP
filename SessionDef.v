@@ -20,6 +20,12 @@ Local Open Scope nat_scope.
 
 Check exp.
 
+(* Sessions can contain variables. a simple session means that it does not contain variables. *)
+(* A session is a list of ranges (x,n,m). Each range can be compiled to a list of qubits from x[n] to x[m].
+   Session A is a sub_session of another one B if every qubits in A is in B.
+   The determination of the sub_sessions and eq_sessions are based on 
+   a decision procedure to determine if a range is in another one. *)
+
 Inductive simple_ses : session -> Prop :=
     simple_ses_empty : simple_ses nil
   | simple_ses_many :  forall a x y l, simple_bound x -> simple_bound y -> simple_ses l -> simple_ses ((a,x,y)::l).
@@ -60,41 +66,45 @@ Definition ses_dis (s:session) :=
 Inductive two_ses_dis : session -> session -> Prop :=
    two_ses_empty : forall s, two_ses_dis nil s
  | two_ses_many: forall a l s, ses_dis_aux a s -> two_ses_dis l s -> two_ses_dis (a::l) s. 
- 
-(*
-Inductive in_seses  : list (var*nat*nat) -> list (var*nat*nat) -> Prop :=
-   in_ses_1 : forall a b l, in_ses a b = true -> in_seses (a::l) (b::l)
- | in_ses_2 : forall a b l, in_ses a b = true -> in_seses (l++([a])) (l++([b])).
 
-Inductive in_session : list (var*nat*nat) -> list (var*nat*nat) -> Prop :=
-     in_session_rule : forall a a' b c d, b = c++a'++d -> in_seses a a' -> in_session a b.
 
-Inductive in_ses_pos : list (var*nat*nat) -> list (var*nat*nat) -> nat * nat -> Prop :=
-   find_pos_rule: forall a b c d, b = c++a++d -> in_ses_pos a b (length c, length c + length a).
-
-*)
-
-(*
-Fixpoint find_pos' (p:posi) (l:list (var*nat*nat)) (pos:nat) :=
-   match l with [] => 0
-              | (x,n,m)::xs => if (x =? fst p) && (n <=? snd p) && (snd p <? m)
-                               then (pos + (snd p) - n)
-                               else find_pos' p xs (pos + m - n)
+Definition join_two_ses (a:(var * bound * bound)) (b:(var*bound*bound)) :=
+   match a with (x,BNum n1,BNum n2) => 
+      match b with (y,BNum m1,BNum m2) => 
+            if x =? y then (if n1 <=? m1 then 
+                               (if n2 <? m1 then None
+                                else if n2 <? m2 then Some (x,BNum n1,BNum m2)
+                                else Some(x,BNum n1,BNum n2))
+                            else if m2 <? n1 then None
+                            else if n2 <? m2 then Some (x,BNum m1,BNum m2)
+                            else Some (x,BNum m1,BNum n2))
+            else None
+            | _ => None
+     end
+          | _ => None
    end.
-Definition find_pos p l := find_pos' p l 0.
 
-Fixpoint find_range' (x:var) (l:list (var*nat*nat)) (pos : nat) :=
-   match l with [] => None
-             | (y,n,m)::xs => if x =? y
-                          then (if n =? 0 then Some (pos,pos +m) else None)
-                          else find_range' x xs (pos + m -n)
+Definition dom {A:Type} (l: list (session * A)) := fst (split l).
+
+Fixpoint join_ses_aux (a:(var * bound * bound)) (l:list ((var * bound * bound))) :=
+     match l with [] => ([a])
+           | (x::xs) => match join_two_ses a x with None => x::join_ses_aux a xs
+                                         | Some ax => ax::xs
+                        end
+     end.
+
+Fixpoint join_ses (l1 l2:list ((var * bound * bound))) :=
+    match l1 with [] => l2
+               | x::xs => join_ses_aux x (join_ses xs l2)
    end.
-Definition find_range x l := find_range' x l 0.
 
-Definition type_cfac : Type := nat -> rz_val.
+(*Putting all session units to be a whole big session. *)
+Fixpoint ses_map_dom (l1 : list session) :=
+  match l1 with [] => []
+             |a::b => join_ses a (ses_map_dom b)
+  end.
 
-Inductive type_phase :=  Uni.
-*)
+
 
 (*| Uni (b: nat -> rz_val) | DFT (b: nat -> rz_val). *)
 Definition type_cfac : Type := nat -> rz_val.
@@ -132,38 +142,6 @@ Inductive subtype :  se_type -> se_type -> Prop :=
    | ch_had: forall p, p 0 = nat2fb 0 -> p 1 = nat2fb 1 -> 
            subtype 1 (CH (Some (2,p))) (TH None)
    | ch_none: forall n p, subtype n (CH (Some p)) (CH None).
-*)
-
-(*
-Definition join_val {A:Type} (n :nat) (r1 r2:nat -> A) := fun i => if i <? n then r1 n else r2 (i-n).
-
-Definition lshift_fun {A:Type} (f:nat -> A) (n:nat) := fun i => f (i+n).
-
-Definition join_nor_val (n:nat) (r1 r2:option rz_val) :=
-   match (r1,r2) with (Some ra1,Some ra2) => Some (join_val n ra1 ra2)
-                   | (_,_) => None
-   end.
-
-Definition join_had_val (n:nat) (r1 r2:option type_phase) :=
-   match (r1,r2) with (Some Uni,Some Uni) => Some Uni
-                   | (_,_) => None
-   end.
-
-Fixpoint car_s (i:nat) (n:nat) (m:nat) (r1:rz_val) (r2 : type_cfac) : type_cfac := 
-    match n with 0 => (fun x => allfalse)
-              | S n' => (fun x => if x =? i+n' then join_val m r1 (r2 n') else car_s i n' m r1 r2 x)
-    end.
-Fixpoint car_fun (size n m:nat) (r1 r2: type_cfac) :=
-   match n with 0 => (fun x => allfalse)
-        | S n' => (fun x => if (m * n' <=? x) && (x <? m * n)
-                        then car_s (m * n') m size (r1 n') r2 x
-                        else car_fun size n' m r1 r2 x)
-   end.
-
-Definition join_ch_val (size:nat) (r1 r2:option (nat * type_cfac)) :=
-   match (r1,r2) with (Some (n,r1),Some (m,r2)) => Some (m*n,car_fun size n m r1 r2)
-                   | (_,_) => None
-   end.
 *)
 
 Inductive times_type: se_type -> se_type -> se_type -> Prop :=
@@ -210,7 +188,6 @@ Inductive find_env {A:Type}: list (session * A) -> session -> option (session * 
 
 Inductive find_type : type_map -> session -> option (session * se_type) -> Prop :=
     | find_type_rule: forall S S' x t, env_equiv S S' -> find_env S' x t -> find_type S x t.
-
 
 Inductive update_env {A:Type}: list (session * A) -> session -> A -> list (session * A) -> Prop :=
   | up_env_empty : forall l t, update_env nil l t ([(l,t)])
@@ -572,35 +549,7 @@ Inductive up_state {rmax:nat} : state -> session -> state_elem -> state -> Prop 
     | up_state_rule : forall S M M' M'' l t, @state_equiv rmax M M' -> update_env M' l t M'' -> up_state (S,M) l t (S,M'').
 
 
-Definition join_two_ses (a:(var * bound * bound)) (b:(var*bound*bound)) :=
-   match a with (x,BNum n1,BNum n2) => 
-      match b with (y,BNum m1,BNum m2) => 
-            if x =? y then (if n1 <=? m1 then 
-                               (if n2 <? m1 then None
-                                else if n2 <? m2 then Some (x,BNum n1,BNum m2)
-                                else Some(x,BNum n1,BNum n2))
-                            else if m2 <? n1 then None
-                            else if n2 <? m2 then Some (x,BNum m1,BNum m2)
-                            else Some (x,BNum m1,BNum n2))
-            else None
-            | _ => None
-     end
-          | _ => None
-   end.
 
-Definition dom {A:Type} (l: list (session * A)) := fst (split l).
-
-Fixpoint join_ses_aux (a:(var * bound * bound)) (l:list ((var * bound * bound))) :=
-     match l with [] => ([a])
-           | (x::xs) => match join_two_ses a x with None => x::join_ses_aux a xs
-                                         | Some ax => ax::xs
-                        end
-     end.
-
-Fixpoint join_ses (l1 l2:list ((var * bound * bound))) :=
-    match l1 with [] => l2
-               | x::xs => join_ses_aux x (join_ses xs l2)
-   end.
 
 Definition is_class_type (t:ktype) := match t with Mo CT => True | Mo MT => True | _ => False end.
 

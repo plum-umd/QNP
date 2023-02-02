@@ -267,7 +267,7 @@ Inductive dis_sem : nat -> nat -> nat -> nat -> (nat -> C * rz_val) -> (list nat
 
 Inductive qfor_sem {rmax:nat}
            : aenv -> state -> pexp -> state -> pexp -> Prop :=
-  | state_eq_sem: forall aenv e s f f', @state_equiv rmax f f' -> qfor_sem aenv (s,f) e (s,f') e
+(*  | state_eq_sem: forall aenv e s f f', @state_equiv rmax f f' -> qfor_sem aenv (s,f) e (s,f') e *)
   | let_sem_c : forall aenv s x a n e, simp_aexp a = Some n 
         -> qfor_sem aenv s (Let x (AE a) e) s (subst_pexp e x n)
   | let_sem_m : forall aenv s x a n e, eval_aexp (fst s) a n 
