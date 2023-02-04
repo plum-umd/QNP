@@ -195,10 +195,10 @@ Qed.
 
 (*TODO: Le Chang, please finish the proof below. Follow the pattern in kind_env_stack_exist_ct.
         Now, please realize that in the type of MT in aexp, you must have one side being CT and the other one being MT. *)
-Lemma kind_env_stack_exist : forall env s l a, kind_env_stack env s -> freeVarsNotCAExp env a ->
-              type_aexp env a (Mo MT, l) -> exists v, eval_aexp s a v.
+Lemma kind_env_stack_exist : forall env s a, kind_env_stack env s -> freeVarsNotCAExp env a ->
+              type_aexp env a (Mo MT, nil) -> exists v, eval_aexp s a v.
 Proof.
-  intros. remember (Mo MT, l) as t.
+  intros. remember (Mo MT, nil) as t.
   induction H1; simpl in *.
   destruct H1; subst.
   destruct (H b MT); try easy.
