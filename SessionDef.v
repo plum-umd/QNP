@@ -436,18 +436,6 @@ Fixpoint subst_aexp (a:aexp) (x:var) (n:nat) :=
                              end
     end.
 
-Fixpoint simp_aexp (a:aexp) :=
-   match a with BA y => None
-             | Num a => Some a
-              | MNum r a => None
-             | APlus c d => match (simp_aexp c,simp_aexp d) with (Some v1,Some v2) => Some (v1+v2)
-                                | (_,_) => None
-                            end
-             | AMult c d => match (simp_aexp c,simp_aexp d) with (Some v1,Some v2) => Some (v1*v2)
-                                | (_,_) => None
-                            end
-   end.
-
 
 Definition subst_varia (a:varia) (x:var) (n:nat) :=
    match a with AExp b => AExp (subst_aexp b x n)
@@ -555,7 +543,7 @@ Inductive up_state {rmax:nat} : state -> session -> state_elem -> state -> Prop 
     | up_state_rule : forall S M M' M'' l t, @state_equiv rmax M M' -> update_env M' l t M'' -> up_state (S,M) l t (S,M'').
 
 
-
+(* Kind checking rules to determine if an expression has a certain kind. *)
 
 Definition is_class_type (t:ktype) := match t with Mo CT => True | Mo MT => True | _ => False end.
 
@@ -566,9 +554,10 @@ Inductive union_f : (ktype * session) -> (ktype * session) -> (ktype * session) 
  | union_two: forall a b l1 l2, ses_dis (l1++l2) -> union_f (QT a,l1) (QT b,l2) (QT (a+b), l1++l2). 
 
 Inductive type_aexp : aenv -> aexp -> (ktype*session) -> Prop :=
-   | ba_type : forall env b t, t = Mo MT \/ t = Mo CT -> AEnv.MapsTo b t env -> type_aexp env b (t,[])
-   | ba_type_q : forall env b n, AEnv.MapsTo b (QT n) env -> type_aexp env b (QT n,[(b,BNum 0,BNum n)])
-   | num_type : forall env n, type_aexp env n (Mo CT,[])
+   | ba_type : forall env b t, t = Mo MT \/ t = Mo CT -> AEnv.MapsTo b t env -> type_aexp env (BA b) (t,[])
+   | ba_type_q : forall env b n, AEnv.MapsTo b (QT n) env -> type_aexp env (BA b) (QT n,[(b,BNum 0,BNum n)])
+   | num_type : forall env n, type_aexp env (Num n) (Mo CT,[])
+   | num_type_q : forall env r n, type_aexp env (MNum r n) (Mo MT,[])
    | plus_type : forall env e1 e2 t1 t2 t3, 
                    type_aexp env e1 t1 -> type_aexp env e2 t2 -> union_f t1 t2 t3 -> 
                      type_aexp env (APlus e1 e2) t3
@@ -637,3 +626,14 @@ Inductive fv_pexp : aenv -> pexp -> session -> Prop :=
   | pseq_fa : forall env e1 e2 l1 l2, fv_pexp env e1 l1 -> fv_pexp env e2 l2 
                               -> fv_pexp env (PSeq e1 e2) (join_ses l1 l2)
   | dis_fa : forall env x n, AEnv.MapsTo x (QT n) env -> fv_pexp env (Diffuse x) ([(x,BNum 0,BNum n)]).
+
+Fixpoint freeVarsAExp (a:aexp) := match a with BA x => ([x]) | Num n => nil | MNum r n => nil
+            | APlus e1 e2 => (freeVarsAExp e1)++(freeVarsAExp e2)
+            | AMult e1 e2 => (freeVarsAExp e1)++(freeVarsAExp e2)
+  end.
+Definition freeVarsVari (a:varia) := match a with AExp x => freeVarsAExp x
+            | Index x v => (x::freeVarsAExp v)
+  end.
+
+Definition freeVarsNotCAExp (env:aenv) (a:aexp) :=
+   forall x t, In x (freeVarsAExp a) -> AEnv.MapsTo x (Mo t) env -> t <> CT.

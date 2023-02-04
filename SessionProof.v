@@ -88,13 +88,7 @@ Inductive sublist : list var -> aenv -> Prop :=
   sublist_empty : forall l, sublist nil l
  | sublist_many : forall a l1 l2, AEnv.In a l2 -> sublist l1 l2 -> sublist (a::l1) l2.
 
-Fixpoint freeVarsAExp (a:aexp) := match a with BA x => ([x]) | Num n => nil | MNum r n => nil
-            | APlus e1 e2 => (freeVarsAExp e1)++(freeVarsAExp e2)
-            | AMult e1 e2 => (freeVarsAExp e1)++(freeVarsAExp e2)
-  end.
-Definition freeVarsVari (a:varia) := match a with AExp x => freeVarsAExp x
-            | Index x v => (x::freeVarsAExp v)
-  end.
+
 Definition freeVarsCBexp (a:cbexp) := match a with CEq x y => (freeVarsAExp x)++(freeVarsAExp y)
          | CLt x y => (freeVarsAExp x)++(freeVarsAExp y)
   end.

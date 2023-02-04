@@ -23,16 +23,6 @@ Delimit Scope pexp_scope with pexp.
 Local Open Scope pexp_scope.
 Local Open Scope nat_scope.
 
-Inductive eval_aexp : stack -> aexp -> (R * nat) -> Prop :=
-    | var_sem : forall s x r n, AEnv.MapsTo x (r,n) s -> eval_aexp s (BA x) (r,n)
-    | num_sem : forall s n, eval_aexp s (Num n) (1%R,n)
-    | mnum_sem: forall s r n, eval_aexp s (MNum r n) (r,n)
-    | aplus_sem: forall s e1 e2 r n1 n2, eval_aexp s e1 (r,n1) -> eval_aexp s e2 (1%R,n2) -> eval_aexp s (APlus e1 e2) (r,n1 + n2)
-    | amult_sem: forall s e1 e2 r n1 n2, eval_aexp s e1 (r,n1) -> eval_aexp s e2 (1%R,n2) -> eval_aexp s (AMult e1 e2) (r,n1 * n2). 
-
-Inductive simp_varia : aenv -> varia -> range -> Prop :=
-    | aexp_sem : forall env x n, AEnv.MapsTo x (QT n) env -> simp_varia env (AExp (BA x)) (x,BNum 0, BNum n)
-    | index_sem : forall env x v, simp_varia env (Index x (Num v)) (x,BNum v,BNum (v+1)).
 
 (* This is the semantics for basic gate set of the language. *)
 Definition id_qenv : (var -> nat) := fun _ => 0.
