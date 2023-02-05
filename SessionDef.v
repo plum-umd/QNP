@@ -543,3 +543,7 @@ Inductive up_state {rmax:nat} : state -> session -> state_elem -> state -> Prop 
     | up_state_rule : forall S M M' M'' l t, @state_equiv rmax M M' -> update_env M' l t M'' -> up_state (S,M) l t (S,M'').
 
 
+Inductive type_state_elem_same : se_type -> state_elem -> Prop :=
+      nor_state_same: forall p r, type_state_elem_same TNor (Nval p r)
+    | had_state_same: forall bl, type_state_elem_same THad (Hval bl)
+    | ch_state_same: forall m bl, type_state_elem_same CH (Cval m bl).

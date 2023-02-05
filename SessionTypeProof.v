@@ -11,6 +11,7 @@ Require Import Classical_Prop.
 Require Import MathSpec.
 Require Import QWhileSyntax.
 Require Import SessionDef.
+Require Import SessionKind.
 Require Import SessionSem.
 Require Import SessionType.
 (**********************)
@@ -35,6 +36,16 @@ Inductive env_state_eq : type_map -> qstate ->  Prop :=
     env_state_eq_empty : env_state_eq nil nil
   | env_state_eq_many : forall s t a l1 l2, env_state_eq l1 l2 -> type_value_eq t a -> env_state_eq ((s,t)::l1) ((s,a)::l2).
 
+
+(*TODO: Le Chang, please finish the proof.*)
+Lemma find_type_state : forall s s' t r T S, env_state_eq T S -> find_type T s (Some (s++s',t))
+       -> (exists S' a, @state_equiv r S S' /\ find_env S' s (Some (s++s',a)) /\ type_state_elem_same t a).
+Proof.
+  intros. inv H0.
+  induction H1.
+  inv H.
+Admitted.
+
 Definition kind_env_stack (env:aenv) (s:stack) : Prop :=
   forall x t, AEnv.MapsTo x (Mo t) env -> AEnv.In x s.
 
@@ -46,24 +57,10 @@ Lemma env_state_equiv :
   forall rmax s t1 t2, @env_state_eqv rmax t1 s -> env_equiv t1 t2 -> (exists s1, @state_equiv rmax s s1 /\ @env_state_eqv rmax t2 s1).
   Proof. Admitted.
 
-Lemma kind_env_stack_exist : forall env s l a, kind_env_stack env s -> freeVarsNotCAExp env a ->
-              type_aexp env a (Mo MT, l) -> exists v, eval_aexp s a v.
-Proof.
-  intros. remember (Mo MT, l) as t.
-  induction H1; simpl in *.
-  destruct H1; subst.
-  destruct (H b MT); try easy.
-  exists x. simpl in *. destruct x.
-  constructor; easy.
-  apply H0 in H2. contradiction. simpl. left. easy.
-  inv Heqt. inv Heqt. exists (r,n). constructor.
-  
-  
-Qed.
 
 Lemma session_progress_1 : 
     forall e rmax t aenv s tenv tenv', @env_state_eq tenv (snd s) -> kind_env_stack aenv (fst s) ->
-      @session_system rmax t aenv tenv e tenv' ->
+      @session_system rmax t aenv tenv e tenv' -> freeVarsNotCPExp aenv e ->
            e = PSKIP \/ (exists e' s', @qfor_sem rmax aenv s e s' e').
 Proof.
   intros. induction H1; simpl in *.
@@ -72,8 +69,21 @@ Proof.
   exists s. apply let_sem_c; simpl in *; easy.
   right.
   exists e.
-  assert (exists v, eval_aexp (fst s) a v).
-  
+  unfold freeVarsNotCPExp in H2. simpl in H2.
+  assert (freeVarsNotCAExp env a).
+  unfold freeVarsNotCAExp. intros. apply (H2 x0); try easy.
+  apply in_app_iff. left. easy.
+  apply kind_aexp_class_empty in H1 as X2; subst.
+  specialize (kind_env_stack_exist env (fst s) a H0 H4 H1) as X1.
+  destruct X1.
+  exists (update_cval s x x0). constructor. easy. right. easy.
+ (* Let rule with measure. *)
+  right. exists e.
+  | let_sem_q : forall aenv s s' x a n e r v, AEnv.MapsTo x (QT n) aenv ->
+                       @pick_mea rmax s a n (r,v) -> @mask_state rmax ([(a,BNum 0,BNum n)]) v (snd s) s'
+                  -> qfor_sem (AEnv.add x (Mo MT) aenv) s (Let x (Meas a) e) (update_cval (fst s,s') x (r,v)) e
+
+
   exists (update_cval s x n).
 Admitted.
                                  

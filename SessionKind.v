@@ -112,9 +112,24 @@ Fixpoint freeVarsAExp (a:aexp) := match a with BA x => ([x]) | Num n => nil | MN
 Definition freeVarsVari (a:varia) := match a with AExp x => freeVarsAExp x
             | Index x v => (x::freeVarsAExp v)
   end.
+Definition freeVarsMAExp (m:maexp) := match m with AE n => freeVarsAExp n | Meas x => ([x]) end.
+
+Fixpoint list_sub (s:list var) (b:var) :=
+   match s with nil => nil
+              | a::al => if a =? b then list_sub al b else a::list_sub al b
+   end.
+
+Fixpoint freeVarsPExp (p:pexp) := 
+   match p with PSKIP => nil
+              | Let x n e => freeVarsMAExp n ++ list_sub (freeVarsPExp e) x
+              | _ => nil
+   end.
 
 Definition freeVarsNotCAExp (env:aenv) (a:aexp) :=
    forall x t, In x (freeVarsAExp a) -> AEnv.MapsTo x (Mo t) env -> t <> CT.
+
+Definition freeVarsNotCPExp (env:aenv) (a:pexp) :=
+   forall x t, In x (freeVarsPExp a) -> AEnv.MapsTo x (Mo t) env -> t <> CT.
 
 
 Definition kind_env_stack (env:aenv) (s:stack) : Prop :=
