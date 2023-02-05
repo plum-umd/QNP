@@ -36,6 +36,7 @@ ArithTesting.v
 ExtrOQASM.v
 QWhileSyntax.v
 SessionDef.v
+SessionKind.v
 SessionType.v
 SessionSem.v
 SessionProof.v

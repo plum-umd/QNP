@@ -11,6 +11,7 @@ Require Import Classical_Prop.
 Require Import MathSpec.
 Require Import QWhileSyntax.
 Require Import SessionDef.
+Require Import SessionKind.
 (**********************)
 (** Unitary Programs **)
 (**********************)

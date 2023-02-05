@@ -10,6 +10,7 @@ Require Import Classical_Prop.
 Require Import MathSpec.
 Require Import QWhileSyntax.
 Require Import SessionDef.
+Require Import SessionKind.
 Require Import SessionType.
 Require Import SessionSem.
 (**********************)
