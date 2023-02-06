@@ -208,8 +208,8 @@ Proof.
  exists (x*x0). rewrite H0. rewrite H1. easy. left. easy. left. easy. 
 Qed.
 
-(*TODO: Le Chang, please finish the proof below. Follow the pattern in kind_env_stack_exist_ct.
-        Now, please realize that in the type of MT in aexp, you must have one side being CT and the other one being MT. *)
+(* Follow the pattern in kind_env_stack_exist_ct.
+   Now, please realize that in the type of MT in aexp, you must have one side being CT and the other one being MT. *)
 Lemma kind_env_stack_exist : forall env s a, kind_env_stack env s -> freeVarsNotCAExp env a ->
               type_aexp env a (Mo MT, nil) -> exists v, eval_aexp s a v.
 Proof.
@@ -217,9 +217,15 @@ Proof.
   induction H1; simpl in *.
   destruct H1; subst.
   destruct (H b MT); try easy.
-  exists x. simpl in *. destruct x.
+  exists x. destruct x.
   constructor; easy.
   apply H0 in H2. contradiction. simpl. left. easy.
-  inv Heqt. inv Heqt. exists (r,n). constructor.
+  inv Heqt. inv Heqt.
+  exists (r,n); constructor.
   subst. inv H1.
+  
+  admit.
+  admit. admit.
+  exists (r,n). constructor.
+  
 Admitted.
