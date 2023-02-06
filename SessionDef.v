@@ -181,10 +181,14 @@ Inductive mut_type: nat -> nat -> nat -> se_type -> se_type -> Prop :=
 Inductive env_equiv : type_map -> type_map -> Prop :=
      | env_empty : forall v S, env_equiv ((nil,v)::S) S
      | env_comm :forall a1 a2, env_equiv (a1++a2) (a2++a1)
+     | env_subtype :forall s v v' S, subtype v v' -> env_equiv ((s,v)::S) ((s,v')::S)
+     | env_ses_assoc: forall s v S S', env_equiv S S' -> env_equiv ((s,v)::S) ((s,v)::S')
      | env_ses_eq: forall s s' v S, ses_eq s s' -> env_equiv ((s,v)::S) ((s',v)::S)
      | env_ses_split: forall s s' v S, split_type v v -> env_equiv ((s++s',v)::S) ((s,v)::(s',v)::S) 
      | env_ses_merge: forall s s' a b c S, times_type a b c -> env_equiv ((s,a)::(s',b)::S) ((s++s',c)::S)
      | env_mut: forall l1 l2 a b v S, env_equiv ((l1++(a::b::l2),v)::S) ((l1++(b::a::l2),v)::S).
+
+Axiom env_equiv_trans : forall T1 T2 T3, env_equiv T1 T2 -> env_equiv T2 T3 -> env_equiv T1 T3.
 
 Inductive find_env {A:Type}: list (session * A) -> session -> option (session * A) -> Prop :=
   | find_env_empty : forall l, find_env nil l None
@@ -350,6 +354,7 @@ Inductive split_state {rmax:nat}: nat -> state_elem -> state_elem * state_elem -
 Inductive state_equiv {rmax:nat} : qstate -> qstate -> Prop :=
      | state_empty : forall v S, state_equiv ((nil,v)::S) S
      | state_comm :forall a1 a2, state_equiv (a1++a2) (a2++a1)
+     | state_ses_assoc: forall s v S S', state_equiv S S' -> state_equiv ((s,v)::S) ((s,v)::S')
      | state_ses_eq: forall s s' v S, ses_eq s s' -> state_equiv ((s,v)::S) ((s',v)::S)
      | state_sub: forall x v n u a, ses_len x = Some n -> @state_same rmax n v u -> state_equiv ((x,v)::a) ((x,u)::a)
      | state_mut: forall l1 l2 n a n1 b n2 v u S, ses_len l1 = Some n -> ses_len ([a]) = Some n1 -> ses_len ([b]) = Some n2 ->
@@ -360,6 +365,7 @@ Inductive state_equiv {rmax:nat} : qstate -> qstate -> Prop :=
      | state_split: forall x n y v v1 v2 a, ses_len x = Some n -> 
                   @split_state rmax n v (v1,v2) -> state_equiv ((x++y,v)::a) ((x,v1)::(y,v2)::a).
 
+Axiom state_equiv_trans : forall rmax S1 S2 S3, @state_equiv rmax S1 S2 -> @state_equiv rmax S2 S3 -> @state_equiv rmax S1 S3.
 
 (* partial measurement list filter.  *)
 
