@@ -265,7 +265,7 @@ Inductive qfor_sem {rmax:nat}
              -> qfor_sem aenv s (Let x (AE a) e) (update_cval s x n) e
   | let_sem_q : forall aenv s s' x a n e r v, AEnv.MapsTo x (QT n) aenv ->
                        @pick_mea rmax s a n (r,v) -> @mask_state rmax ([(a,BNum 0,BNum n)]) v s s'
-                  -> qfor_sem (AEnv.add x (Mo MT) aenv) s (Let x (Meas a) e) (update_cval s x (r,v)) e
+                  -> qfor_sem (AEnv.add x (Mo MT) aenv) s (Let x (Meas a) e) (update_cval s' x (r,v)) e
   | appsu_sem_h_nor : forall aenv s s' p a b, @simp_varia aenv p a -> @find_state rmax s ([a]) (Some (([a]),Nval (C1) b)) -> 
                 @up_state rmax s ([a]) (Hval (fun i => (update allfalse 0 (b i)))) s' -> qfor_sem aenv s (AppSU (RH p)) s PSKIP
   | appsu_sem_h_had : forall aenv s s' p a b, @simp_varia aenv p a -> @find_state rmax s ([a]) (Some (([a]),Hval b)) ->
