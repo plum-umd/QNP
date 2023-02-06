@@ -46,6 +46,22 @@ Proof.
   inv H.
 Admitted.
 
+(*TODO: Le Chang, please finish the proof.
+  Should be easy, just have sub-lemma to induct on find_env. see what is its relation with up_state. *)
+Lemma find_state_up_good {rmax}: forall S s s' v v', @find_state rmax S s (Some (s',v)) -> exists S', @up_state rmax S s v' S'.
+Proof.
+  intros. inv H.
+Admitted.
+
+(*
+  | let_sem_q : forall aenv s s' x a n e r v, AEnv.MapsTo x (QT n) aenv ->
+                       @pick_mea rmax s a n (r,v) -> @mask_state rmax ([(a,BNum 0,BNum n)]) v (snd s) s'
+                  -> qfor_sem (AEnv.add x (Mo MT) aenv) s (Let x (Meas a) e) (update_cval (fst s,s') x (r,v)) e
+
+
+  exists (update_cval s x n).
+*)
+
 Definition kind_env_stack (env:aenv) (s:stack) : Prop :=
   forall x t, AEnv.MapsTo x (Mo t) env -> AEnv.In x s.
 
@@ -79,12 +95,7 @@ Proof.
   exists (update_cval s x x0). constructor. easy. right. easy.
  (* Let rule with measure. *)
   right. exists e.
-  | let_sem_q : forall aenv s s' x a n e r v, AEnv.MapsTo x (QT n) aenv ->
-                       @pick_mea rmax s a n (r,v) -> @mask_state rmax ([(a,BNum 0,BNum n)]) v (snd s) s'
-                  -> qfor_sem (AEnv.add x (Mo MT) aenv) s (Let x (Meas a) e) (update_cval (fst s,s') x (r,v)) e
 
-
-  exists (update_cval s x n).
 Admitted.
                                  
 
