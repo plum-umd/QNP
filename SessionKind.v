@@ -223,6 +223,19 @@ Proof.
   inv Heqt. inv Heqt.
   exists (r,n); constructor.
   subst. inv H1.
+  apply kind_aexp_class_empty in H1_ as X1.
+  apply kind_aexp_class_empty in H1_0 as X2.
+  subst.
+  assert (freeVarsNotCAExp env e1).
+  unfold freeVarsNotCAExp in *. intros. apply (H0 x). simpl in *.
+  apply in_app_iff. left. auto. auto.
+  assert (freeVarsNotCAExp env e2).
+  unfold freeVarsNotCAExp in *. intros. apply (H0 x). simpl in *.
+  apply in_app_iff. right. auto. auto.
+  apply IHtype_aexp1 in H1; try easy.
+  apply IHtype_aexp2 in H2; try easy.
+  destruct H1. destruct H2. exists x.  simpl in *. rewrite H1.
+  
   
   admit.
   admit. admit.
