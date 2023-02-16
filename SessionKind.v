@@ -238,9 +238,9 @@ Proof.
   apply IHtype_aexp2 in H2; try easy. destruct H2. destruct x0.
   exists (r,x + n). apply aplus_sem_2; try easy. right. easy. left. easy.
   
-  
+  (*
   admit.
   admit. admit.
   exists (r,n). constructor.
-  
+  *)
 Admitted.

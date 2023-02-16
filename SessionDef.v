@@ -546,7 +546,7 @@ Inductive up_state {rmax:nat} : state -> session -> state_elem -> state -> Prop 
 
 Inductive mask_state {rmax:nat}: session -> nat -> state -> state -> Prop :=
     mask_state_rule : forall l n m l1 t t' S Sa, @find_state rmax S l (Some (l++l1,t)) -> ses_len l = Some m ->
-              build_state_ch m n t = Some t' -> @up_state rmax S (l++l1) t' Sa -> mask_state l n S Sa.
+              build_state_ch m n t = Some t' -> @up_state rmax S l t' Sa -> mask_state l n S Sa.
 
 Inductive type_state_elem_same : se_type -> state_elem -> Prop :=
       nor_state_same: forall p r, type_state_elem_same TNor (Nval p r)

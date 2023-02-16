@@ -103,19 +103,23 @@ Proof.
   easy.
 Qed. 
 
-(*
-
-   pick_meas : forall s x n l m b i r bl, @find_state rmax s ([(x,BNum 0,BNum n)]) (Some (([(x,BNum 0,BNum n)])++l, Cval m b))
-            -> 0 <= i < m -> b i = (r,bl) -> pick_mea s x n (Cmod r, a_nat2fb bl n).
-
-  | let_sem_q : forall aenv s s' x a n e r v, AEnv.MapsTo x (QT n) aenv ->
-                       @pick_mea rmax s a n (r,v) -> @mask_state rmax ([(a,BNum 0,BNum n)]) v (snd s) s'
-                  -> qfor_sem (AEnv.add x (Mo MT) aenv) s (Let x (Meas a) e) (update_cval (fst s,s') x (r,v)) e
-
-
-@pick_mea rmax s a n (r,v) -> @mask_state rmax ([(a,BNum 0,BNum n)]) v s s'
-                  -> qfor_sem (AEnv.add x (Mo MT) aenv) s (Let x (Meas a) e) (update_cval s' x (r,v)) e
-*)
+Lemma mask_state_exists {rmax}: forall S x n r v,
+             @pick_mea rmax S x n (r,v) ->
+          exists S', @mask_state rmax ([(x,BNum 0,BNum n)]) v S S'.
+Proof.
+  intros. inv H.
+  assert (ses_len ([(x, BNum 0, BNum n)])= Some n).
+  unfold ses_len. destruct (get_core_ses ([(x, BNum 0, BNum n)])) eqn:eq1; simpl in *; try easy.
+  inv eq1. simpl. assert (n - 0 + 0 = n) by lia. rewrite H. easy.
+  remember (build_state_pars m n (a_nat2fb bl n) (to_sum_c m n (a_nat2fb bl n) b) b).
+  destruct p.
+  assert (build_state_ch n (a_nat2fb bl n) (Cval m b) = Some (Cval n0 p)).
+  unfold build_state_ch. rewrite <- Heqp. easy.
+  apply find_state_up_good with (v' := (Cval n0 p)) in H2 as X1.
+  destruct X1 as [Sa X1].
+  exists Sa.
+  eapply mask_state_rule; auto. apply H2. apply H. apply H0. easy. 
+Qed.
 
 Definition kind_env_stack (env:aenv) (s:stack) : Prop :=
   forall x t, AEnv.MapsTo x (Mo t) env -> AEnv.In x s.
@@ -132,13 +136,14 @@ Lemma env_state_equiv :
 Lemma session_progress_1 : 
     forall e rmax t aenv s tenv tenv', @env_state_eq tenv (snd s) -> kind_env_stack aenv (fst s) ->
       @session_system rmax t aenv tenv e tenv' -> freeVarsNotCPExp aenv e -> @qstate_wt rmax s ->
-           e = PSKIP \/ (exists e' s', @qfor_sem rmax aenv s e s' e').
+           e = PSKIP \/ (exists aenv e' s', @qfor_sem rmax aenv s e s' e').
 Proof.
   intros. induction H1; simpl in *.
   left. easy.
-  right. exists ((subst_pexp e x v)).
+  right. exists env. exists ((subst_pexp e x v)).
   exists s. apply let_sem_c; simpl in *; easy.
   right.
+  exists env.
   exists e.
   unfold freeVarsNotCPExp in H2. simpl in H2.
   assert (freeVarsNotCAExp env a).
@@ -149,9 +154,14 @@ Proof.
   destruct X1.
   exists (update_cval s x x0). constructor. easy. right. easy.
  (* Let rule with measure. *)
-  right. exists e.
-  apply (@pick_mea_exists rmax T s) in H4 as X1.
+  right. 
+  apply (@pick_mea_exists rmax T s) in H4 as X1; try easy.
   destruct X1 as [r [cv X1]].
+  apply mask_state_exists in X1 as X2. destruct X2 as [Sa X2].
+  exists (AEnv.add x (Mo MT) env).
+  exists e.
+  exists (update_cval Sa x (r,cv)).
+  eapply let_sem_q; eauto.
 Admitted.
                                  
 
