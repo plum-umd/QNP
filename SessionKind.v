@@ -264,6 +264,16 @@ Proof.
   apply kind_aexp_class_empty in H1_ as X1.
   apply kind_aexp_class_empty in H1_0 as X2.
   subst.
+  apply IHtype_aexp2 in H3; try easy. destruct H3. destruct x.
+  apply kind_env_stack_exist_ct in H2; try easy. destruct H2.
+  exists (r, x*n). apply amult_sem_2; try easy. right. auto. left. auto.
+  apply kind_aexp_class_empty in H1_ as X1.
+  apply kind_aexp_class_empty in H1_0 as X2.
+  subst.
+  apply IHtype_aexp1 in H2; try auto. destruct H2. destruct x.
+  apply kind_env_stack_exist_ct in H3; try auto. destruct H3.
+  exists (r, n*x). apply amult_sem_1; try easy. left. auto. right. auto.
+  
   
   
 
