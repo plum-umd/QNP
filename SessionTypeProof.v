@@ -26,25 +26,28 @@ Delimit Scope pexp_scope with pexp.
 Local Open Scope pexp_scope.
 Local Open Scope nat_scope.
 
-Definition type_value_eq (t: se_type) (v:state_elem) := 
-  match t with TNor => match v with Nval p c => True | _ => False end
-             | THad => match v with Hval f => True | _ => False end
-             | CH => match v with Cval m f => True | _ => False end
-  end.
-
 Inductive env_state_eq : type_map -> qstate ->  Prop :=
     env_state_eq_empty : env_state_eq nil nil
-  | env_state_eq_many : forall s t a l1 l2, env_state_eq l1 l2 -> type_value_eq t a -> env_state_eq ((s,t)::l1) ((s,a)::l2).
+  | env_state_eq_many : forall s t a l1 l2, env_state_eq l1 l2 -> type_state_elem_same t a -> env_state_eq ((s,t)::l1) ((s,a)::l2).
 
 Definition qstate_wt {rmax} S := forall s s' m bl, @find_state rmax S s (Some (s',Cval m bl)) -> m > 0.
 
 (*TODO: Le Chang, please finish the proof.*)
+Lemma find_env_state : forall s s' t T S, env_state_eq T S -> @find_env se_type T s (Some (s++s',t))
+       -> (exists a, @find_env state_elem S s (Some (s++s',a)) /\ type_state_elem_same t a).
+Proof.
+  intros.
+  remember (Some (s ++ s', t)) as q.
+  induction H0.
+  easy. inv Heqq. inv H. exists a.
+  split. apply find_env_many_1. easy. easy.
+Admitted.
+
+(*TODO: Le Chang, us eht result in find_env_state. *)
 Lemma find_type_state : forall s s' t r T S, env_state_eq T S -> find_type T s (Some (s++s',t))
        -> (exists S' a, @state_equiv r S S' /\ find_env S' s (Some (s++s',a)) /\ type_state_elem_same t a).
 Proof.
-  intros. inv H0.
-  induction H1.
-  inv H.
+  intros. 
 Admitted.
 
 (*TODO: Le Chang, please finish the proof.
