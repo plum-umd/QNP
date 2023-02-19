@@ -42,6 +42,8 @@ Proof.
   induction H0.
   easy. intros. inv Heqq. inv H0. exists a.
   split. apply find_env_many_1. easy. easy.
+  intros. inv H1. exists a. split.
+  apply find_env_many_2. auto.  
 Admitted.
 
 (*TODO: Le Chang, us eht result in find_env_state. *)
