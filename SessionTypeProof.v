@@ -38,8 +38,9 @@ Lemma find_env_state : forall s s' t T S, env_state_eq T S -> @find_env se_type 
 Proof.
   intros.
   remember (Some (s ++ s', t)) as q.
+  generalize dependent S.
   induction H0.
-  easy. inv Heqq. inv H. exists a.
+  easy. intros. inv Heqq. inv H0. exists a.
   split. apply find_env_many_1. easy. easy.
 Admitted.
 
