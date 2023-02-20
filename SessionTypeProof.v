@@ -32,7 +32,6 @@ Inductive env_state_eq : type_map -> qstate ->  Prop :=
 
 Definition qstate_wt {rmax} S := forall s s' m bl, @find_state rmax S s (Some (s',Cval m bl)) -> m > 0.
 
-(*TODO: Le Chang, please finish the proof.*)
 Lemma find_env_state : forall s s' t T S, env_state_eq T S -> @find_env se_type T s (Some (s++s',t))
        -> (exists a, @find_env state_elem S s (Some (s++s',a)) /\ type_state_elem_same t a).
 Proof.
@@ -42,9 +41,11 @@ Proof.
   induction H0.
   easy. intros. inv Heqq. inv H0. exists a.
   split. apply find_env_many_1. easy. easy.
-  intros. inv H1. exists a. split.
-  apply find_env_many_2. auto.  
-Admitted.
+  intros. inv H1.
+  assert (Some (y ++ s', t) = Some (y ++ s', t)) by auto.
+  apply IHfind_env with (S0 := l2) in H1. destruct H1 as [a' [X1 X2]].
+  exists a'. split. apply find_env_many_2. auto. auto. auto. auto.
+Qed.
 
 (*TODO: Le Chang, us eht result in find_env_state. *)
 Lemma find_type_state : forall s s' t r T S, env_state_eq T S -> find_type T s (Some (s++s',t))
