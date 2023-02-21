@@ -179,6 +179,7 @@ Inductive mut_type: nat -> nat -> nat -> se_type -> se_type -> Prop :=
   | ch_mut: forall pos n m r, mut_type pos n m ((CH r)) ((CH (mut_ch pos n m r))).
 *)
 Inductive env_equiv : type_map -> type_map -> Prop :=
+     | env_id : forall S, env_equiv S S
      | env_empty : forall v S, env_equiv ((nil,v)::S) S
      | env_comm :forall a1 a2, env_equiv (a1++a2) (a2++a1)
      | env_subtype :forall s v v' S, subtype v v' -> env_equiv ((s,v)::S) ((s,v')::S)
@@ -352,6 +353,7 @@ Inductive split_state {rmax:nat}: nat -> state_elem -> state_elem * state_elem -
 
 
 Inductive state_equiv {rmax:nat} : qstate -> qstate -> Prop :=
+     | state_id : forall S, state_equiv S S
      | state_empty : forall v S, state_equiv ((nil,v)::S) S
      | state_comm :forall a1 a2, state_equiv (a1++a2) (a2++a1)
      | state_ses_assoc: forall s v S S', state_equiv S S' -> state_equiv ((s,v)::S) ((s,v)::S')
