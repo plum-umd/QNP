@@ -47,11 +47,19 @@ Proof.
   exists a'. split. apply find_env_many_2. auto. auto. auto. auto.
 Qed.
 
+(*TODO: Le Chang, additional theorem. *)
+Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' -> (exists S', @state_equiv r S S').
+Proof.
+  intros.
+Admitted.
+
 (*TODO: Le Chang, us eht result in find_env_state. *)
 Lemma find_type_state : forall s s' t r T S, env_state_eq T S -> find_type T s (Some (s++s',t))
        -> (exists S' a, @state_equiv r S S' /\ find_env S' s (Some (s++s',a)) /\ type_state_elem_same t a).
 Proof.
-  intros. 
+  intros.  inv H0. 
+  (* use the env_state_eq_trans.  *)
+  specialize (find_env_state s s' t T S H) as X1.
 Admitted.
 
 Lemma find_type_state_1 : forall s s' t r T M S, env_state_eq T S -> find_type T s (Some (s++s',t))
