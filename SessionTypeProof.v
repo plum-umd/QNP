@@ -48,7 +48,7 @@ Proof.
 Qed.
 
 (*TODO: Le Chang, additional theorem. *)
-Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' -> (exists S', @state_equiv r S S').
+Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' -> (exists S', @state_equiv r S S' /\ env_state_eq T' S').
 Proof.
   intros.
 Admitted.
