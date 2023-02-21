@@ -54,6 +54,14 @@ Proof.
   intros. 
 Admitted.
 
+Lemma find_type_state_1 : forall s s' t r T M S, env_state_eq T S -> find_type T s (Some (s++s',t))
+       -> (exists a, @find_state r (M,S) s (Some (s++s',a)) /\ type_state_elem_same t a).
+Proof.
+  intros. apply find_type_state with (r := r) (S := S) in H0.
+  destruct H0 as [S' [a [X1 [X2 X3]]]].
+  exists a. split. apply find_qstate_rule with (S'0 := S'); try easy. apply X3. easy.
+Qed.
+
 (*TODO: Le Chang, please finish the proof.
   Should be easy, just have sub-lemma to induct on find_env. see what is its relation with up_state. *)
 Lemma find_state_up_good {rmax}: forall S s s' v v', @find_state rmax S s (Some (s',v)) -> exists S', @up_state rmax S s v' S'.
@@ -169,9 +177,20 @@ Proof.
   exists e.
   exists (update_cval Sa x (r,cv)).
   eapply let_sem_q; eauto.
+  right. apply find_type_ch in H4.
+  exists env. exists PSKIP.
+  apply find_type_state_1  with (r:= rmax) (M := fst s) (S := (snd s)) in H4 as X1; try easy.
+  destruct X1 as [a [X1 X2]].
+  inv X2.
+  apply find_state_up_good with (v' := ) in X1 as X2.
 Admitted.
                                  
 
+(*
+  | appu_sem_ch : forall aenv s s' a e l b m ba, @find_state rmax s a (Some (a++l,Cval m b)) ->
+        eval_ch rmax aenv a m b e = Some ba -> (@up_state rmax s (a++l) (Cval m ba) s') -> qfor_sem aenv s (AppU a e) s' PSKIP
+
+*)
 Lemma session_progress : 
     forall e rmax t aenv s tenv tenv1 tenv', @env_state_eq tenv (snd s) ->
       @env_equiv tenv tenv1 ->
