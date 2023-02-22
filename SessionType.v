@@ -193,7 +193,6 @@ Fixpoint subst_type_map (l:type_map) (x:var) (n:nat) :=
           | (y,v)::yl => (subst_session y x n,v)::(subst_type_map yl x n)
   end.
 
-
 Inductive session_system {rmax:nat}
            : atype -> aenv -> type_map -> pexp -> type_map -> Prop :=
    (* | env_equiv_ses: forall q env s T1 T2 T3, env_equiv T1 T2
@@ -207,7 +206,8 @@ Inductive session_system {rmax:nat}
     | meas_m1 : forall env x y e n l t T T' T'', AEnv.MapsTo y (QT n) env ->
                 find_type T ([(y,BNum 0,BNum n)]) (Some ((y,BNum 0,BNum n)::l,t)) -> update_env T l t T' ->
               session_system CT (AEnv.add x (Mo MT) env) T' e T'' -> session_system CT env T (Let x (Meas y) e) T''
-    | appu_ses_ch : forall q env T l l' t e n, type_exp env e (QT n,l) -> find_type T l (Some (l++l',t)) ->
+    | appu_ses_ch : forall q env T l l' t e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
+                         find_type T l (Some (l++l',t)) ->
                            session_system q env T (AppU l e) ([(l++l', ((CH)))])
     | appu_ses_h_nor:  forall q env T p l m, type_vari env p (QT m, l)
                   -> find_type T l (Some (l,(TNor))) ->

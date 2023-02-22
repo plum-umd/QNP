@@ -93,12 +93,6 @@ Proof.
  apply find_env_many_2. easy. easy.
 Qed.
 
-
-Inductive find_env {A:Type}: list (session * A) -> session -> option (session * A) -> Prop :=
-  | find_env_empty : forall l, find_env nil l None
-  | find_env_many_1 : forall S x y t, ses_sub x y -> find_env ((y,t)::S) x (Some (y,t))
-  | find_env_many_2 : forall S x y v t, ~ ses_sub x y -> find_env S y t -> find_env ((x,v)::S) y t.
-
 Lemma find_type_ch : forall T1 s s' t, find_type T1 s (Some (s',t)) -> find_type T1 s (Some (s',CH)).
 Proof.
   intros. inv H.
@@ -155,10 +149,46 @@ Lemma env_state_equiv :
   forall rmax s t1 t2, @env_state_eqv rmax t1 s -> env_equiv t1 t2 -> (exists s1, @state_equiv rmax s s1 /\ @env_state_eqv rmax t2 s1).
   Proof. Admitted.
 
+Lemma env_equiv_simple_type : forall T T', env_equiv T T' -> simple_tenv T -> simple_tenv T'.
+Proof.
+  intros. induction H; simpl in *. easy.
+  unfold simple_tenv in *. intros. apply (H0 a b). simpl. right. easy.
+  unfold simple_tenv in *. intros.
+  apply (H0 a b). apply in_or_app. apply in_app_iff in H. destruct H. right. easy. left. easy.
+  unfold simple_tenv in *. intros.
+  simpl in H1. destruct H1. inv H1. apply (H0 a v). simpl. left. easy.
+  apply (H0 a b). simpl. right. easy.
+  unfold simple_tenv in *. intros.
+  simpl in *. destruct H1. inv H1. apply (H0 a b). left. easy.
+  assert (forall (a : session) (b : se_type),
+               In (a, b) S -> simple_ses a).
+  intros. apply (H0 a0 b0). right. easy.
+  specialize (IHenv_equiv H2). apply (IHenv_equiv a b). easy.
+Admitted.
+
+Lemma find_env_simple: forall T l l' t, @find_env se_type T l (Some (l',t)) -> simple_tenv T -> simple_ses l'.
+Proof.
+  intros. remember (Some (l', t)) as a. induction H; subst; try easy.
+  inv Heqa. unfold simple_tenv in *.
+  apply (H0 l' t). simpl. left. easy.
+  apply IHfind_env; try easy.
+  unfold simple_tenv in *. intros. apply (H0 a b). simpl in *. right. easy.
+Qed.
+
+Lemma find_type_simple: forall T l l' t, find_type T l (Some (l',t)) -> simple_tenv T -> simple_ses l'.
+Proof.
+  intros. inv H. apply env_equiv_simple_type in H1; try easy. eapply (find_env_simple S' l l' t); try easy.
+Qed.
+
+Lemma simple_ses_app_l: forall l l', simple_ses (l++l') -> simple_ses l.
+Proof.
+  intros. induction l; try easy. constructor.
+  inv H. constructor; try easy. apply IHl. easy.
+Qed.
 
 Lemma session_progress_1 : 
     forall e rmax t aenv s tenv tenv', @env_state_eq tenv (snd s) -> kind_env_stack aenv (fst s) ->
-      @session_system rmax t aenv tenv e tenv' -> freeVarsNotCPExp aenv e -> @qstate_wt rmax s ->
+      @session_system rmax t aenv tenv e tenv' -> freeVarsNotCPExp aenv e -> @qstate_wt rmax s -> simple_tenv tenv ->
            e = PSKIP \/ (exists aenv e' s', @qfor_sem rmax aenv s e s' e').
 Proof.
   intros. induction H1; simpl in *.
@@ -173,23 +203,23 @@ Proof.
   unfold freeVarsNotCAExp. intros. apply (H2 x0); try easy.
   apply in_app_iff. left. easy.
   apply kind_aexp_class_empty in H1 as X2; subst.
-  specialize (kind_env_stack_exist env (fst s) a H0 H5 H1) as X1.
+  specialize (kind_env_stack_exist env (fst s) a H0 H6 H1) as X1.
   destruct X1.
   exists (update_cval s x x0). constructor. easy. right. easy.
  (* Let rule with measure. *)
   right. 
-  apply (@pick_mea_exists rmax T s) in H4 as X1; try easy.
+  apply (@pick_mea_exists rmax T s) in H5 as X1; try easy.
   destruct X1 as [r [cv X1]].
   apply mask_state_exists in X1 as X2. destruct X2 as [Sa X2].
   exists (AEnv.add x (Mo MT) env).
   exists e.
   exists (update_cval Sa x (r,cv)).
   eapply let_sem_q; eauto.
-  right. apply find_type_ch in H4.
+  right. apply find_type_ch in H5.
   exists env. exists PSKIP.
-  apply find_type_state_1  with (r:= rmax) (M := fst s) (S := (snd s)) in H4 as X1; try easy.
+  apply find_type_state_1  with (r:= rmax) (M := fst s) (S := (snd s)) in H5 as X1; try easy.
   destruct X1 as [a [X1 X2]].
-  inv X2.
+  inv X2. apply find_type_simple in H5 as X2; try easy.
   apply find_state_up_good with (v' := ) in X1 as X2.
 Admitted.
                                  

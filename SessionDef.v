@@ -5,6 +5,7 @@ Require Import SQIR.
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat Permutation. 
 Require Import Dirac.
 Require Import QPE.
+Require Import OQASM.
 Require Import BasicUtility.
 Require Import Classical_Prop.
 Require Import MathSpec.
@@ -13,6 +14,7 @@ Require Import QWhileSyntax.
 (** Session Definitions **)
 (**********************)
 
+Require Import ListSet.
 Require Import Coq.FSets.FMapList.
 Require Import Coq.FSets.FMapFacts.
 Require Import Coq.Structures.OrderedTypeEx.
@@ -25,7 +27,6 @@ Check exp.
    Session A is a sub_session of another one B if every qubits in A is in B.
    The determination of the sub_sessions and eq_sessions are based on 
    a decision procedure to determine if a range is in another one. *)
-
 Inductive simple_ses : session -> Prop :=
     simple_ses_empty : simple_ses nil
   | simple_ses_many :  forall a x y l, simple_bound x -> simple_bound y -> simple_ses l -> simple_ses ((a,x,y)::l).
@@ -120,6 +121,8 @@ Inductive se_type : Type := THT (n:nat) (t:type_elem).
 *)
 
 Definition type_map := list (session * se_type).
+
+Definition simple_tenv (t:type_map) := forall a b, In (a,b) t -> simple_ses a.
 
 Fixpoint ses_len_aux (l:list (var * nat * nat)) :=
    match l with nil => 0 | (x,l,h)::xl => (h - l) + ses_len_aux xl end. 
@@ -513,6 +516,69 @@ Module AEnv := FMapList.Make Nat_as_OT.
 Module AEnvFacts := FMapFacts.Facts (AEnv).
 Definition aenv := AEnv.t ktype.
 Definition empty_aenv := @AEnv.empty ktype.
+
+(* Compiling session to OQASM variables. *)
+Fixpoint ses_vars (s:session) :=
+  match s with nil => nil
+            | (x,a,b)::l => @set_add var (Nat.eq_dec) x (ses_vars l)
+  end.
+
+Fixpoint form_oenv (s:list var) := 
+   match s with nil => OQASM.empty_env
+              | x::xs => OQASM.Env.add x OQASM.Nor (form_oenv xs)
+   end.
+
+Fixpoint var_in_list (l : list var) (a:var) := 
+    match l with nil => false
+         | (x::xl) => (x =? a) && (var_in_list xl a)
+   end.
+
+Definition id_qenv : (var -> nat) := fun _ => 0.
+
+Fixpoint compile_ses_qenv (env:aenv) (l:session) : ((var -> nat) * list var) :=
+   match l with nil => (id_qenv,nil)
+       | ((x,a,b)::xl) => match AEnv.find x env with
+              Some (QT n) =>
+              match compile_ses_qenv env xl with (f,l) => 
+                 if var_in_list l x then (f,l) else (fun y => if y =? x then n else f y,x::l)
+                end
+            | _ => compile_ses_qenv env xl
+             end
+   end.
+
+Fixpoint compile_exp_to_oqasm (e:exp) :(option OQASM.exp) :=
+   match e with SKIP x (Num v) => Some (OQASM.SKIP (x,v))
+              | X x (Num v) => Some (OQASM.X (x,v))
+              | CU x (Num v) e => 
+        match compile_exp_to_oqasm e with None => None
+                                       | Some e' => Some (OQASM.CU (x,v) e')
+        end
+              | RZ q x (Num v) => Some (OQASM.RZ q (x,v))
+              | RRZ q x (Num v) => Some (OQASM.RRZ q (x,v))
+              | SR q x => Some (OQASM.SR q x)
+              | SRR q x => Some (OQASM.SRR q x)
+              | Lshift x => Some (OQASM.Lshift x)
+              | Rshift x => Some (OQASM.Rshift x)
+              | Rev x => Some (OQASM.Rev x)
+              | QFT x v => Some (OQASM.QFT x v)
+              | RQFT x v => Some (OQASM.RQFT x v)
+              | Seq e1 e2 =>
+        match compile_exp_to_oqasm e1 with None => None
+                       | Some e1' =>       
+           match compile_exp_to_oqasm e2 with None => None
+                        | Some e2' => Some (OQASM.Seq e1' e2')
+           end
+        end
+           | _ => None
+   end.
+
+Definition oracle_prop (env:aenv) (l:session) (e:exp) : Prop :=
+    match compile_ses_qenv env l with (qenv,s) => 
+     match compile_exp_to_oqasm e with None => False
+             | Some e' =>
+                 well_typed_oexp qenv (form_oenv s) e' (form_oenv s) /\ (forall x, OQASM.Env.MapsTo x OQASM.Nor (form_oenv s))
+     end
+    end.
 
 Definition stack := AEnv.t (R * nat).
 Definition empty_stack := @AEnv.empty (R * nat).

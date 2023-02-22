@@ -26,49 +26,6 @@ Local Open Scope nat_scope.
 
 
 (* This is the semantics for basic gate set of the language. *)
-Definition id_qenv : (var -> nat) := fun _ => 0.
-
-Fixpoint compile_exp_to_oqasm (e:exp) :(option OQASM.exp) :=
-   match e with SKIP x (Num v) => Some (OQASM.SKIP (x,v))
-              | X x (Num v) => Some (OQASM.X (x,v))
-              | CU x (Num v) e => 
-        match compile_exp_to_oqasm e with None => None
-                                       | Some e' => Some (OQASM.CU (x,v) e')
-        end
-              | RZ q x (Num v) => Some (OQASM.RZ q (x,v))
-              | RRZ q x (Num v) => Some (OQASM.RRZ q (x,v))
-              | SR q x => Some (OQASM.SR q x)
-              | SRR q x => Some (OQASM.SRR q x)
-              | Lshift x => Some (OQASM.Lshift x)
-              | Rshift x => Some (OQASM.Rshift x)
-              | Rev x => Some (OQASM.Rev x)
-              | QFT x v => Some (OQASM.QFT x v)
-              | RQFT x v => Some (OQASM.RQFT x v)
-              | Seq e1 e2 =>
-        match compile_exp_to_oqasm e1 with None => None
-                       | Some e1' =>       
-           match compile_exp_to_oqasm e2 with None => None
-                        | Some e2' => Some (OQASM.Seq e1' e2')
-           end
-        end
-           | _ => None
-   end.
-
-Fixpoint var_in_list (l : list var) (a:var) := 
-    match l with nil => false
-         | (x::xl) => (x =? a) && (var_in_list xl a)
-   end.
-
-Fixpoint compile_ses_qenv (env:aenv) (l:session) : ((var -> nat) * list var) :=
-   match l with nil => (id_qenv,nil)
-       | ((x,a,b)::xl) => match AEnv.find x env with
-              Some (QT n) =>
-              match compile_ses_qenv env xl with (f,l) => 
-                 if var_in_list l x then (f,l) else (fun y => if y =? x then n else f y,x::l)
-                end
-            | _ => compile_ses_qenv env xl
-             end
-   end.
 
 Fixpoint compile_range_state (n st i:nat) (x:var) (b: rz_val) (f:posi -> val) :=
     match n with 0 => f
@@ -127,6 +84,54 @@ Fixpoint eval_ch (rmax:nat) (env:aenv) (l:session) (m:nat) f (e:exp) :=
             end
           end
    end.
+
+(*TODO: Le Chang, finish this one. *)
+Lemma type_exp_exists_oqasm: forall env e n l, type_exp env e (QT n,l) 
+   -> (exists e', compile_exp_to_oqasm e = Some e').
+Proof.
+  intros. induction H; simpl in *.
+  exists (OQASM.SKIP (x, v)). easy.
+Admitted.
+
+Lemma get_core_simple: forall l, simple_ses l -> (exists na, get_core_ses l = Some na).
+Proof.
+  intros. induction l;try easy.
+  simpl in *. exists nil. easy.
+  simpl in *. inv H. unfold simple_bound in *. destruct x. easy. destruct y. easy.
+  apply IHl in H4. destruct H4. rewrite H. exists ((a0, n, n0) :: x).
+  easy.
+Qed.
+
+Lemma ses_len_simple: forall l, simple_ses l -> (exists na, ses_len l = Some na).
+Proof.
+  intros. unfold ses_len. apply get_core_simple in H.
+  destruct H. rewrite H. exists (ses_len_aux x). easy.
+Qed.
+
+Lemma turn_oqasm_ses_simple: forall l n r f b, simple_ses l -> exists na, turn_oqasm_ses' r n l f b = Some na.
+Proof.
+  induction l; intros;simpl in *.
+  exists (allfalse, b); try easy.
+  destruct a. destruct p. inv H. unfold simple_bound in *.
+  destruct b1. easy. destruct b0; try easy.
+  apply (IHl (n + (n1 - n0)) r f b) in H6.
+  destruct H6. rewrite H. destruct x.
+Admitted.
+
+Lemma eval_nor_exists {rmax : nat} : forall aenv l n c b e,
+          type_exp aenv e (QT n,l) -> simple_ses l -> exists ba, eval_nor rmax aenv l c b e = Some ba.
+Proof.
+  intros.
+  apply type_exp_exists_oqasm in H as X1.
+  destruct X1 as [ea X1].
+  apply ses_len_simple in H0 as X2. destruct X2.
+  unfold eval_nor. destruct (compile_ses_qenv aenv l) eqn:eq1. rewrite X1.
+  rewrite H1.
+  specialize (turn_oqasm_ses_simple l 0 rmax (exp_sem n0 ea (compile_ses_state l b)) (cover_n b x) H0) as X2.
+  destruct X2. unfold turn_oqasm_ses. rewrite H2.
+  destruct x0.
+  exists ((c * Cexp (2 * PI * turn_angle b0 rmax))%C, r). easy.
+Qed.
 
 (* functions for defining boolean. *)
 Inductive eval_cbexp : stack -> cbexp -> bool -> Prop :=
