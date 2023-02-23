@@ -209,16 +209,16 @@ Inductive session_system {rmax:nat}
     | appu_ses_ch : forall q env T l l' t e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
                          find_type T l (Some (l++l',t)) ->
                            session_system q env T (AppU l e) ([(l++l', ((CH)))])
-    | appu_ses_h_nor:  forall q env T p l m, type_vari env p (QT m, l)
-                  -> find_type T l (Some (l,(TNor))) ->
-                    session_system q env T (AppSU (RH p)) ([(l, ((THad)))])
-    | appu_ses_h_had:  forall q env T p l m, type_vari env p (QT m, l)
-                  -> find_type T l (Some (l,(THad))) ->
-                    session_system q env T (AppSU (RH p)) ([(l, ((TNor)))])
+    | appu_ses_h_nor:  forall q env T p a m, type_vari env p (QT m, [a]) -> simp_varia env p a
+                  -> find_type T [a] (Some ([a],(TNor))) ->
+                    session_system q env T (AppSU (RH p)) ([([a], ((THad)))])
+    | appu_ses_h_had:  forall q env T p a m, type_vari env p (QT m, [a]) -> simp_varia env p a
+                  -> find_type T [a] (Some ([a],(THad))) ->
+                    session_system q env T (AppSU (RH p)) ([([a], ((TNor)))])
+(*
     | appu_ses_h_ch:  forall q env T p l l' m, type_vari env p (QT m, l)
                   -> find_type T l (Some (l',(CH))) ->
                     session_system q env T (AppSU (RH p)) ([(l', ((CH)))])
-
     | appu_ses_qft_nor:  forall q env T x l m, AEnv.MapsTo x (QT m) env ->
                   find_type T l (Some (l,(TNor))) ->
                     session_system q env T (AppSU (SQFT x)) ([(l, ((THad)))])
@@ -231,6 +231,7 @@ Inductive session_system {rmax:nat}
     | appu_ses_rqft_ch:  forall q env T x l l' t m, AEnv.MapsTo x (QT m) env ->
                   find_type T l (Some (l',t)) ->
                     session_system q env T (AppSU (SRQFT x)) ([(l', (CH))])
+*)
     | qif_ses_ch: forall q env T b n l l1 e t, type_bexp env b (QT n,l) -> 
                 session_system MT env T e ([(l1,t)]) -> ses_dis (l++l1) -> session_system q env T (If b e) ([(l++l1,CH)])
     | qfor_ses_ch: forall q env T i l h b e, 

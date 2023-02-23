@@ -235,14 +235,33 @@ Proof.
   assert ((fst s, snd s) = s). destruct s. simpl; easy.
   rewrite H7 in *.
   eapply appu_sem_ch. apply X1. apply X3. apply X4.
+  right.
+  specialize (find_type_state_1 ([a]) nil TNor rmax T (fst s) (snd s) H) as X1.
+  rewrite app_nil_r in X1.
+  destruct (X1 H6) as [a0 [X2 X3]].
+  inv X3.
+  apply find_state_up_good with (v' := (Hval (fun i => (update allfalse 0 (r i))))) in X2 as X4; try easy.
+  destruct X4 as [S' X4].
+  exists env,PSKIP,S'.
+  rewrite <- surjective_pairing in *.
+  eapply appsu_sem_h_nor. apply H5. apply X2. easy.
+  right.
+  specialize (find_type_state_1 ([a]) nil THad rmax T (fst s) (snd s) H) as X1.
+  rewrite app_nil_r in X1.
+  destruct (X1 H6) as [a0 [X2 X3]].
+  inv X3.
+  apply find_state_up_good with (v' := (Nval C1 (fun j => bl j 0))) in X2 as X4; try easy.
+  destruct X4 as [S' X4].
+  exists env,PSKIP,S'.
+  rewrite <- surjective_pairing in *.
+  eapply appsu_sem_h_had. apply H5. apply X2. easy.
 Admitted.
-                  
 
 (*
-  | appu_sem_ch : forall aenv s s' a e l b m ba, @find_state rmax s a (Some (a++l,Cval m b)) ->
-        eval_ch rmax aenv a m b e = Some ba -> (@up_state rmax s (a++l) (Cval m ba) s') -> qfor_sem aenv s (AppU a e) s' PSKIP
-
+  | appsu_sem_h_had : forall aenv s s' p a b, @simp_varia aenv p a -> @find_state rmax s ([a]) (Some (([a]),Hval b)) ->
+           (@up_state rmax s ([a]) (Nval C1 (fun j => b j 0)) s') -> qfor_sem aenv s (AppSU (RH p)) s' PSKIP
 *)
+
 Lemma session_progress : 
     forall e rmax t aenv s tenv tenv1 tenv', @env_state_eq tenv (snd s) ->
       @env_equiv tenv tenv1 ->
