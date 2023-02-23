@@ -7,6 +7,7 @@ Require Import Dirac.
 Require Import QPE.
 Require Import BasicUtility.
 Require Import OQASM.
+Require Import OQASMProof.
 Require Import Classical_Prop.
 Require Import MathSpec.
 Require Import QWhileSyntax.
@@ -93,6 +94,41 @@ Proof.
   exists (OQASM.SKIP (x, v)). easy.
 Admitted.
 
+Definition all_nor_mode (f:posi -> val) := forall x n, right_mode_val OQASM.Nor (f (x,n)).
+
+Lemma compile_range_state_nor: forall n s i x b f, all_nor_mode f
+        -> all_nor_mode (compile_range_state n s i x b f).
+Proof.
+  intros. induction n;simpl in *. easy.
+  unfold all_nor_mode in *. intros.
+  bdestruct (posi_eq (x, s + n) (x0, n0)).
+  inv H0. rewrite eupdate_index_eq. constructor.
+  rewrite eupdate_index_neq; try easy.
+Qed.
+
+Lemma compile_ses_state'_nor: forall l i b,
+           all_nor_mode (compile_ses_state' i l b).
+Proof.
+  induction l;intros;simpl in *.
+  unfold all_nor_mode. intros. constructor.
+  destruct a. destruct p. destruct b1. easy. destruct b0. easy.
+  apply compile_range_state_nor.
+  apply IHl.
+Qed.
+
+Lemma turn_oqasm_range_exists: forall n rmax st i x f r b, all_nor_mode f ->
+         exists v t, turn_oqasm_range rmax n st i x f r b = Some (v,t).
+Proof.
+  intros.
+  induction n;simpl in *.
+  exists r,b. easy.
+  destruct IHn as [v [t X1]]. rewrite X1.
+  destruct (f (x, st + n)) eqn:eq1.
+  exists (n_rotate rmax r0 v), (update t (i + n) b0). easy.
+  unfold all_nor_mode in *.
+  specialize (H x (st+n)). inv H. rewrite eq1 in H0. inv H0.
+Qed.
+
 Lemma get_core_simple: forall l, simple_ses l -> (exists na, get_core_ses l = Some na).
 Proof.
   intros. induction l;try easy.
@@ -108,30 +144,110 @@ Proof.
   destruct H. rewrite H. exists (ses_len_aux x). easy.
 Qed.
 
-Lemma turn_oqasm_ses_simple: forall l n r f b, simple_ses l -> exists na, turn_oqasm_ses' r n l f b = Some na.
+Lemma turn_oqasm_ses_simple: forall l n r f b, simple_ses l
+      -> all_nor_mode f -> exists na, turn_oqasm_ses' r n l f b = Some na.
 Proof.
   induction l; intros;simpl in *.
   exists (allfalse, b); try easy.
   destruct a. destruct p. inv H. unfold simple_bound in *.
   destruct b1. easy. destruct b0; try easy.
-  apply (IHl (n + (n1 - n0)) r f b) in H6.
-  destruct H6. rewrite H. destruct x.
+  apply (IHl (n + (n1 - n0)) r f b) in H7.
+  destruct H7. rewrite H. destruct x.
+  apply (turn_oqasm_range_exists (n1-n0) r n0 n v f b0 r0) in H0 as X1.
+  destruct X1 as [v0 [t0 X1]]. exists (v0,t0). easy. easy.
+Qed.
+
+Lemma right_mode_env_compile_ses : forall l aenv b n t, compile_ses_qenv aenv l = (n, t)
+    -> all_nor_mode (compile_ses_state l b) -> (forall x : Env.key, Env.MapsTo x OQASM.Nor (form_oenv t))
+    -> right_mode_env n (form_oenv t) (compile_ses_state l b).
+Proof.
+  induction l;intros;simpl in *.
+  unfold right_mode_env in *. intros.
+  unfold all_nor_mode in *. destruct p. specialize (H0 v n0).
+  simpl in *. specialize (H1 v).
+  apply mapsto_always_same with (v1 := t0) in H1; subst; try easy.
+  simpl in *.
+  destruct a. destruct p.
+  destruct (AEnv.find (elt:=ktype) v aenv) eqn:eq1. destruct k.
+  unfold right_mode_env. intros. destruct p.
+  unfold all_nor_mode in *. specialize (H0 v0 n0). simpl in *.
+  specialize (H1 v0).
+  apply mapsto_always_same with (v1 := t0) in H1; subst; try easy.
+  destruct (compile_ses_qenv aenv l) eqn:eq2.
+  destruct (var_in_list l0 v) eqn:eq3. inv H.
+  unfold right_mode_env. intros. destruct p.
+  unfold all_nor_mode in *. specialize (H0 v0 n1). simpl in *.
+  specialize (H1 v0).
+  apply mapsto_always_same with (v1 := t0) in H1; subst; try easy.
+  unfold right_mode_env. intros. destruct p.
+  unfold all_nor_mode in *. specialize (H0 v0 n2). simpl in *.
+  specialize (H1 v0).
+  apply mapsto_always_same with (v1 := t0) in H1; subst; try easy.
+  unfold right_mode_env. intros. destruct p.
+  unfold all_nor_mode in *. specialize (H0 v0 n0). simpl in *.
+  specialize (H1 v0).
+  apply mapsto_always_same with (v1 := t0) in H1; subst; try easy.
+Qed.
+
+(*TODO: Le Chang, please finish this. It is similar to efresh_exp_sem_irrelevant proof in OQASMProof. *)
+Lemma compile_exp_fresh : forall e ea l aenv qenv vl x v n, compile_ses_qenv aenv l = (qenv, vl)
+      -> compile_exp_to_oqasm e = Some ea -> type_exp aenv e (QT n, l) -> v >= qenv x 
+      -> exp_WF qenv ea /\ exp_fresh qenv (x,v) ea.
+Proof.
+  induction e;intros;simpl in *.
 Admitted.
 
 Lemma eval_nor_exists {rmax : nat} : forall aenv l n c b e,
-          type_exp aenv e (QT n,l) -> simple_ses l -> exists ba, eval_nor rmax aenv l c b e = Some ba.
+          type_exp aenv e (QT n,l) -> simple_ses l -> oracle_prop aenv l e
+                 -> exists ba, eval_nor rmax aenv l c b e = Some ba.
 Proof.
   intros.
   apply type_exp_exists_oqasm in H as X1.
   destruct X1 as [ea X1].
   apply ses_len_simple in H0 as X2. destruct X2.
   unfold eval_nor. destruct (compile_ses_qenv aenv l) eqn:eq1. rewrite X1.
-  rewrite H1.
+  rewrite H2.
   specialize (turn_oqasm_ses_simple l 0 rmax (exp_sem n0 ea (compile_ses_state l b)) (cover_n b x) H0) as X2.
-  destruct X2. unfold turn_oqasm_ses. rewrite H2.
-  destruct x0.
-  exists ((c * Cexp (2 * PI * turn_angle b0 rmax))%C, r). easy.
+  assert (all_nor_mode (compile_ses_state l b)) as X3.
+  unfold compile_ses_state. apply compile_ses_state'_nor.
+  assert (right_mode_env n0 (form_oenv l0) (compile_ses_state l b)) as X4.
+  apply right_mode_env_compile_ses with (aenv := aenv); try easy. 
+  unfold oracle_prop in *. rewrite eq1 in H1. rewrite X1 in H1.
+  destruct H1; try easy.
+  unfold oracle_prop in *.
+  rewrite eq1 in H1.
+  rewrite X1 in H1.
+  destruct H1 as [X5 X6].
+  apply well_typed_right_mode_pexp with (e := ea) (tenv' := (form_oenv l0)) in X4 as eq2; try easy.
+  assert (all_nor_mode (exp_sem n0 ea (compile_ses_state l b))).
+  unfold all_nor_mode, right_mode_env in *. intros.
+  specialize (X3 x0 n1). inv X3.
+  specialize (eq2 OQASM.Nor (x0,n1)). simpl in *.
+  bdestruct (n1 <? n0 x0). apply eq2 in H3; try easy.
+  apply (compile_exp_fresh e ea l aenv n0 l0 x0 n1 n) in H3; try easy.
+  destruct H3 as [X7 X8].
+  rewrite efresh_exp_sem_irrelevant; try easy.
+  assert (all_nor_mode (compile_ses_state l b)).
+  apply compile_ses_state'_nor. unfold all_nor_mode in *. apply H3.
+  apply (turn_oqasm_ses_simple l 0 rmax (exp_sem n0 ea (compile_ses_state l b)) (cover_n b x)) in H1 as X7.
+  destruct X7. unfold turn_oqasm_ses. rewrite H3. destruct x0.
+  exists ((c * Cexp (2 * PI * turn_angle b0 rmax))%C, r). easy. easy.
 Qed.
+
+Lemma eval_ch_exists {rmax : nat} : forall m aenv l n f e,
+          type_exp aenv e (QT n,l) -> simple_ses l -> oracle_prop aenv l e
+                 -> exists ba, eval_ch rmax aenv l m f e = Some ba.
+Proof.
+  induction m; intros;simpl in *.
+  exists (fun _ : nat => (C0, allfalse)).
+  easy.
+  apply (@eval_nor_exists rmax aenv l n (fst (f m)) (snd (f m)) e) in H as X1; try easy.
+  destruct X1. rewrite H2. destruct x.
+  apply (IHm aenv l n f) in H as X1; try easy. destruct X1.
+  rewrite H3. 
+  exists (update x m (c, r)). easy.
+Qed.
+
 
 (* functions for defining boolean. *)
 Inductive eval_cbexp : stack -> cbexp -> bool -> Prop :=

@@ -77,6 +77,11 @@ Proof.
   intros. inv H.
 Admitted.
 
+Lemma find_state_up_good_1 {rmax}: forall S s s' v v', @find_state rmax S s (Some (s',v)) -> exists S', @up_state rmax S s' v' S'.
+Proof.
+  intros. inv H.
+Admitted.
+
 Lemma find_env_ch: forall T s s' t, find_env T s (Some (s',t)) -> (exists T', env_equiv T T' /\ find_env T' s (Some (s',CH))).
 Proof.
  intros. remember (Some (s',t)) as a. induction H; subst. inv Heqa.
@@ -215,14 +220,23 @@ Proof.
   exists e.
   exists (update_cval Sa x (r,cv)).
   eapply let_sem_q; eauto.
-  right. apply find_type_ch in H5.
+  right.
+  apply find_type_ch in H6.
   exists env. exists PSKIP.
-  apply find_type_state_1  with (r:= rmax) (M := fst s) (S := (snd s)) in H5 as X1; try easy.
+  apply find_type_state_1  with (r:= rmax) (M := fst s) (S := (snd s)) in H6 as X1; try easy.
   destruct X1 as [a [X1 X2]].
-  inv X2. apply find_type_simple in H5 as X2; try easy.
-  apply find_state_up_good with (v' := ) in X1 as X2.
+  inv X2. apply find_type_simple in H6 as X2; try easy.
+  apply simple_ses_app_l in X2.
+  apply (@eval_ch_exists rmax m env l n bl e) in H1 as X3; try easy.
+  destruct X3 as [ba X3].
+  apply find_state_up_good_1 with (v' := (Cval m ba)) in X1 as X4; try easy.
+  destruct X4 as [S' X4].
+  exists S'.
+  assert ((fst s, snd s) = s). destruct s. simpl; easy.
+  rewrite H7 in *.
+  eapply appu_sem_ch. apply X1. apply X3. apply X4.
 Admitted.
-                                 
+                  
 
 (*
   | appu_sem_ch : forall aenv s s' a e l b m ba, @find_state rmax s a (Some (a++l,Cval m b)) ->
