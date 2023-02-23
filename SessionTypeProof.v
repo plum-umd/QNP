@@ -261,6 +261,18 @@ Proof.
   exists env,PSKIP,S'.
   rewrite <- surjective_pairing in *.
   eapply appsu_sem_h_had. apply H5. apply X2. easy.
+  right.
+  assert (freeVarsNotCPExp env e).
+  unfold freeVarsNotCPExp in *. intros.
+  apply (H2 x); try easy. simpl in *.
+  apply in_app_iff. right. easy.
+  specialize (IHsession_system H H0 H7 H4).
+  assert (e = PSKIP \/ e <> PSKIP).
+  destruct e; try (right; easy).
+  destruct H8;subst.
+  exists env, PSKIP. exists s. constructor.
+  destruct IHsession_system; subst. easy.
+  destruct H9 as [env' [e' [s' X1]]].
 Admitted.
 
 (*

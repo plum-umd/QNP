@@ -111,6 +111,15 @@ Fixpoint freeVarsAExp (a:aexp) := match a with BA x => ([x]) | Num n => nil | MN
 Definition freeVarsVari (a:varia) := match a with AExp x => freeVarsAExp x
             | Index x v => (x::freeVarsAExp v)
   end.
+Definition freeVarsCBexp (a:cbexp) := match a with CEq x y => (freeVarsAExp x)++(freeVarsAExp y)
+         | CLt x y => (freeVarsAExp x)++(freeVarsAExp y)
+  end.
+Fixpoint freeVarsBexp (a:bexp) := match a with CB b => (freeVarsCBexp b)
+         | BEq x y i a => i::((freeVarsVari x)++(freeVarsVari y)++(freeVarsAExp a))
+         | BLt x y i a => i::((freeVarsVari x)++(freeVarsVari y)++(freeVarsAExp a))
+         | BTest i a => i::(freeVarsAExp a)
+         | BNeg b => freeVarsBexp b
+  end.
 Definition freeVarsMAExp (m:maexp) := match m with AE n => freeVarsAExp n | Meas x => ([x]) end.
 
 Fixpoint list_sub (s:list var) (b:var) :=
@@ -121,6 +130,12 @@ Fixpoint list_sub (s:list var) (b:var) :=
 Fixpoint freeVarsPExp (p:pexp) := 
    match p with PSKIP => nil
               | Let x n e => freeVarsMAExp n ++ list_sub (freeVarsPExp e) x
+              | AppSU (RH p) => freeVarsVari p
+              | AppSU (SQFT x) => ([x])
+              | AppSU (SRQFT x) => ([x])
+              | If b e => freeVarsBexp b ++ freeVarsPExp e
+              | For x l h b e => freeVarsAExp l ++ freeVarsAExp h 
+                                    ++ list_sub (freeVarsBexp b) x ++ list_sub (freeVarsPExp e) x
               | _ => nil
    end.
 

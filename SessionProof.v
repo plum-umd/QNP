@@ -90,16 +90,6 @@ Inductive sublist : list var -> aenv -> Prop :=
  | sublist_many : forall a l1 l2, AEnv.In a l2 -> sublist l1 l2 -> sublist (a::l1) l2.
 
 
-Definition freeVarsCBexp (a:cbexp) := match a with CEq x y => (freeVarsAExp x)++(freeVarsAExp y)
-         | CLt x y => (freeVarsAExp x)++(freeVarsAExp y)
-  end.
-Fixpoint freeVarsBexp (a:bexp) := match a with CB b => (freeVarsCBexp b)
-         | BEq x y i a => i::((freeVarsVari x)++(freeVarsVari y)++(freeVarsAExp a))
-         | BLt x y i a => i::((freeVarsVari x)++(freeVarsVari y)++(freeVarsAExp a))
-         | BTest i a => i::(freeVarsAExp a)
-         | BNeg b => freeVarsBexp b
-  end.
-
 Fixpoint freeSesSV (a:sval) := match a with SV s => [s]
          | Frozen b s => freeSesSV s
          | Unfrozen n b s => freeSesSV s
