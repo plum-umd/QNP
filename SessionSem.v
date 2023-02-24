@@ -250,11 +250,6 @@ Qed.
 
 
 (* functions for defining boolean. *)
-Inductive eval_cbexp : stack -> cbexp -> bool -> Prop :=
-    | ceq_sem : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CEq x y) (n1 =? n2)
-    | clt_sem : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CLt x y) (n1 <? n2).
-
-Check xorb.
 
 Fixpoint eval_eq_bool (f:nat -> C * rz_val) (m size v:nat) :=
   match m with 0 => f
@@ -398,8 +393,10 @@ Inductive qfor_sem {rmax:nat}
         eval_ch rmax aenv a m b e = Some ba -> (@up_state rmax s (a++l) (Cval m ba) s') -> qfor_sem aenv s (AppU a e) s' PSKIP
   | seq_sem_1: forall aenv e1 e1' e2 s s1 s2, e1 <> PSKIP -> qfor_sem aenv s e1 s1 e1' -> qfor_sem aenv s (PSeq e1 e2) s2 (PSeq e1' e2)
   | seq_sem_2: forall aenv e2 s, qfor_sem aenv s (PSeq PSKIP e2) s e2
-  | if_sem_ct : forall aenv M s b e, eval_cbexp M b true -> qfor_sem aenv (M,s) (If (CB b) e) (M,s) e
-  | if_sem_cf : forall aenv M s b e, eval_cbexp M b false -> qfor_sem aenv (M,s) (If (CB b) e) (M,s) PSKIP
+  | if_sem_ct : forall aenv s b e, simp_bexp b = Some true -> qfor_sem aenv s (If b e) s e
+  | if_sem_cf : forall aenv s b e, simp_bexp b = Some false -> qfor_sem aenv s (If b e) s PSKIP
+  | if_sem_mt : forall aenv M s b e, eval_cbexp M b true -> qfor_sem aenv (M,s) (If b e) (M,s) e
+  | if_sem_mf : forall aenv M s b e, eval_cbexp M b false -> qfor_sem aenv (M,s) (If b e) (M,s) PSKIP
   | if_sem_q_1 : forall aenv l l1 n n' s s' sa sa' sac b e e' m m' f f' fc fc' fa,
                type_bexp aenv b (QT (n+1),l) -> @eval_bexp rmax aenv s b s' ->
                 @find_state rmax s' l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->

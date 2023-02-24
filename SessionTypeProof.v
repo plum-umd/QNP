@@ -53,12 +53,12 @@ Proof.
   intros. induction H0.
   exists S. split. constructor. easy.
 (* then case by case analyze env_equiv vs state_equiv. *)
+(*
   exists S. split. constructor.
   destruct T, T'. auto.
   inv H0. assert (a1 ++ a2 = [] -> a2 ++ a1 = []). intros. apply (app_eq_nil a1 a2) in H0 as [X1 X2]. subst. auto. apply H0 in H2. rewrite H2 in H3. inv H3.
   inv H0. destruct S. apply env_state_eq_empty. inv H. 
-  
-  
+*)
 Admitted.
 
 (*TODO: Le Chang, us eht result in find_env_state. *)
@@ -264,6 +264,18 @@ Proof.
   rewrite <- surjective_pairing in *.
   eapply appsu_sem_h_had. apply H5. apply X2. easy.
   right.
+  exists env,e,s. apply if_sem_ct; try easy.
+  right.
+  exists env,PSKIP,s. apply if_sem_cf; try easy.
+  right.
+  apply kind_env_stack_exist_bexp with (s := (fst s)) in H1 as X1; try easy.
+  destruct X1 as [bv X1]. destruct bv.
+  exists env,e,s. destruct s. apply if_sem_mt; try easy.
+  exists env,PSKIP,s. destruct s. apply if_sem_mf; try easy.
+  unfold freeVarsNotCBExp,freeVarsNotCPExp in *; simpl in *.
+  intros. apply (H2 x); try easy.
+  apply in_app_iff. left. easy.
+  right.  
   assert (freeVarsNotCPExp env e).
   unfold freeVarsNotCPExp in *. intros.
   apply (H2 x); try easy. simpl in *.
@@ -272,14 +284,23 @@ Proof.
   assert (e = PSKIP \/ e <> PSKIP).
   destruct e; try (right; easy).
   destruct H8;subst.
-  exists env, PSKIP. exists s. constructor.
+  exists env, PSKIP. exists s. apply if_sem_q_2.
   destruct IHsession_system; subst. easy.
   destruct H9 as [env' [e' [s' X1]]].
 Admitted.
 
 (*
-  | appsu_sem_h_had : forall aenv s s' p a b, @simp_varia aenv p a -> @find_state rmax s ([a]) (Some (([a]),Hval b)) ->
-           (@up_state rmax s ([a]) (Nval C1 (fun j => b j 0)) s') -> qfor_sem aenv s (AppSU (RH p)) s' PSKIP
+forall aenv l l1 n n' s s' sa sa' sac b e e' m m' f f' fc fc' fa,
+               type_bexp aenv b (QT (n+1),l) -> @eval_bexp rmax aenv s b s' ->
+                @find_state rmax s' l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
+                 mut_state 0 (n+1) n' (Cval (fst (grab_bool f m n)) (snd (grab_bool f m n))) fc ->
+                @up_state rmax s' (l++l1) fc sa -> qfor_sem aenv sa e sa' e' -> e <> PSKIP ->
+                 @find_state rmax sa' l1 (Some (l1, fc')) -> mut_state 0 n' (n+1) fc' (Cval m' f') ->
+                assem_bool m m' (n+1) f f' fa -> @up_state rmax s (l++l1) (Cval (fst fa) (snd fa)) sac ->
+                    qfor_sem aenv s (If b e) sac (If b e')
+
+
+
 *)
 
 Lemma session_progress : 

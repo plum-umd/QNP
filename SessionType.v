@@ -232,8 +232,12 @@ Inductive session_system {rmax:nat}
                   find_type T l (Some (l',t)) ->
                     session_system q env T (AppSU (SRQFT x)) ([(l', (CH))])
 *)
-    | qif_ses_c: forall q env T b l1 e k t, type_bexp env b (Mo k,nil) -> 
-                session_system q env T e ([(l1,t)]) -> session_system q env T (If b e) ([(l1,t)])
+    | qif_ses_ct: forall q env T b e T', type_bexp env b (Mo CT,nil) -> simp_bexp b = (Some true) ->
+                session_system q env T e T' -> session_system q env T (If b e) T'
+    | qif_ses_cf: forall q env T b e, type_bexp env b (Mo CT,nil) -> simp_bexp b = (Some false) ->
+                session_system q env T (If b e) T
+    | qif_ses_m: forall env T b e T', type_bexp env b (Mo MT,nil) -> 
+                session_system CT env T e T' -> session_system CT env T (If b e) T'
     | qif_ses_ch: forall q env T b n l l1 e t, type_bexp env b (QT n,l) -> 
                 session_system MT env T e ([(l1,t)]) -> ses_dis (l++l1) -> session_system q env T (If b e) ([(l++l1,CH)])
     | qfor_ses_ch: forall q env T i l h b e, 

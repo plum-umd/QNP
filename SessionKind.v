@@ -65,7 +65,8 @@ Inductive type_bexp : aenv -> bexp -> (ktype*session) -> Prop :=
              AEnv.MapsTo x (QT n) env -> 0 <= v < n -> union_f t1 t2 (QT m,l3)
             -> type_bexp env (BLt a b x (Num v)) (QT (m+1),((x,BNum v,BNum (S v)))::l3)
    | btest_type : forall env x n v, AEnv.MapsTo x (QT n) env -> 0 <= v < n 
-            -> type_bexp env (BTest x (Num v)) (QT 1,[((x,BNum v,BNum (S v)))]).
+            -> type_bexp env (BTest x (Num v)) (QT 1,[((x,BNum v,BNum (S v)))])
+   | bneg_type : forall env b t, type_bexp env b t -> type_bexp env (BNeg b) t.
 
 
 Inductive type_exp : aenv -> exp -> (ktype*session) -> Prop :=
@@ -142,6 +143,9 @@ Fixpoint freeVarsPExp (p:pexp) :=
 Definition freeVarsNotCAExp (env:aenv) (a:aexp) :=
    forall x t, In x (freeVarsAExp a) -> AEnv.MapsTo x (Mo t) env -> t <> CT.
 
+Definition freeVarsNotCBExp (env:aenv) (a:bexp) :=
+   forall x t, In x (freeVarsBexp a) -> AEnv.MapsTo x (Mo t) env -> t <> CT.
+
 Definition freeVarsNotCPExp (env:aenv) (a:pexp) :=
    forall x t, In x (freeVarsPExp a) -> AEnv.MapsTo x (Mo t) env -> t <> CT.
 
@@ -161,6 +165,17 @@ Fixpoint simp_aexp (a:aexp) :=
                             end
    end.
 
+Fixpoint simp_bexp (a:bexp) :=
+   match a with CB (CEq x y) => match (simp_aexp x,simp_aexp y) with (Some v1,Some v2) => Some (v1 =? v2)
+                                                                   | _ => None
+                                end
+              | CB (CLt x y) => match (simp_aexp x,simp_aexp y) with (Some v1,Some v2) => Some (v1 <? v2)
+                                                                   | _ => None
+                                end
+              | BNeg b => match simp_bexp b with None => None | Some b' => Some (negb b') end
+              | _ => None
+   end.
+
 Inductive eval_aexp : stack -> aexp -> (R * nat) -> Prop :=
     | var_sem : forall s x r n, AEnv.MapsTo x (r,n) s -> eval_aexp s (BA x) (r,n)
     | mnum_sem: forall s r n, eval_aexp s (MNum r n) (r,n)
@@ -168,6 +183,15 @@ Inductive eval_aexp : stack -> aexp -> (R * nat) -> Prop :=
     | aplus_sem_2: forall s e1 e2 r n1 n2, eval_aexp s e2 (r,n2) -> simp_aexp e1 = Some n1 -> eval_aexp s (APlus e1 e2) (r,n1 + n2)
     | amult_sem_1: forall s e1 e2 r n1 n2, eval_aexp s e1 (r,n1) -> simp_aexp e2 = Some n2 -> eval_aexp s (AMult e1 e2) (r,n1 * n2)
     | amult_sem_2: forall s e1 e2 r n1 n2, eval_aexp s e2 (r,n2) -> simp_aexp e1 = Some n1 -> eval_aexp s (AMult e1 e2) (r,n1 * n2). 
+
+Inductive eval_cbexp : stack -> bexp -> bool -> Prop :=
+    | ceq_sem_1 : forall s x y r1 n1 n2, eval_aexp s x (r1,n1) -> simp_aexp y = Some n2 -> eval_cbexp s (CB (CEq x y)) (n1 =? n2)
+    | ceq_sem_2 : forall s x y n1 r2 n2, simp_aexp x = Some n1 -> eval_aexp s y (r2,n2) -> eval_cbexp s (CB (CEq x y)) (n1 =? n2)
+    | ceq_sem_3 : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CB (CEq x y)) (n1 =? n2)
+    | clt_sem_1 : forall s x y r1 n1 n2, eval_aexp s x (r1,n1) -> simp_aexp y = Some n2 -> eval_cbexp s (CB (CLt x y)) (n1 <? n2)
+    | clt_sem_2 : forall s x y n1 r2 n2, simp_aexp x = Some n1 -> eval_aexp s y (r2,n2) -> eval_cbexp s (CB (CLt x y)) (n1 <? n2)
+    | clt_sem_3 : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CB (CLt x y)) (n1 <? n2)
+    | bneq_sem: forall s e b, eval_cbexp s e b -> eval_cbexp s (BNeg e) (negb b).
 
 Inductive simp_varia : aenv -> varia -> range -> Prop :=
     | aexp_sem : forall env x n, AEnv.MapsTo x (QT n) env -> simp_varia env (AExp (BA x)) (x,BNum 0, BNum n)
@@ -290,3 +314,69 @@ Proof.
   inv H7. inv H7. inv H7.
   exists (r,n). apply mnum_sem; try auto.
   Qed.
+
+
+Lemma kind_env_stack_exist_bexp : forall env s b, kind_env_stack env s -> freeVarsNotCBExp env b ->
+              type_bexp env b (Mo MT, nil) -> exists v, eval_cbexp s b v.
+Proof.
+  intros. remember (Mo MT, nil) as t.
+  induction H1; simpl in *.
+  destruct b. inv Heqt. inv H1.
+  unfold meet_ktype in *. destruct t1. subst. destruct a.
+  (* case 1 *)
+  apply kind_aexp_class_empty in H5 as X1. subst.
+  apply kind_aexp_class_empty in H7 as X2; subst.
+  assert (freeVarsNotCAExp env x).
+  unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
+  intros. apply (H0 x0); try easy.
+  apply in_app_iff. left. easy.
+  assert (freeVarsNotCAExp env y).
+  unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
+  intros. apply (H0 x0); try easy.
+  apply in_app_iff. right. easy.
+  apply kind_env_stack_exist_ct in H5 as X3; try easy. destruct X3.
+  apply kind_env_stack_exist with (s := s) in H7; try easy. destruct H7. destruct x1.
+  exists (x0 =? n). apply ceq_sem_2 with (r2 := r); try easy. right. easy. left. easy.
+  (* case 2 *)
+  apply kind_aexp_class_empty in H5 as X1. subst.
+  apply kind_aexp_class_empty in H7 as X2; subst.
+  assert (freeVarsNotCAExp env x).
+  unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
+  intros. apply (H0 x0); try easy.
+  apply in_app_iff. left. easy.
+  assert (freeVarsNotCAExp env y).
+  unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
+  intros. apply (H0 x0); try easy.
+  apply in_app_iff. right. easy.
+  apply kind_env_stack_exist with (s := s) in H5 as X3; try easy. destruct X3. destruct x0.
+  apply kind_env_stack_exist with (s := s) in H7; try easy. destruct H7. destruct x0.
+  exists (n =? n0). apply ceq_sem_3 with (r1 := r) (r2 := r0); try easy. right. easy. right. easy.
+  destruct t2. inv H4. inv H4. inv Heqt.
+  assert (freeVarsNotCAExp env x).
+  unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
+  intros. apply (H0 x0); try easy.
+  apply in_app_iff. left. easy.
+  assert (freeVarsNotCAExp env y).
+  unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
+  intros. apply (H0 x0); try easy.
+  apply in_app_iff. right. easy.
+  (* case 3 *)
+  inv H1.
+  unfold meet_ktype in *. destruct t1. subst. destruct a.
+  apply kind_aexp_class_empty in H7 as X1. subst.
+  apply kind_aexp_class_empty in H9 as X2; subst.
+  apply kind_env_stack_exist_ct in H7 as X3; try easy. destruct X3.
+  apply kind_env_stack_exist with (s := s) in H9; try easy. destruct H9. destruct x1.
+  exists (x0 <? n). apply clt_sem_2 with (r2 := r); try easy. right. easy. left. easy.
+  (* case 4 *)
+  apply kind_aexp_class_empty in H7 as X1. subst.
+  apply kind_aexp_class_empty in H9 as X2; subst.
+  apply kind_env_stack_exist with (s := s) in H7; try easy. destruct H7. destruct x0.
+  apply kind_env_stack_exist with (s := s) in H9; try easy. destruct H9. destruct x0.
+  exists (n <? n0). apply clt_sem_3 with (r1 := r) (r2 := r0); try easy. right. easy. right. easy.
+  destruct t2. inv H6. inv H6. inv Heqt. inv Heqt.
+  inv Heqt.
+  apply IHtype_bexp in H0; try easy. destruct H0.
+  exists (negb x). constructor. easy.
+Qed.
+
