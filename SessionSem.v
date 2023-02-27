@@ -398,12 +398,12 @@ Inductive qfor_sem {rmax:nat}
   | if_sem_mt : forall aenv M s b e, eval_cbexp M b true -> qfor_sem aenv (M,s) (If b e) (M,s) e
   | if_sem_mf : forall aenv M s b e, eval_cbexp M b false -> qfor_sem aenv (M,s) (If b e) (M,s) PSKIP
   | if_sem_q_1 : forall aenv l l1 n n' s s' sa sa' sac b e e' m m' f f' fc fc' fa,
-               type_bexp aenv b (QT (n+1),l) -> @eval_bexp rmax aenv s b s' ->
+               type_bexp aenv b (QT n,l) -> @eval_bexp rmax aenv s b s' ->
                 @find_state rmax s' l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
-                 mut_state 0 (n+1) n' (Cval (fst (grab_bool f m n)) (snd (grab_bool f m n))) fc ->
+                 mut_state 0 n n' (Cval (fst (grab_bool f m n)) (snd (grab_bool f m n))) fc ->
                 @up_state rmax s' (l++l1) fc sa -> qfor_sem aenv sa e sa' e' -> e <> PSKIP ->
-                 @find_state rmax sa' l1 (Some (l1, fc')) -> mut_state 0 n' (n+1) fc' (Cval m' f') ->
-                assem_bool m m' (n+1) f f' fa -> @up_state rmax s (l++l1) (Cval (fst fa) (snd fa)) sac ->
+                 @find_state rmax sa' l1 (Some (l1, fc')) -> mut_state 0 n' n fc' (Cval m' f') ->
+                assem_bool m m' n f f' fa -> @up_state rmax s (l++l1) (Cval (fst fa) (snd fa)) sac ->
                     qfor_sem aenv s (If b e) sac (If b e')
   | if_sem_q_2 : forall aenv s b, qfor_sem aenv s (If b PSKIP) s PSKIP
   | for_0 : forall aenv s x l h b p, h <= l -> qfor_sem aenv s (For x (Num l) (Num h) b p) s PSKIP

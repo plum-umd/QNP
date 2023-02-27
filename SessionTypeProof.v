@@ -50,8 +50,9 @@ Qed.
 (*TODO: Le Chang, additional theorem. *)
 Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' -> (exists S', @state_equiv r S S' /\ env_state_eq T' S').
 Proof.
-  intros. induction H0.
-  exists S. split. constructor. easy.
+  intros. generalize dependent S. induction H0.
+  intros.
+  exists S0. split. constructor. easy.
 (* then case by case analyze env_equiv vs state_equiv. *)
 (*
   exists S. split. constructor.
@@ -287,6 +288,7 @@ Proof.
   exists env, PSKIP. exists s. apply if_sem_q_2.
   destruct IHsession_system; subst. easy.
   destruct H9 as [env' [e' [s' X1]]].
+  
 Admitted.
 
 (*
