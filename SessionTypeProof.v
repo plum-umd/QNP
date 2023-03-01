@@ -50,16 +50,20 @@ Qed.
 (*TODO: Le Chang, additional theorem. *)
 Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' -> (exists S', @state_equiv r S S' /\ env_state_eq T' S').
 Proof.
+ 
   intros. generalize dependent S. induction H0.
-  intros.
-  exists S0. split. constructor. easy.
+  - intros. inv H. exists l2. split. apply state_empty. auto.
+  - intros. exists S. split. constructor. inv H.
+    assert (a1 ++ a2 = [] -> a2 ++ a1 = []).
+    intros. apply (app_eq_nil a1 a2) in H as [X1 X2]. subst. auto.
+    symmetry in H1. apply H in H1. rewrite H1. constructor.
+   
+  
 (* then case by case analyze env_equiv vs state_equiv. *)
-(*
-  exists S. split. constructor.
-  destruct T, T'. auto.
+(*  intros. exists S. split. constructor. 
+  induction H0. auto.
   inv H0. assert (a1 ++ a2 = [] -> a2 ++ a1 = []). intros. apply (app_eq_nil a1 a2) in H0 as [X1 X2]. subst. auto. apply H0 in H2. rewrite H2 in H3. inv H3.
-  inv H0. destruct S. apply env_state_eq_empty. inv H. 
-*)
+  *)
 Admitted.
 
 (*TODO: Le Chang, us eht result in find_env_state. *)
