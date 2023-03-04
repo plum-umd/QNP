@@ -52,11 +52,9 @@ Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' ->
 Proof.
  
   intros. generalize dependent S. induction H0.
+  - intros. exists S0. split. constructor. easy.
   - intros. inv H. exists l2. split. apply state_empty. auto.
-  - intros. exists S. split. constructor. inv H.
-    assert (a1 ++ a2 = [] -> a2 ++ a1 = []).
-    intros. apply (app_eq_nil a1 a2) in H as [X1 X2]. subst. auto.
-    symmetry in H1. apply H in H1. rewrite H1. constructor.
+  - intros.
    
   
 (* then case by case analyze env_equiv vs state_equiv. *)
@@ -296,13 +294,13 @@ Proof.
 Admitted.
 
 (*
-forall aenv l l1 n n' s s' sa sa' sac b e e' m m' f f' fc fc' fa,
-               type_bexp aenv b (QT (n+1),l) -> @eval_bexp rmax aenv s b s' ->
+  | if_sem_q_1 : forall aenv l l1 n n' s s' sa sa' sac b e e' m m' f f' fc fc' fa,
+               type_bexp aenv b (QT n,l) -> @eval_bexp rmax aenv s b s' ->
                 @find_state rmax s' l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
-                 mut_state 0 (n+1) n' (Cval (fst (grab_bool f m n)) (snd (grab_bool f m n))) fc ->
+                 mut_state 0 n n' (Cval (fst (grab_bool f m n)) (snd (grab_bool f m n))) fc ->
                 @up_state rmax s' (l++l1) fc sa -> qfor_sem aenv sa e sa' e' -> e <> PSKIP ->
-                 @find_state rmax sa' l1 (Some (l1, fc')) -> mut_state 0 n' (n+1) fc' (Cval m' f') ->
-                assem_bool m m' (n+1) f f' fa -> @up_state rmax s (l++l1) (Cval (fst fa) (snd fa)) sac ->
+                 @find_state rmax sa' l1 (Some (l1, fc')) -> mut_state 0 n' n fc' (Cval m' f') ->
+                assem_bool m m' n f f' fa -> @up_state rmax s (l++l1) (Cval (fst fa) (snd fa)) sac ->
                     qfor_sem aenv s (If b e) sac (If b e')
 
 
