@@ -48,20 +48,53 @@ Proof.
 Qed.
 
 (*TODO: Le Chang, additional theorem. *)
-Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' -> (exists S', @state_equiv r S S' /\ env_state_eq T' S').
+Lemma env_state_eq_app: forall S a1 a2, env_state_eq (a1++a2) S
+      -> exists b1 b2, env_state_eq (a1++a2) (b1++b2) /\ S = b1 ++ b2 /\ length b1 = length a1.
 Proof.
- 
-  intros. generalize dependent S. induction H0.
-  - intros. exists S0. split. constructor. easy.
-  - intros. inv H. exists l2. split. apply state_empty. auto.
-  - intros.
-   
+  intros. remember (a1++a2) as S1.
+  generalize dependent a1.
+  generalize dependent a2.
+  induction H. intros. symmetry in HeqS1. apply app_eq_nil in HeqS1. inv HeqS1.
+  exists nil,nil. split. simpl. constructor. simpl. easy.
+  intros. destruct a1. simpl in *. destruct a2. inv HeqS1.
+  inv HeqS1.
+  specialize (IHenv_state_eq a2 nil).
+  simpl in *. assert (a2 = a2) by easy. apply IHenv_state_eq in H1.
+  destruct H1 as [b1 [b2 [X1 [X2 X3]]]].
+  exists b1. exists ((s,a)::b2).
+  rewrite length_zero_iff_nil in X3 ; subst. simpl in *.
+  split. constructor. easy. easy. easy.
+  inv HeqS1.
+  specialize (IHenv_state_eq a2 a1).
+  assert (a1 ++ a2 = a1 ++ a2) by easy. apply IHenv_state_eq in H1.
+  destruct H1 as [b1 [b2 [X1 [X2 X3]]]].
+  exists ((s, a)::b1). exists b2.
+  split. simpl. constructor. easy. easy.
+  split. simpl. rewrite X2. easy. simpl. rewrite X3. easy.
+Qed.
+
+  
+Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' -> (exists S', @state_equiv r S S' /\ env_state_eq T' S').
+Proof with eauto with code.
+   intros. generalize dependent S. induction H0...
+  - intros. inv H...
+  - intros... 
+    (* specialize (env_state_eq_app S a1 a2) as Hsplit. *)
+    pose proof (env_state_eq_app S a1 a2) as Hsplit. 
+    destruct Hsplit as (b1 & b2 & Heeq & X1)...
+    exists (b2 ++ b1); intuition. subst. apply state_comm. subst.
+           
+    
+    (* exists S. split. constructor.
+    inv H.
+    assert (a1 ++ a2 = [] -> a2 ++ a1 = []).
+    intros. apply (app_eq_nil a1 a2) in H as [X1 X2]. subst. auto.
+    symmetry in H1. apply H in H1. rewrite H1. constructor.
+    *)
+    
+    
   
 (* then case by case analyze env_equiv vs state_equiv. *)
-(*  intros. exists S. split. constructor. 
-  induction H0. auto.
-  inv H0. assert (a1 ++ a2 = [] -> a2 ++ a1 = []). intros. apply (app_eq_nil a1 a2) in H0 as [X1 X2]. subst. auto. apply H0 in H2. rewrite H2 in H3. inv H3.
-  *)
 Admitted.
 
 (*TODO: Le Chang, us eht result in find_env_state. *)
@@ -313,7 +346,6 @@ Lemma session_progress :
       @session_system rmax t aenv tenv1 e tenv' ->
            e = PSKIP \/ (exists e' s1 s', @state_equiv rmax (snd s) s1 -> @qfor_sem rmax aenv (fst s,s1) e s' e').
 Proof. Admitted.
-
 
 
 
