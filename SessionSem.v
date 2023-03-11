@@ -86,13 +86,14 @@ Fixpoint eval_ch (rmax:nat) (env:aenv) (l:session) (m:nat) f (e:exp) :=
           end
    end.
 
-(*TODO: Le Chang, finish this one. *)
 Lemma type_exp_exists_oqasm: forall env e n l, type_exp env e (QT n,l) 
    -> (exists e', compile_exp_to_oqasm e = Some e').
 Proof.
-  intros. induction H; simpl in *.
-  exists (OQASM.SKIP (x, v)). easy.
-Admitted.
+  intros. induction H; simpl in *; try repeat eauto.
+  destruct IHtype_exp. rewrite H3. exists (OQASM.CU (x,v) x0). auto.
+  destruct IHtype_exp1, IHtype_exp2. rewrite H3. rewrite H2.
+  exists (x; x0)%exp. auto.
+Qed.
 
 Definition all_nor_mode (f:posi -> val) := forall x n, right_mode_val OQASM.Nor (f (x,n)).
 
@@ -195,6 +196,7 @@ Lemma compile_exp_fresh : forall e ea l aenv qenv vl x v n, compile_ses_qenv aen
       -> exp_WF qenv ea /\ exp_fresh qenv (x,v) ea.
 Proof.
   induction e;intros;simpl in *.
+  split.
 Admitted.
 
 Lemma eval_nor_exists {rmax : nat} : forall aenv l n c b e,
