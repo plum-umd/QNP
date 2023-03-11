@@ -73,6 +73,24 @@ Proof.
   split. simpl. rewrite X2. easy. simpl. rewrite X3. easy.
 Qed.
 
+Lemma env_state_eq_app_comm: forall a1 a2 b1 b2, length b1 = length a1 -> env_state_eq (a1 ++ a2) (b1++b2) -> env_state_eq (a2 ++ a1) (b2++b1).
+Proof.
+  intros. remember (a1 ++ a2) as l1. remember (b1 ++ b2) as l2.
+  generalize dependent a1.
+  generalize dependent a2.
+  generalize dependent b1.
+  generalize dependent b2.
+  induction H0. intros.
+  symmetry in Heql1. symmetry in Heql2.
+  apply app_eq_nil in Heql1. apply app_eq_nil in Heql2. inv Heql1. inv Heql2.
+  simpl. constructor.
+  intros.
+  destruct a1. simpl in *. rewrite length_zero_iff_nil in H1; subst. simpl in *.
+  destruct b2. inv Heql2. inv Heql2. repeat rewrite app_nil_r. constructor; easy.
+  simpl in *. inv Heql1.
+  destruct b1. simpl in *. lia. simpl in *. inv Heql2.
+Admitted.
+
   
 Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' -> (exists S', @state_equiv r S S' /\ env_state_eq T' S').
 Proof with eauto with code.
@@ -83,10 +101,15 @@ Proof with eauto with code.
     pose proof (env_state_eq_app S a1 a2) as Hsplit. 
     destruct Hsplit as (b1 & b2 & Heeq & X1)...
     exists (b2 ++ b1); intuition. subst. apply state_comm. subst.
+    apply env_state_eq_app_comm. easy. easy.
+  - intros. inv H0.
            
     
     (* exists S. split. constructor.
     inv H.
+
+     | state_sub: forall x v n u a, ses_len x = Some n -> @state_same rmax n v u -> state_equiv ((x,v)::a) ((x,u)::a)
+
     assert (a1 ++ a2 = [] -> a2 ++ a1 = []).
     intros. apply (app_eq_nil a1 a2) in H as [X1 X2]. subst. auto.
     symmetry in H1. apply H in H1. rewrite H1. constructor.

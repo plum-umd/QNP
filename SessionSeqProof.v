@@ -47,6 +47,8 @@ Inductive sval := ST (x:state_elem) | SV (s:session)
                | SSL (e:sval) (a:sval) (b:bexp) (l1:session) (l2:session).
 *)
 
+(*https://isabelle.in.tum.de/dist/library/HOL/HOL-Hoare/*)
+
 Definition qheap : Type := var * nat -> rz_val.
 
 Definition pval :Type := (var * nat) * rz_val.

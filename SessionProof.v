@@ -199,3 +199,5 @@ Axiom imply : cpred -> cpred -> Prop.
              @session_system rmax q env tenv e1 tenv' -> up_types tenv tenv' tenv'' -> pred_check q env tenv'' R ->
              triple q env tenv P e1 R -> triple q env tenv'' R e1 Q -> triple q env tenv P (PSeq e1 e2) Q.
 
+
+
