@@ -191,12 +191,20 @@ Proof.
 Qed.
 
 (*TODO: Le Chang, please finish this. It is similar to efresh_exp_sem_irrelevant proof in OQASMProof. *)
-Lemma compile_exp_fresh : forall e ea l aenv qenv vl x v n, compile_ses_qenv aenv l = (qenv, vl)
+Lemma compile_exp_WF : forall e ea l aenv qenv vl x v n, compile_ses_qenv aenv l = (qenv, vl)
       -> compile_exp_to_oqasm e = Some ea -> type_exp aenv e (QT n, l) -> v >= qenv x 
-      -> exp_WF qenv ea /\ exp_fresh qenv (x,v) ea.
+      -> exp_WF qenv ea.
 Proof.
   induction e;intros;simpl in *.
-  split.
+  inv H1. inv H0. constructor. simpl in *.
+  apply AEnv.find_1 in H7. rewrite H7 in H. inv H.
+  bdestruct (x =? x). lia. easy.
+Admitted.
+
+Lemma compile_exp_fresh : forall e ea l aenv qenv vl x v n, compile_ses_qenv aenv l = (qenv, vl)
+      -> compile_exp_to_oqasm e = Some ea -> type_exp aenv e (QT n, l) -> v >= qenv x 
+      -> exp_fresh qenv (x,v) ea.
+Proof.
 Admitted.
 
 Lemma eval_nor_exists {rmax : nat} : forall aenv l n c b e,
