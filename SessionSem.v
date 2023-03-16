@@ -234,11 +234,11 @@ Proof.
   specialize (X3 x0 n1). inv X3.
   specialize (eq2 OQASM.Nor (x0,n1)). simpl in *.
   bdestruct (n1 <? n0 x0). apply eq2 in H3; try easy.
-  apply (compile_exp_fresh e ea l aenv n0 l0 x0 n1 n) in H3; try easy.
-  destruct H3 as [X7 X8].
+  apply (compile_exp_WF e ea l aenv n0 l0 x0 n1 n) in H3 as X7; try easy.
+  apply (compile_exp_fresh e ea l aenv n0 l0 x0 n1 n) in H3 as X8; try easy.
   rewrite efresh_exp_sem_irrelevant; try easy.
   assert (all_nor_mode (compile_ses_state l b)).
-  apply compile_ses_state'_nor. unfold all_nor_mode in *. apply H3.
+  apply compile_ses_state'_nor. unfold all_nor_mode in *. apply H4.
   apply (turn_oqasm_ses_simple l 0 rmax (exp_sem n0 ea (compile_ses_state l b)) (cover_n b x)) in H1 as X7.
   destruct X7. unfold turn_oqasm_ses. rewrite H3. destruct x0.
   exists ((c * Cexp (2 * PI * turn_angle b0 rmax))%C, r). easy. easy.
