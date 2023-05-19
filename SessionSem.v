@@ -199,6 +199,10 @@ Proof.
   inv H1. inv H0. constructor. simpl in *.
   apply AEnv.find_1 in H7. rewrite H7 in H. inv H.
   bdestruct (x =? x). lia. easy.
+  admit.
+  destruct a; try easy.
+  destruct (compile_exp_to_oqasm e) eqn:eq1; try easy. inv H0.
+  constructor. simpl in *. inv H1.
 Admitted.
 
 Lemma compile_exp_fresh : forall e ea l aenv qenv vl x v n, compile_ses_qenv aenv l = (qenv, vl)
@@ -384,7 +388,7 @@ Inductive dis_sem : nat -> nat -> nat -> nat -> (nat -> C * rz_val) -> (list nat
 
 Inductive qfor_sem {rmax:nat}
            : aenv -> state -> pexp -> state -> pexp -> Prop :=
-(*  | state_eq_sem: forall aenv e s f f', @state_equiv rmax f f' -> qfor_sem aenv (s,f) e (s,f') e *)
+  | state_eq_sem: forall aenv e e' s f f' S, @state_equiv rmax f f' -> qfor_sem aenv (s,f') e S e' -> qfor_sem aenv (s,f) e S e'
   | let_sem_c : forall aenv s x a n e, simp_aexp a = Some n 
         -> qfor_sem aenv s (Let x (AE a) e) s (subst_pexp e x n)
   | let_sem_m : forall aenv s x a n e, eval_aexp (fst s) a n 

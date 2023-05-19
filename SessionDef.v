@@ -40,6 +40,11 @@ Inductive ses_eq : session -> session -> Prop :=
  | ses_eq_merge: forall x i n m a b, n <= i < m -> ses_eq ((x,BNum n,BNum m)::a) b
         -> ses_eq ((x,BNum n,BNum i)::((x,BNum i,BNum m)::a)) b.
 
+Fixpoint is_ses_empty (s:session) : Prop :=
+   match s with nil => False
+              | (x,a,b)::xs => (a = b) /\ is_ses_empty xs
+   end. 
+
 
 Inductive ses_sub : session -> session -> Prop :=
    ses_sub_prop : forall a b b', ses_eq b (a++b') -> ses_sub a b.

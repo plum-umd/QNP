@@ -73,7 +73,26 @@ Proof.
   split. simpl. rewrite X2. easy. simpl. rewrite X3. easy.
 Qed.
 
-Lemma env_state_eq_app_comm: forall a1 a2 b1 b2, length b1 = length a1 -> env_state_eq (a1 ++ a2) (b1++b2) -> env_state_eq (a2 ++ a1) (b2++b1).
+Lemma env_state_eq_same_length: forall a1 a2 b1 b2, length a1 = length b1
+        -> env_state_eq (a1++a2) (b1++b2) -> env_state_eq a1 b1 /\ env_state_eq a2 b2.
+Proof.
+  induction a1;intros;simpl in *.
+  symmetry in H. apply length_zero_iff_nil in H as X1; subst. simpl in *.
+  split. constructor. easy. destruct b1. simpl in *. easy.
+  simpl in *. inv H.
+  inv H0.
+  destruct (IHa1 a2 b1 b2 H2 H4) as [X1 X2].
+  split. constructor; easy. easy.
+Qed.
+
+Lemma env_state_eq_app_join: forall a1 a2 b1 b2, env_state_eq a1 b1 -> env_state_eq a2 b2 -> env_state_eq (a1++a2) (b1 ++ b2).
+Proof.
+  induction a1; intros; simpl in *.
+  inv H. simpl. easy.
+  inv H. simpl in *. constructor. apply IHa1; easy. easy.
+Qed.
+
+Lemma env_state_eq_app_comm: forall a1 a2 b1 b2, length a1 = length b1 -> env_state_eq (a1 ++ a2) (b1++b2) -> env_state_eq (a2 ++ a1) (b2++b1).
 Proof.
   intros. remember (a1 ++ a2) as l1. remember (b1 ++ b2) as l2.
   generalize dependent a1.
@@ -85,39 +104,26 @@ Proof.
   apply app_eq_nil in Heql1. apply app_eq_nil in Heql2. inv Heql1. inv Heql2.
   simpl. constructor.
   intros.
-  destruct a1. simpl in *. rewrite length_zero_iff_nil in H1; subst. simpl in *.
+  destruct a1. simpl in *. symmetry in H1. rewrite length_zero_iff_nil in H1; subst. simpl in *.
   destruct b2. inv Heql2. inv Heql2. repeat rewrite app_nil_r. constructor; easy.
   simpl in *. inv Heql1.
   destruct b1. simpl in *. lia. simpl in *. inv Heql2.
-Admitted.
-
+  assert (env_state_eq (((s, t) :: a1) ++ a2) (((s, a) :: b1) ++ b2)). simpl.
+  apply env_state_eq_many; try easy.
+  apply env_state_eq_same_length in H2 as X1; try easy.
+  apply env_state_eq_app_join; try easy.
+Qed.
   
 Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' -> (exists S', @state_equiv r S S' /\ env_state_eq T' S').
-Proof with eauto with code.
+Proof.
    intros. generalize dependent S. induction H0...
-  - intros. inv H...
+  - intros. exists S0. split. constructor. easy.
   - intros... 
-    (* specialize (env_state_eq_app S a1 a2) as Hsplit. *)
-    pose proof (env_state_eq_app S a1 a2) as Hsplit. 
-    destruct Hsplit as (b1 & b2 & Heeq & X1)...
-    exists (b2 ++ b1); intuition. subst. apply state_comm. subst.
-    apply env_state_eq_app_comm. easy. easy.
-  - intros. inv H0.
-           
-    
-    (* exists S. split. constructor.
-    inv H.
-
-     | state_sub: forall x v n u a, ses_len x = Some n -> @state_same rmax n v u -> state_equiv ((x,v)::a) ((x,u)::a)
-
-    assert (a1 ++ a2 = [] -> a2 ++ a1 = []).
-    intros. apply (app_eq_nil a1 a2) in H as [X1 X2]. subst. auto.
-    symmetry in H1. apply H in H1. rewrite H1. constructor.
-    *)
-    
-    
-  
-(* then case by case analyze env_equiv vs state_equiv. *)
+    inv H. exists l2. split. constructor. easy.
+  - intros. apply env_state_eq_app in H as X1.
+    destruct X1 as [b1 [b2 [X1 [X2 X3]]]]; subst.
+    exists (b2 ++ b1). split. apply state_comm. apply env_state_eq_app_comm; try easy.
+  - intros.
 Admitted.
 
 (*TODO: Le Chang, us eht result in find_env_state. *)
@@ -213,6 +219,12 @@ Qed.
 Definition kind_env_stack (env:aenv) (s:stack) : Prop :=
   forall x t, AEnv.MapsTo x (Mo t) env -> AEnv.In x s.
 
+Definition kind_env_wf (env:aenv) : Prop :=
+  forall x n, AEnv.MapsTo x (QT n) env -> n > 0.
+
+Definition env_wf (env:type_map) : Prop :=
+   forall x t, In (x,t) env -> simple_ses x.
+
 Inductive env_state_eqv {r:nat} : type_map -> qstate ->  Prop :=
     env_state_eqv_rule : forall l1 l2 l1' l2', 
       env_equiv l1 l1' -> @state_equiv r l2 l2' -> env_state_eq l1' l2' -> env_state_eqv l1 l2.
@@ -258,12 +270,30 @@ Proof.
   inv H. constructor; try easy. apply IHl. easy.
 Qed.
 
-Lemma session_progress_1 : 
+Lemma qstate_wt_eq : forall r W S S', @qstate_wt r (W,S) -> @state_equiv r S S' -> @qstate_wt r (W, S').
+Proof.
+  intros.
+Admitted.
+
+
+Lemma type_soundness : 
     forall e rmax t aenv s tenv tenv', @env_state_eq tenv (snd s) -> kind_env_stack aenv (fst s) ->
       @session_system rmax t aenv tenv e tenv' -> freeVarsNotCPExp aenv e -> @qstate_wt rmax s -> simple_tenv tenv ->
-           e = PSKIP \/ (exists aenv e' s', @qfor_sem rmax aenv s e s' e').
+           e = PSKIP \/ (exists aenv' e' s', @qfor_sem rmax aenv' s e s' e' 
+              /\ @qstate_wt rmax s' /\ (exists tenv'', @session_system rmax t aenv' tenv'' e' tenv')).
 Proof.
-  intros. induction H1; simpl in *.
+  intros.
+  generalize dependent s.
+  induction H1; simpl in *; intros.
+  specialize (env_equiv_simple_type T1 T2 H H4) as X1.
+  specialize (IHsession_system H2 X1).
+  specialize (env_state_eq_trans rmax T1 T2 (snd s0) H0 H) as X2.
+  destruct X2 as [Sa [X2 X3]].
+  specialize (IHsession_system (fst s0,Sa) X3 H3).
+  destruct s0; simpl in *. eapply qstate_wt_eq with (S' := Sa) in H5; try easy.
+  apply IHsession_system in H5. destruct H5. left. easy.
+  right. destruct H5 as [aenv [ea [s' [X4 X5]]]].
+  exists aenv, ea, s'. split. apply state_eq_sem with (f' := Sa); try easy. easy.
   left. easy.
   right. exists env. exists ((subst_pexp e x v)).
   exists s. apply let_sem_c; simpl in *; easy.
@@ -361,14 +391,14 @@ Admitted.
 
 
 
-*)
-
 Lemma session_progress : 
     forall e rmax t aenv s tenv tenv1 tenv', @env_state_eq tenv (snd s) ->
       @env_equiv tenv tenv1 ->
       @session_system rmax t aenv tenv1 e tenv' ->
            e = PSKIP \/ (exists e' s1 s', @state_equiv rmax (snd s) s1 -> @qfor_sem rmax aenv (fst s,s1) e s' e').
 Proof. Admitted.
+
+*)
 
 
 
