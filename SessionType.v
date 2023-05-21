@@ -206,17 +206,18 @@ Inductive session_system {rmax:nat}
     | meas_m1 : forall env x y e n l T T', AEnv.MapsTo y (QT n) env -> ~ AEnv.In x env ->
                session_system CT (AEnv.add x (Mo MT) env) ((l,CH)::T) e T'
               -> session_system CT env (((y,BNum 0,BNum n)::l,CH)::T) (Let x (Meas y) e) T'
+    | appu_ses_nor : forall q env T l l' e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
+                           session_system q env ((l++l', TNor)::T) (AppU l e) ((l++l', TNor)::T)
 
 
-    | appu_ses_ch : forall q env T l l' t e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
-                         find_type T l (Some (l++l',t)) ->
-                           session_system q env T (AppU l e) ([(l++l', ((CH)))])
-    | appu_ses_h_nor:  forall q env T p a m, type_vari env p (QT m, [a]) -> simp_varia env p a
-                  -> find_type T [a] (Some ([a],(TNor))) ->
-                    session_system q env T (AppSU (RH p)) ([([a], ((THad)))])
-    | appu_ses_h_had:  forall q env T p a m, type_vari env p (QT m, [a]) -> simp_varia env p a
-                  -> find_type T [a] (Some ([a],(THad))) ->
-                    session_system q env T (AppSU (RH p)) ([([a], ((TNor)))])
+    | appu_ses_ch : forall q env T l l' e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
+                           session_system q env ((l++l', CH)::T) (AppU l e) ((l++l', CH)::T)
+
+
+    | appu_ses_h_nor:  forall q env T p a m, type_vari env p (QT m, [a]) -> simp_varia env p a ->
+                    session_system q env (([a], TNor)::T) (AppSU (RH p)) (([a], THad)::T)
+    | appu_ses_h_had:  forall q env T p a m, type_vari env p (QT m, [a]) -> simp_varia env p a ->
+                    session_system q env (([a], THad)::T) (AppSU (RH p)) (([a], TNor)::T)
 (*
     | appu_ses_h_ch:  forall q env T p l l' m, type_vari env p (QT m, l)
                   -> find_type T l (Some (l',(CH))) ->

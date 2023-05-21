@@ -422,6 +422,47 @@ Proof.
   destruct (IHsession_system H8 H9 H10) as [Y1 [sa [Y2 [Y3 Y4]]]].
   split. easy.
   exists sa. split. apply let_sem_q with (r := ra) (v := va) (va' := (Cval na p)); try easy. easy.
+ -
+  destruct s; simpl in *.
+  inv H1. inv H11.
+  split. unfold simple_tenv in *.
+  intros. simpl in *. destruct H1; try easy. inv H1.
+  specialize (H4 (l ++ l') TNor). apply H4. left. easy.
+  eapply H4. right. apply H1.
+  assert (simple_ses (l++l')).
+  unfold simple_tenv in *. intros.
+  specialize (H4 (l++l') TNor). apply H4. simpl. left. easy.
+  apply simple_ses_app_l in H1 as X1.
+  destruct (@eval_nor_exists rmax env l n p r e H X1 H0) as [ba X2]. destruct ba.
+  exists (s, (l ++ l', Nval c r0) :: l2).
+  split. apply appu_sem_nor; try easy.
+  split.
+  unfold qstate_wt in *.
+  intros. simpl in *. destruct H6. inv H6. eapply H5. right. apply H6.
+  constructor; try easy. constructor.
+ -
+  destruct s; simpl in *.
+  inv H1. inv H11.
+  split. unfold simple_tenv in *.
+  intros. simpl in *. destruct H1; try easy. inv H1.
+  specialize (H4 (l ++ l') CH). apply H4. left. easy.
+  eapply H4. right. apply H1.
+  assert (simple_ses (l++l')).
+  unfold simple_tenv in *. intros.
+  specialize (H4 (l++l') CH). apply H4. simpl. left. easy.
+  apply simple_ses_app_l in H1 as X1.
+  Check eval_ch_exists.
+  destruct (@eval_ch_exists rmax m env l n bl e H X1 H0) as [ba X2].
+  exists (s, (l ++ l', Cval m ba) :: l2).
+  split. apply appu_sem_ch; try easy.
+  split.
+  unfold qstate_wt in *.
+  intros. simpl in *. destruct H6. inv H6. eapply H5. left. easy.
+  eapply H5. right. apply H6.
+  constructor; try easy. constructor.
+ - 
+  
+  
 
  (* Let rule with measure. 
   right. 
@@ -492,7 +533,6 @@ Proof.
   destruct IHsession_system; subst. easy.
   destruct H9 as [env' [e' [s' X1]]].
 *)
-  -
 Admitted.
 
 (*
