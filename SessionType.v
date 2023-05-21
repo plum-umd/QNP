@@ -197,15 +197,17 @@ Inductive session_system {rmax:nat}
            : atype -> aenv -> type_map -> pexp -> type_map -> Prop :=
     | env_equiv_ses: forall q env s T1 T2 T3, env_equiv T1 T2
          -> session_system q env T2 s T3 -> session_system q env T1 s T3
-    | skip_ses : forall q env T, session_system q env T (PSKIP) nil
-    | assign_ses_c : forall q env x v e T T', 
+    | skip_ses : forall q env T, session_system q env T (PSKIP) T
+    | assign_ses_c : forall q env x a v e T T', simp_aexp a = Some v ->
              session_system q env (subst_type_map T x v) (subst_pexp e x v) T'
-                  -> session_system q env T (Let x (Num v) e) T'
-    | assign_ses_m1 : forall q env x a l e T T', type_aexp env a (Mo MT,l) ->
+                  -> session_system q env T (Let x a e) T'
+    | assign_ses_m1 : forall q env x a e T T', type_aexp env a (Mo MT,nil) -> ~ AEnv.In x env ->
               session_system q (AEnv.add x (Mo MT) env) T e T' -> session_system q env T (Let x a e) T'
-    | meas_m1 : forall env x y e n l t T T' T'', AEnv.MapsTo y (QT n) env ->
-                find_type T ([(y,BNum 0,BNum n)]) (Some ((y,BNum 0,BNum n)::l,t)) -> update_env T l t T' ->
-              session_system CT (AEnv.add x (Mo MT) env) T' e T'' -> session_system CT env T (Let x (Meas y) e) T''
+    | meas_m1 : forall env x y e n l T T', AEnv.MapsTo y (QT n) env -> ~ AEnv.In x env ->
+               session_system CT (AEnv.add x (Mo MT) env) ((l,CH)::T) e T'
+              -> session_system CT env (((y,BNum 0,BNum n)::l,CH)::T) (Let x (Meas y) e) T'
+
+
     | appu_ses_ch : forall q env T l l' t e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
                          find_type T l (Some (l++l',t)) ->
                            session_system q env T (AppU l e) ([(l++l', ((CH)))])
@@ -248,5 +250,3 @@ Inductive session_system {rmax:nat}
     | pseq_ses_type: forall q env T e1 e2 T1 T2 T3 T4, session_system q env T e1 T1 -> up_types T T1 T2 ->
                        session_system q env T2 e2 T3 -> add_to_types T3 T1 T4 ->
                        session_system q env T (PSeq e1 e2) T4.
-
-

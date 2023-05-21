@@ -607,9 +607,9 @@ Inductive find_state {rmax} : state -> session -> option (session * state_elem) 
     | find_qstate_rule: forall M S S' x t, @state_equiv rmax S S' -> find_env S' x t -> find_state (M,S) x t.
 
 
-Inductive pick_mea {rmax:nat} : state -> var -> nat -> (R * nat) -> Prop :=
-   pick_meas : forall s x n l m b i r bl, @find_state rmax s ([(x,BNum 0,BNum n)]) (Some (([(x,BNum 0,BNum n)])++l, Cval m b))
-            -> 0 <= i < m -> b i = (r,bl) -> pick_mea s x n (Cmod r, a_nat2fb bl n).
+Inductive pick_mea : qstate -> (R * nat) -> Prop :=
+   pick_meas : forall S x n l m b i r bl,
+          0 <= i < m -> b i = (r,bl) -> pick_mea  (((x,BNum 0,BNum n)::l, Cval m b)::S) (Cmod r, a_nat2fb bl n).
 
 
 Definition update_cval (l:state) (a:var) (v: R * nat) := (AEnv.add a v (fst l),snd l).

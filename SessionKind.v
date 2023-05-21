@@ -128,6 +128,14 @@ Fixpoint list_sub (s:list var) (b:var) :=
               | a::al => if a =? b then list_sub al b else a::list_sub al b
    end.
 
+Lemma list_sub_not_in : forall l x xa, xa <> x -> In xa l -> In xa (list_sub l x).
+Proof.
+  induction l;intros;simpl in *. easy.
+  bdestruct (a =? x); subst. destruct H0; subst. easy.
+  apply IHl. easy. easy. destruct H0; subst. simpl. left. easy.
+  simpl. right. apply IHl; try easy.
+Qed.
+
 Fixpoint freeVarsPExp (p:pexp) := 
    match p with PSKIP => nil
               | Let x n e => freeVarsMAExp n ++ list_sub (freeVarsPExp e) x
@@ -206,6 +214,26 @@ Proof.
   destruct H0; subst. inv H2. easy. inv H2; easy.
   inv Heqe. easy.
 Qed.
+
+
+Lemma simp_aexp_empty: forall a v, simp_aexp a = Some v -> freeVarsAExp a = [].
+Proof.
+  induction a;intros;simpl in *; try easy.
+  destruct (simp_aexp a1) eqn:eq1.
+  destruct (simp_aexp a2) eqn:eq2. inv H. erewrite IHa1; try easy. erewrite IHa2; try easy.
+  inv H. inv H.
+  destruct (simp_aexp a1) eqn:eq1.
+  destruct (simp_aexp a2) eqn:eq2. inv H. erewrite IHa1; try easy. erewrite IHa2; try easy.
+  inv H. inv H.
+Qed.
+
+
+Lemma freeVars_pexp_in : forall e env x a v, freeVarsNotCPExp env (Let x (AE a) e) -> simp_aexp a = Some v ->
+             freeVarsNotCPExp env (subst_pexp e x v).
+Proof.
+  induction e; intros;simpl in *.
+  unfold freeVarsNotCPExp in *; intros. simpl in *. easy.
+Admitted.
 
 Lemma kind_env_stack_exist_ct: forall env a, 
      freeVarsNotCAExp env a -> type_aexp env a (Mo CT, []) -> exists v, simp_aexp a = Some v.
