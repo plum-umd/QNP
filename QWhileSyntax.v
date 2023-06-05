@@ -79,7 +79,7 @@ Definition meet_atype (a1 a2: atype) :=
                 | MT => MT end.
 
 Definition meet_ktype (a1 a2: ktype) := 
-       match a1 with Mo t => a2
+       match a1 with Mo t => (match a2 with Mo t1 => Mo (meet_atype t t1) | _ => a2 end)
                 | QT n => match a2 with QT m => QT (n+m) | _ => QT n end end.
 
 Inductive bound := BVar (v:var) (n:nat) | BNum (n:nat).

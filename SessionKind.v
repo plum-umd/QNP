@@ -58,12 +58,19 @@ Inductive type_cbexp : aenv -> cbexp -> ktype -> Prop :=
 
 Inductive type_bexp : aenv -> bexp -> (ktype*session) -> Prop :=
    | cb_type: forall env b t, type_cbexp env b t -> type_bexp env (CB b) (t,nil)
-   | beq_type : forall env a b t1 t2 x n v m l3, type_vari env a t1 -> type_vari env b t2 ->
-             AEnv.MapsTo x (QT n) env -> 0 <= v < n -> union_f t1 t2 (QT m,l3)
-            -> type_bexp env (BEq a b x (Num v)) (QT (m+1),((x,BNum v,BNum (S v)))::l3)
-   | blt_type : forall env a b t1 t2 x n v m l3, type_vari env a t1 -> type_vari env b t2 ->
-             AEnv.MapsTo x (QT n) env -> 0 <= v < n -> union_f t1 t2 (QT m,l3)
-            -> type_bexp env (BLt a b x (Num v)) (QT (m+1),((x,BNum v,BNum (S v)))::l3)
+
+   | beq_type_1 : forall env a b x m n v, AEnv.MapsTo a (QT m) env -> 
+             AEnv.MapsTo x (QT n) env -> 0 <= v < n -> 
+           type_bexp env (BEq (BA a) ((Num b)) x (Num v)) (QT (m+1),((a,BNum 0,BNum m)::[(x,BNum v,BNum (S v))]))
+   | beq_type_2 : forall env a b x m n v, AEnv.MapsTo a (QT m) env -> 
+             AEnv.MapsTo x (QT n) env -> 0 <= v < n -> 
+           type_bexp env (BEq ((Num b)) (BA a) x (Num v)) (QT (m+1),((a,BNum 0,BNum m)::[(x,BNum v,BNum (S v))]))
+   | blt_type_1 : forall env a b x m n v, AEnv.MapsTo a (QT m) env -> 
+             AEnv.MapsTo x (QT n) env -> 0 <= v < n -> 
+           type_bexp env (BLt (BA a) ((Num b)) x (Num v)) (QT (m+1),((a,BNum 0,BNum m)::[(x,BNum v,BNum (S v))]))
+   | blt_type_2 : forall env a b x m n v, AEnv.MapsTo a (QT m) env -> 
+             AEnv.MapsTo x (QT n) env -> 0 <= v < n -> 
+           type_bexp env (BLt ((Num b)) (BA a) x (Num v)) (QT (m+1),((a,BNum 0,BNum m)::[(x,BNum v,BNum (S v))]))
    | btest_type : forall env x n v, AEnv.MapsTo x (QT n) env -> 0 <= v < n 
             -> type_bexp env (BTest x (Num v)) (QT 1,[((x,BNum v,BNum (S v)))])
    | bneg_type : forall env b t, type_bexp env b t -> type_bexp env (BNeg b) t.
@@ -145,6 +152,7 @@ Fixpoint freeVarsPExp (p:pexp) :=
               | If b e => freeVarsBexp b ++ freeVarsPExp e
               | For x l h b e => freeVarsAExp l ++ freeVarsAExp h 
                                     ++ list_sub (freeVarsBexp b) x ++ list_sub (freeVarsPExp e) x
+              | PSeq e1 e2 => freeVarsPExp e1 ++ freeVarsPExp e2
               | _ => nil
    end.
 
@@ -350,7 +358,7 @@ Proof.
   intros. remember (Mo MT, nil) as t.
   induction H1; simpl in *.
   destruct b. inv Heqt. inv H1.
-  unfold meet_ktype in *. destruct t1. subst. destruct a.
+  unfold meet_ktype,meet_atype in *. destruct t1. destruct t2. destruct a. inv H4.
   (* case 1 *)
   apply kind_aexp_class_empty in H5 as X1. subst.
   apply kind_aexp_class_empty in H7 as X2; subst.
@@ -376,10 +384,19 @@ Proof.
   unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
   intros. apply (H0 x0); try easy.
   apply in_app_iff. right. easy.
-  apply kind_env_stack_exist with (s := s) in H5 as X3; try easy. destruct X3. destruct x0.
+  apply kind_env_stack_exist with (s := s) in H5; try easy. destruct H5. destruct x0.
+  destruct a0.
+  apply kind_env_stack_exist_ct in H7 as X3; try easy. destruct X3.
+  exists (n =? x0). apply ceq_sem_1 with (r1 := r); try easy.
   apply kind_env_stack_exist with (s := s) in H7; try easy. destruct H7. destruct x0.
-  exists (n =? n0). apply ceq_sem_3 with (r1 := r) (r2 := r0); try easy. right. easy. right. easy.
-  destruct t2. inv H4. inv H4. inv Heqt.
+  exists (n =? n0). apply ceq_sem_3 with (r1 := r) (r2 := r0); try easy.
+  destruct a0. left. easy. right. easy. right. easy. inv H4.
+  (* case 3 *)
+  destruct t2. easy. easy. inv Heqt. inv H1.
+  unfold meet_ktype,meet_atype in *. destruct t1. destruct t2. destruct a. inv H4.
+  (* case 31 *)
+  apply kind_aexp_class_empty in H5 as X1. subst.
+  apply kind_aexp_class_empty in H7 as X2; subst.
   assert (freeVarsNotCAExp env x).
   unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
   intros. apply (H0 x0); try easy.
@@ -388,22 +405,37 @@ Proof.
   unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
   intros. apply (H0 x0); try easy.
   apply in_app_iff. right. easy.
-  (* case 3 *)
-  inv H1.
-  unfold meet_ktype in *. destruct t1. subst. destruct a.
-  apply kind_aexp_class_empty in H7 as X1. subst.
-  apply kind_aexp_class_empty in H9 as X2; subst.
-  apply kind_env_stack_exist_ct in H7 as X3; try easy. destruct X3.
-  apply kind_env_stack_exist with (s := s) in H9; try easy. destruct H9. destruct x1.
+  apply kind_env_stack_exist_ct in H5 as X3; try easy. destruct X3.
+  apply kind_env_stack_exist with (s := s) in H7; try easy. destruct H7. destruct x1.
   exists (x0 <? n). apply clt_sem_2 with (r2 := r); try easy. right. easy. left. easy.
-  (* case 4 *)
-  apply kind_aexp_class_empty in H7 as X1. subst.
-  apply kind_aexp_class_empty in H9 as X2; subst.
+  destruct a0.
+  apply kind_aexp_class_empty in H5 as X1. subst.
+  apply kind_aexp_class_empty in H7 as X2; subst.
+  assert (freeVarsNotCAExp env x).
+  unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
+  intros. apply (H0 x0); try easy.
+  apply in_app_iff. left. easy.
+  assert (freeVarsNotCAExp env y).
+  unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
+  intros. apply (H0 x0); try easy.
+  apply in_app_iff. right. easy.
+  apply kind_env_stack_exist with (s := s) in H5; try easy. destruct H5. destruct x0.
+  apply kind_env_stack_exist_ct in H7 as X3; try easy. destruct X3.
+  exists (n <? x0). apply clt_sem_1 with (r1 := r); try easy. left. easy. right. easy.
+  apply kind_aexp_class_empty in H5 as X1. subst.
+  apply kind_aexp_class_empty in H7 as X2; subst.
+  assert (freeVarsNotCAExp env x).
+  unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
+  intros. apply (H0 x0); try easy.
+  apply in_app_iff. left. easy.
+  assert (freeVarsNotCAExp env y).
+  unfold freeVarsNotCBExp,freeVarsNotCAExp in *; simpl in *.
+  intros. apply (H0 x0); try easy.
+  apply in_app_iff. right. easy.
+  apply kind_env_stack_exist with (s := s) in H5 as X3; try easy. destruct X3. destruct x0.
   apply kind_env_stack_exist with (s := s) in H7; try easy. destruct H7. destruct x0.
-  apply kind_env_stack_exist with (s := s) in H9; try easy. destruct H9. destruct x0.
   exists (n <? n0). apply clt_sem_3 with (r1 := r) (r2 := r0); try easy. right. easy. right. easy.
-  destruct t2. inv H6. inv H6. inv Heqt. inv Heqt.
-  inv Heqt.
+  easy. destruct t2. easy. easy. inv Heqt. inv Heqt. inv Heqt. inv Heqt. inv Heqt. subst.
   apply IHtype_bexp in H0; try easy. destruct H0.
   exists (negb x). constructor. easy.
 Qed.

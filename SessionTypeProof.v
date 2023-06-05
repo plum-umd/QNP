@@ -268,6 +268,12 @@ Proof.
   inv H. constructor; try easy. apply IHl. easy.
 Qed.
 
+Lemma simple_ses_app_r: forall l l', simple_ses (l++l') -> simple_ses l'.
+Proof.
+  intros. induction l; try easy. 
+  simpl in *. inv H. apply IHl. easy.
+Qed.
+
 Lemma qstate_wt_eq : forall r S S', @qstate_wt S -> @state_equiv r S S' -> @qstate_wt S'.
 Proof.
   intros.
@@ -321,12 +327,98 @@ Proof.
       reflexivity.
 Qed.
 
+Lemma type_cbexp_class: forall env b t, type_cbexp env b t -> exists t', t = Mo t'.
+Proof.
+  intros. induction H. unfold is_class_type in *.
+  destruct t1 eqn:eq1; try easy. destruct a0. destruct t2 eqn:eq2; try easy.
+  destruct a0. exists CT; easy.
+  exists MT. easy.
+  destruct t2 eqn:eq2; try easy. destruct a0.
+  exists MT. unfold meet_ktype in *. easy. exists MT. easy.
+  unfold is_class_type in *.
+  destruct t1 eqn:eq1; try easy. destruct a0. destruct t2 eqn:eq2; try easy.
+  destruct a0. exists CT; easy.
+  exists MT. easy.
+  destruct t2 eqn:eq2; try easy. destruct a0.
+  exists MT. unfold meet_ktype in *. easy. exists MT. easy.
+Qed.
+
+Lemma eval_bexp_exists : forall aenv n b s l l1 m f, type_bexp aenv b (QT n, l) 
+   -> exists f', @eval_bexp ((l++l1, Cval m f)::s) b ((l++l1, Cval m f')::s).
+Proof.
+  intros. remember (QT n, l) as S. induction H.
+  apply type_cbexp_class in H. destruct H; subst. inv HeqS.
+  inv HeqS.
+  exists (eval_eq_bool f m m0 b). apply beq_sem_1.
+  inv HeqS.
+  exists (eval_eq_bool f m m0 b). apply beq_sem_2.
+  inv HeqS.
+  exists (eval_lt_bool f m m0 b). apply blt_sem_1.
+  inv HeqS.
+  exists (eval_rlt_bool f m m0 b). apply blt_sem_2.
+  inv HeqS.
+  exists f. apply btext_sem.
+Admitted.
+
+Lemma simple_ses_get_core_exists : forall l, simple_ses l -> exists l', get_core_ses l = Some l'.
+Proof.
+  induction l; intros;simpl in *.
+  exists nil. easy.
+  inv H. apply IHl in H4. unfold simple_bound in *.
+  destruct x; try easy. destruct y; try easy.
+  destruct H4. exists ((a0, n, n0) :: x). rewrite H. easy.
+Qed.
+
+Lemma simple_ses_len_exists : forall l, simple_ses l -> exists  n, ses_len l = Some n.
+Proof.
+  intros. apply simple_ses_get_core_exists in H. destruct H.
+  unfold ses_len in *. rewrite H. exists (ses_len_aux x). easy.
+Qed.
+
+Lemma type_bexp_gt : forall env b n l, type_bexp env b (QT n, l) -> n > 0.
+Proof.
+  intros. remember (QT n, l) as t. induction H; try easy.
+  apply type_cbexp_class in H. destruct H; subst. inv Heqt. inv Heqt. lia.
+  inv Heqt. lia. inv Heqt. lia. inv Heqt. lia. inv Heqt. lia.
+  subst. apply IHtype_bexp. easy.
+Qed.
+
+Axiom fun_all_equal : forall (f c: rz_val), f = c \/ f <> c.
+
+Lemma assem_elem_exists: forall m m' c f, exists l, assem_elem m m' c f l.
+Proof.
+  induction m;intros;simpl in *.
+  exists nil. apply assem_elem_0.
+  specialize (fun_all_equal (cut_n (snd (f m)) m') c) as X1.
+  destruct X1.
+  destruct (IHm m' c f).
+  exists (m::x). apply assem_elem_st; try easy.
+  destruct (IHm m' c f).
+  exists x. apply assem_elem_sf; try easy.
+Qed.
+
+
+Lemma assem_bool_exists: forall m m' n f' fc, exists fa, assem_bool m m' n f' fc fa.
+Proof.
+  induction m;intros;simpl in *.
+  exists (0,fun _ => (C0,allfalse)). apply assem_bool_0.
+  destruct (IHm m' n f' fc). destruct x.
+  destruct (assem_elem_exists m' n (cut_n (snd (f' m)) n) fc).
+  destruct (Nat.eq_dec (length x) 0). apply length_zero_iff_nil in e. subst.
+  exists (n0+1, update p n0 (f' m)).
+  apply assem_bool_sf; try easy.
+  assert (x <> nil). intros R.
+  apply length_zero_iff_nil in R. lia.
+  exists (assem_list n0 x fc p).
+  apply assem_bool_st; try easy.
+Qed.
+
 Lemma type_soundness : 
     forall e rmax t aenv s tenv tenv', @env_state_eq tenv (snd s) -> kind_env_stack aenv (fst s) ->
       @session_system rmax t aenv tenv e tenv' -> freeVarsNotCPExp aenv e -> @qstate_wt (snd s) -> simple_tenv tenv ->
           simple_tenv tenv' /\
           (exists s', @qfor_sem rmax aenv s e s'
-              /\ @qstate_wt (snd s') /\ env_state_eq tenv' (snd s')).
+             /\ kind_env_stack aenv (fst s') /\ @qstate_wt (snd s') /\ env_state_eq tenv' (snd s')).
 Proof.
   intros.
   generalize dependent s.
@@ -378,7 +470,13 @@ Proof.
   specialize (IHsession_system H3 H9 H6).
   destruct IHsession_system as [X2 [s' [X3 [X4 X5]]]].
   split. easy.
-  exists s'. split. apply let_sem_m with (n := x0); try easy. easy.
+  exists s'. split. apply let_sem_m with (n := x0); try easy.
+  split. 
+  unfold kind_env_stack in *. intros.
+  bdestruct (x1 =? x); subst.
+  apply X4 with (t := MT). apply AEnv.add_1. easy.
+  apply X4 with (t := t). apply AEnv.add_2. lia. easy.
+  easy.
   unfold freeVarsNotCAExp, freeVarsNotCPExp in *.
   intros. simpl in *. apply H2 with (x0 := x0); try easy.
   apply in_app_iff. left. easy.
@@ -421,7 +519,13 @@ Proof.
   apply H6 with (s := s0) (bl0 := bl0). right. easy.
   destruct (IHsession_system H8 H9 H10) as [Y1 [sa [Y2 [Y3 Y4]]]].
   split. easy.
-  exists sa. split. apply let_sem_q with (r := ra) (v := va) (va' := (Cval na p)); try easy. easy.
+  exists sa. split. apply let_sem_q with (r := ra) (v := va) (va' := (Cval na p)); try easy.
+  split.
+  unfold kind_env_stack in *; intros; simpl in *.
+  bdestruct (x0 =? x); subst.
+  apply Y3 with (t := MT). apply AEnv.add_1. easy.
+  apply Y3 with (t := t). apply AEnv.add_2. lia. easy.
+  easy.
  -
   destruct s; simpl in *.
   inv H1. inv H11.
@@ -435,7 +539,7 @@ Proof.
   apply simple_ses_app_l in H1 as X1.
   destruct (@eval_nor_exists rmax env l n p r e H X1 H0) as [ba X2]. destruct ba.
   exists (s, (l ++ l', Nval c r0) :: l2).
-  split. apply appu_sem_nor; try easy.
+  split. apply appu_sem_nor; try easy. split. easy.
   split.
   unfold qstate_wt in *.
   intros. simpl in *. destruct H6. inv H6. eapply H5. right. apply H6.
@@ -454,107 +558,127 @@ Proof.
   Check eval_ch_exists.
   destruct (@eval_ch_exists rmax m env l n bl e H X1 H0) as [ba X2].
   exists (s, (l ++ l', Cval m ba) :: l2).
-  split. apply appu_sem_ch; try easy.
+  split. apply appu_sem_ch; try easy. split. easy.
   split.
   unfold qstate_wt in *.
   intros. simpl in *. destruct H6. inv H6. eapply H5. left. easy.
   eapply H5. right. apply H6.
   constructor; try easy. constructor.
  - 
-  
-  
-
- (* Let rule with measure. 
-  right. 
-  apply (@pick_mea_exists rmax T s) in H5 as X1; try easy.
-  destruct X1 as [r [cv X1]].
-  apply mask_state_exists in X1 as X2. destruct X2 as [Sa X2].
-  exists (AEnv.add x (Mo MT) env).
-  exists e.
-  exists (update_cval Sa x (r,cv)).
-  eapply let_sem_q; eauto.
-  right.
-  apply find_type_ch in H6.
-  exists env. exists PSKIP.
-  apply find_type_state_1  with (r:= rmax) (M := fst s) (S := (snd s)) in H6 as X1; try easy.
-  destruct X1 as [a [X1 X2]].
-  inv X2. apply find_type_simple in H6 as X2; try easy.
-  apply simple_ses_app_l in X2.
-  apply (@eval_ch_exists rmax m env l n bl e) in H1 as X3; try easy.
-  destruct X3 as [ba X3].
-  apply find_state_up_good_1 with (v' := (Cval m ba)) in X1 as X4; try easy.
-  destruct X4 as [S' X4].
-  exists S'.
-  assert ((fst s, snd s) = s). destruct s. simpl; easy.
-  rewrite H7 in *.
-  eapply appu_sem_ch. apply X1. apply X3. apply X4.
-  right.
-  specialize (find_type_state_1 ([a]) nil TNor rmax T (fst s) (snd s) H) as X1.
-  rewrite app_nil_r in X1.
-  destruct (X1 H6) as [a0 [X2 X3]].
-  inv X3.
-  apply find_state_up_good with (v' := (Hval (fun i => (update allfalse 0 (r i))))) in X2 as X4; try easy.
-  destruct X4 as [S' X4].
-  exists env,PSKIP,S'.
-  rewrite <- surjective_pairing in *.
-  eapply appsu_sem_h_nor. apply H5. apply X2. easy.
-  right.
-  specialize (find_type_state_1 ([a]) nil THad rmax T (fst s) (snd s) H) as X1.
-  rewrite app_nil_r in X1.
-  destruct (X1 H6) as [a0 [X2 X3]].
-  inv X3.
-  apply find_state_up_good with (v' := (Nval C1 (fun j => bl j 0))) in X2 as X4; try easy.
-  destruct X4 as [S' X4].
-  exists env,PSKIP,S'.
-  rewrite <- surjective_pairing in *.
-  eapply appsu_sem_h_had. apply H5. apply X2. easy.
-  right.
-  exists env,e,s. apply if_sem_ct; try easy.
-  right.
-  exists env,PSKIP,s. apply if_sem_cf; try easy.
-  right.
-  apply kind_env_stack_exist_bexp with (s := (fst s)) in H1 as X1; try easy.
-  destruct X1 as [bv X1]. destruct bv.
-  exists env,e,s. destruct s. apply if_sem_mt; try easy.
-  exists env,PSKIP,s. destruct s. apply if_sem_mf; try easy.
-  unfold freeVarsNotCBExp,freeVarsNotCPExp in *; simpl in *.
-  intros. apply (H2 x); try easy.
-  apply in_app_iff. left. easy.
-  right.  
+  split. unfold simple_tenv in *. intros.
+  simpl in *. destruct H6. inv H6. specialize (H4 ([a]) TNor). apply H4. left. easy.
+  eapply H4. right. apply H6.
+  destruct s; simpl in *. inv H1.
+  inv H11.
+  exists (s,([a],(Hval (fun i => (update allfalse 0 (r i)))) )::l2).
+  split. apply appsu_sem_h_nor; try easy.
+  split.
+  easy.
+  split.
+  simpl in *. unfold qstate_wt in *.
+  intros. inv H1. inv H6. eapply H5. simpl. right. apply H6. 
+  constructor; try easy. constructor.
+ -
+  split. unfold simple_tenv in *. intros.
+  simpl in *. destruct H6. inv H6. specialize (H4 ([a]) THad). apply H4. left. easy.
+  eapply H4. right. apply H6.
+  destruct s; simpl in *. inv H1.
+  inv H11.
+  exists (s,([a],(Nval C1 (fun j => bl j 0)))::l2).
+  split. apply appsu_sem_h_had; try easy.
+  split. easy. split.
+  simpl in *. unfold qstate_wt in *.
+  intros. inv H1. inv H6. eapply H5. simpl. right. apply H6. 
+  constructor; try easy. constructor.
+ -
   assert (freeVarsNotCPExp env e).
-  unfold freeVarsNotCPExp in *. intros.
-  apply (H2 x); try easy. simpl in *.
+  unfold freeVarsNotCPExp in *; simpl in *.
+  intros. apply H2 with (x := x); try easy.
   apply in_app_iff. right. easy.
-  specialize (IHsession_system H H0 H7 H4).
-  assert (e = PSKIP \/ e <> PSKIP).
-  destruct e; try (right; easy).
-  destruct H8;subst.
-  exists env, PSKIP. exists s. apply if_sem_q_2.
-  destruct IHsession_system; subst. easy.
-  destruct H9 as [env' [e' [s' X1]]].
-*)
+  destruct (IHsession_system H7 H4 s H3 H5 H6) as [X1 [sa [X2 [X3 X4]]]].
+  split. easy.
+  exists sa. split. apply if_sem_ct; try easy.
+  split. easy.
+  split. easy. easy.
+ -
+  assert (freeVarsNotCPExp env e).
+  unfold freeVarsNotCPExp in *; simpl in *.
+  intros. apply H2 with (x := x); try easy.
+  apply in_app_iff. right. easy.
+  split. easy.
+  exists s. split. apply if_sem_cf; try easy.
+  split. easy.
+  split. easy. easy.
+ -
+  destruct s; simpl in *. inv H3. inv H12.
+  apply eval_bexp_exists with (s := l2) (l1 := l1) (m := m) (f := bl) in H as X1.
+  destruct X1 as [f' X1].
+  apply find_env_simple with (l := l++l1) (l' := l++l1) (t := CH) in H4 as X2.
+  apply simple_ses_app_r in X2 as X3.
+  apply simple_ses_len_exists in X3 as X4. destruct X4 as [n' X4].
+  specialize (fch_mut_state 0 n n' (fst (grab_bool f' m n)) (snd (grab_bool f' m n))) as X5.
+  assert (freeVarsNotCPExp env e).
+  unfold freeVarsNotCPExp in *. intros; simpl in *.
+  eapply H2. apply in_app_iff. right. apply H3. easy.
+  assert (simple_tenv ((l1, CH) :: T)).
+  unfold simple_tenv in *. intros. simpl in *. destruct H7. inv H7.
+  apply simple_ses_app_r in X2. easy. apply H4 with (b := b0). right. easy.
+  specialize (IHsession_system H3 H7 
+   (s,(l1,(Cval (fst (grab_bool f' m n)) (mut_fch_state 0 n n' (snd (grab_bool f' m n)))))::l2)).
+  simpl in *.
+  assert (env_state_eq ((l1, CH) :: T)
+                     ((l1,
+                      Cval (fst (grab_bool f' m n))
+                        (mut_fch_state 0 n n' (snd (grab_bool f' m n)))) :: l2)).
+  constructor. easy. constructor.
+  assert (qstate_wt
+                     ((l1,
+                      Cval (fst (grab_bool f' m n))
+                        (mut_fch_state 0 n n' (snd (grab_bool f' m n)))) :: l2)).
+  unfold qstate_wt in *.
+  intros. simpl in *. destruct H9. inv H9.
+  apply grab_bool_gt. apply H6 with (s := l ++ s0) (bl0 := bl). left. easy.
+  apply type_bexp_gt in H. easy.
+  apply H6 with (s := s0) (bl0 := bl0). right. easy.
+  destruct (IHsession_system H8 H5 H9) as [X7 [s' [X8 [X9 [X10 X11]]]]].
+  destruct s'; simpl in *. inv X11. inv H16.
+  split. easy.
+  specialize (fch_mut_state 0 n' n m0 bl0) as X11.
+  destruct (assem_bool_exists m m0 n f' (mut_fch_state 0 n' n bl0)) as [fa X12].
+  exists (s0, (l++l1, Cval (fst fa) (snd fa))::l3).
+  split. eapply if_sem_q; try easy. apply H. apply X1. apply X4. apply X5.
+  apply X8. apply X11. apply X12. split. easy.
+  split.
+  unfold qstate_wt in *. intros; simpl in *.
+  destruct H10. inv H10.
+  specialize (H6 (l++l1) m bl).
+  assert ((l ++ l1, Cval m bl) = (l ++ l1, Cval m bl) \/ In (l ++ l1, Cval m bl) l2).
+  left. easy. apply H6 in H10.
+  specialize (X10 l1 m0 bl0).
+  assert ((l1, Cval m0 bl0) = (l1, Cval m0 bl0) \/ In (l1, Cval m0 bl0) l3).
+  left. easy. apply X10 in H12.
+  apply assem_bool_gt in X12 as X13; try easy.
+  eapply X10. right. apply H10.
+  constructor. easy. constructor.
+  constructor. apply ses_sub_prop with (b' := nil). simpl.
+  rewrite app_nil_r. apply ses_eq_id.
+- 
+  assert (freeVarsNotCPExp env e1).
+  unfold freeVarsNotCPExp in *. intros; simpl in *.
+  eapply H2. apply in_app_iff. left. apply H1.
+  easy.
+  assert (freeVarsNotCPExp env e2).
+  unfold freeVarsNotCPExp in *. intros; simpl in *.
+  eapply H2. apply in_app_iff. right. apply H5.
+  easy.
+  destruct (IHsession_system1 H1 H4 s H H0 H3) as [X1 [s' [X2 [X3 [X4 X5]]]]].
+  destruct (IHsession_system2 H5 X1 s' X5 X3 X4) as [Y1 [s'' [Y2 [Y3 [Y4 Y5]]]]].
+  split. easy.
+  exists s''. split. apply seq_sem with (s1 := s'); try easy.
+  easy.
+-
+
 Admitted.
-
-(*
-  | if_sem_q_1 : forall aenv l l1 n n' s s' sa sa' sac b e e' m m' f f' fc fc' fa,
-               type_bexp aenv b (QT n,l) -> @eval_bexp rmax aenv s b s' ->
-                @find_state rmax s' l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
-                 mut_state 0 n n' (Cval (fst (grab_bool f m n)) (snd (grab_bool f m n))) fc ->
-                @up_state rmax s' (l++l1) fc sa -> qfor_sem aenv sa e sa' e' -> e <> PSKIP ->
-                 @find_state rmax sa' l1 (Some (l1, fc')) -> mut_state 0 n' n fc' (Cval m' f') ->
-                assem_bool m m' n f f' fa -> @up_state rmax s (l++l1) (Cval (fst fa) (snd fa)) sac ->
-                    qfor_sem aenv s (If b e) sac (If b e')
-
-
-
-Lemma session_progress : 
-    forall e rmax t aenv s tenv tenv1 tenv', @env_state_eq tenv (snd s) ->
-      @env_equiv tenv tenv1 ->
-      @session_system rmax t aenv tenv1 e tenv' ->
-           e = PSKIP \/ (exists e' s1 s', @state_equiv rmax (snd s) s1 -> @qfor_sem rmax aenv (fst s,s1) e s' e').
-Proof. Admitted.
-
-*)
 
 
 

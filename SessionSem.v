@@ -291,27 +291,26 @@ Fixpoint grab_bool_elem (f:nat -> C * rz_val) (m i size:nat) (acc:nat -> C * rz_
    end.
 Definition grab_bool f m size := grab_bool_elem f m 0 size (fun _ => (C0,allfalse)).
 
-Inductive eval_bexp {rmax:nat} {env:aenv}: state -> bexp -> state -> Prop :=
-    | beq_sem_1 : forall s s' x y z i l n t m f, AEnv.MapsTo x (QT n) env -> AEnv.MapsTo z (QT t) env ->
-                @find_state rmax s ((x,BNum 0,BNum n)::[(z,BNum i,BNum (S i))]) 
-                                (Some (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f)) ->
-                   @up_state rmax s ((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l) (Cval m (eval_eq_bool f m n y)) s'
-                   -> eval_bexp s (BEq (BA x) ((Num y)) z (Num i)) s'
-    | beq_sem_2 : forall s s' x y z i l n t m f, AEnv.MapsTo x (QT n) env -> AEnv.MapsTo z (QT t) env ->
-                @find_state rmax s ((x,BNum 0,BNum n)::[(z,BNum i,BNum (S i))]) 
-                                (Some (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f)) ->
-                   @up_state rmax s ((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l) (Cval m (eval_eq_bool f m n y)) s'
-                   -> eval_bexp s (BEq ((Num y)) (BA x) z (Num i)) s'
-    | blt_sem_1 : forall s s' x y z i l n t m f, AEnv.MapsTo x (QT n) env -> AEnv.MapsTo z (QT t) env ->
-                @find_state rmax s ((x,BNum 0,BNum n)::[(z,BNum i,BNum (S i))]) 
-                                (Some (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f)) ->
-                   @up_state rmax s ((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l) (Cval m (eval_lt_bool f m n y)) s'
-                   -> eval_bexp s (BLt (BA x) ((Num y)) z (Num i)) s'
-    | blt_sem_2 : forall s s' x y z i l n t m f, AEnv.MapsTo x (QT n) env -> AEnv.MapsTo z (QT t) env ->
-                @find_state rmax s ((x,BNum 0,BNum n)::[(z,BNum i,BNum (S i))]) 
-                                (Some (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f)) ->
-                   @up_state rmax s ((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l) (Cval m (eval_rlt_bool f m n y)) s'
-                   -> eval_bexp s (BEq ((Num y)) (BA x) z (Num i)) s'
+Axiom grab_bool_gt : forall f m size, m > 0 -> size > 0 -> fst (grab_bool f m size) > 0.
+
+Inductive eval_bexp : qstate -> bexp -> qstate -> Prop :=
+    | beq_sem_1 : forall s x y z i l n m f, 
+                     eval_bexp (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l,Cval m f)::s)
+                                 (BEq (BA x) ((Num y)) z (Num i)) 
+                            (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l,Cval m (eval_eq_bool f m n y))::s)
+    | beq_sem_2 : forall s x y z i l n m f, 
+                eval_bexp (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l,Cval m f)::s)
+                                   (BEq ((Num y)) (BA x) z (Num i))
+                            (((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l,Cval m (eval_eq_bool f m n y))::s)
+    | blt_sem_1 : forall s x y z i l n m f, 
+                eval_bexp ((((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f)::s)
+                       (BLt (BA x) ((Num y)) z (Num i)) 
+                         ((((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),(Cval m (eval_lt_bool f m n y)))::s)
+
+    | blt_sem_2 : forall s x y z i l n m f, 
+                 eval_bexp ((((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),Cval m f)::s)
+                        (BLt ((Num y)) (BA x) z (Num i))
+                       ((((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),(Cval m (eval_rlt_bool f m n y)))::s)
     | btext_sem : forall s z i, eval_bexp s (BTest z (Num i)) s.
 
 Inductive assem_elem : nat -> nat -> rz_val -> (nat-> C * rz_val) -> list nat -> Prop :=
@@ -334,6 +333,8 @@ Inductive assem_bool : nat -> nat -> nat -> (nat -> C * rz_val) -> (nat -> C * r
   | assem_bool_st: forall n i l m' size f f' acc, assem_bool n m' size f f' (i,acc) ->
                assem_elem m' size (cut_n (snd (f n)) size) f' l -> l <> nil ->
                assem_bool (S n) m' size f f' (assem_list i l f' acc).
+
+Axiom assem_bool_gt : forall m m' n f fc fa, m > 0 -> m' > 0 -> assem_bool m m' n f fc fa -> (fst fa) > 0.
 
 Fixpoint subst_qstate (l:qstate) (x:var) (n:nat) :=
   match l with nil => nil
@@ -412,11 +413,19 @@ Inductive qfor_sem {rmax:nat}
                    -> qfor_sem aenv (W,([a],Hval b)::s) (AppSU (RH p)) (W,([a],(Nval C1 (fun j => b j 0)))::s)
   (* rewrite the tenv type for oqasm with respect to the ch list type. *)
 
-  | seq_sem: forall aenv e1 e2 s s1 s2, qfor_sem aenv s e1 s1 -> qfor_sem aenv s1 e1 s2 -> qfor_sem aenv s (PSeq e1 e2) s2
   | if_sem_ct : forall aenv s s' b e, simp_bexp b = Some true -> qfor_sem aenv s e s' -> qfor_sem aenv s (If b e) s'
   | if_sem_cf : forall aenv s b e, simp_bexp b = Some false -> qfor_sem aenv s (If b e) s
-  | if_sem_mt : forall aenv M s S b e, eval_cbexp M b true -> qfor_sem aenv (M,s) (If b e) S -> qfor_sem aenv (M,s) (If b e) S
+(*
+  | if_sem_mt : forall aenv M s S b e, eval_cbexp M b true -> qfor_sem aenv (M,s) e S -> qfor_sem aenv (M,s) (If b e) S
   | if_sem_mf : forall aenv M s b e, eval_cbexp M b false -> qfor_sem aenv (M,s) (If b e) (M,s)
+*)
+  | if_sem_q : forall aenv W W' l l1 n n' s s' b e m m' f f' fc fc' fc'' fa,
+     type_bexp aenv b (QT n,l) -> @eval_bexp ((l++l1, Cval m f)::s) b ((l++l1, Cval m f')::s) -> ses_len l1 = Some n' ->
+     mut_state 0 n n' (Cval (fst (grab_bool f' m n)) (snd (grab_bool f' m n))) fc ->
+     qfor_sem aenv (W,(l1,fc)::s) e (W',(l1,fc')::s') -> mut_state 0 n' n fc' (Cval m' fc'') ->
+     assem_bool m m' n f' fc'' fa ->
+     qfor_sem aenv (W,(l++l1, Cval m f)::s) (If b e) (W',(l++l1, Cval (fst fa) (snd fa))::s')
+(*
   | if_sem_q : forall aenv l l1 n n' s s' sa sa' sac b e m m' f f' fc fc' fa,
                type_bexp aenv b (QT n,l) -> @eval_bexp rmax aenv s b s' ->
                 @find_state rmax s' l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
@@ -425,14 +434,17 @@ Inductive qfor_sem {rmax:nat}
                  @find_state rmax sa' l1 (Some (l1, fc')) -> mut_state 0 n' n fc' (Cval m' f') ->
                 assem_bool m m' n f f' fa -> @up_state rmax s (l++l1) (Cval (fst fa) (snd fa)) sac ->
                     qfor_sem aenv s (If b e) sac
+*)
+
+ (* | diffuse_a: forall aenv s s' x n l n' l1 m f m' acc, type_vari aenv x (QT n,l) ->
+                @find_state rmax s l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
+                dis_sem n n' m m f nil (m',acc) ->  @up_state rmax s (l++l1) (Cval m' acc) s' ->
+                qfor_sem aenv s (Diffuse x) s' *)
+  | seq_sem: forall aenv e1 e2 s s1 s2, qfor_sem aenv s e1 s1 -> qfor_sem aenv s1 e2 s2 -> qfor_sem aenv s (PSeq e1 e2) s2
   | for_0 : forall aenv s x l h b p, h <= l -> qfor_sem aenv s (For x (Num l) (Num h) b p) s
   | for_s : forall aenv s s' s'' x l h b p, l < h -> qfor_sem aenv s (If b p) s'
                -> qfor_sem aenv s' (For x (Num (l+1)) (Num h) b p) s'' ->
-                  qfor_sem aenv s (For x (Num l) (Num h) b p) s''
-  | diffuse_a: forall aenv s s' x n l n' l1 m f m' acc, type_vari aenv x (QT n,l) ->
-                @find_state rmax s l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
-                dis_sem n n' m m f nil (m',acc) ->  @up_state rmax s (l++l1) (Cval m' acc) s' ->
-                qfor_sem aenv s (Diffuse x) s'.
+                  qfor_sem aenv s (For x (Num l) (Num h) b p) s''.
 
 
 (*small step semantics. *)
@@ -466,15 +478,7 @@ Inductive step {rmax:nat}
   | if_step_cf : forall aenv s b e, simp_bexp b = Some false -> step aenv s (If b e) s PSKIP
   | if_step_mt : forall aenv M s s' b e e', eval_cbexp M b true -> step aenv (M,s) (If b e) s' e' -> step aenv (M,s) (If b e) s' (If b e')
   | if_step_mf : forall aenv M s b e, eval_cbexp M b false -> step aenv (M,s) (If b e) (M,s) PSKIP
-  | if_step_q_1 : forall aenv l l1 n n' s s' sa sa' sac b e e' m m' f f' fc fc' fa,
-               type_bexp aenv b (QT n,l) -> @eval_bexp rmax aenv s b s' ->
-                @find_state rmax s' l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
-                 mut_state 0 n n' (Cval (fst (grab_bool f m n)) (snd (grab_bool f m n))) fc ->
-                @up_state rmax s' (l++l1) fc sa -> step aenv sa e sa' e' -> e <> PSKIP ->
-                 @find_state rmax sa' l1 (Some (l1, fc')) -> mut_state 0 n' n fc' (Cval m' f') ->
-                assem_bool m m' n f f' fa -> @up_state rmax s (l++l1) (Cval (fst fa) (snd fa)) sac ->
-                    step aenv s (If b e) sac (If b e')
-  | if_step_q_2 : forall aenv s b, step aenv s (If b PSKIP) s PSKIP
+  | if_step_q : forall aenv s b, step aenv s (If b PSKIP) s PSKIP
   | for_step_0 : forall aenv s x l h b p, h <= l -> step aenv s (For x (Num l) (Num h) b p) s PSKIP
   | for_step_s : forall aenv s x l h b p, l < h -> 
           step aenv s (For x (Num l) (Num h) b p) s (PSeq (If b p) (For x (Num (l+1)) (Num h) b p))

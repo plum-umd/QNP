@@ -45,9 +45,10 @@ Fixpoint is_ses_empty (s:session) : Prop :=
               | (x,a,b)::xs => (a = b) /\ is_ses_empty xs
    end. 
 
+Axiom ses_eq_id: forall l, ses_eq l l.
 
 Inductive ses_sub : session -> session -> Prop :=
-   ses_sub_prop : forall a b b', ses_eq b (a++b') -> ses_sub a b.
+   ses_sub_prop : forall a b b', ses_eq (a++b') b -> ses_sub a b.
 
 Definition in_range (r1 r2:range) :=
   match r1 with (x,BNum a,BNum b) => 

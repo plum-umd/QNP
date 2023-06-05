@@ -239,15 +239,22 @@ Inductive session_system {rmax:nat}
                 session_system q env T e T' -> session_system q env T (If b e) T'
     | qif_ses_cf: forall q env T b e, type_bexp env b (Mo CT,nil) -> simp_bexp b = (Some false) ->
                 session_system q env T (If b e) T
+(*
     | qif_ses_m: forall env T b e T', type_bexp env b (Mo MT,nil) -> 
                 session_system CT env T e T' -> session_system CT env T (If b e) T'
-    | qif_ses_ch: forall q env T b n l l1 e t, type_bexp env b (QT n,l) -> 
-                session_system MT env T e ([(l1,t)]) -> ses_dis (l++l1) -> session_system q env T (If b e) ([(l++l1,CH)])
+*)
+    | qif_ses_ch: forall q env T b n l l1 e, type_bexp env b (QT n,l) -> fv_pexp env e l1 ->
+                session_system MT env ((l1,CH)::T) e ((l1,CH)::T) -> session_system q env ((l++l1,CH)::T) (If b e) ((l++l1,CH)::T)
+
+ (*   | dif_ses_ch: forall q env T p n l l' t, type_vari env p (QT n,l) -> find_type T l (Some (l',t)) ->
+                 session_system q env T (Diffuse p) ([(l',CH)]) *)
+    | pseq_ses_type: forall q env T e1 e2 T1 T2, session_system q env T e1 T1 ->
+                       session_system q env T1 e2 T2 ->
+                       session_system q env T (PSeq e1 e2) T2
     | qfor_ses_ch: forall q env T i l h b e, 
         (forall v, l <= v < h -> session_system q env (subst_type_map T i v) (If (subst_bexp b i v) (subst_pexp e i v)) (subst_type_map T i (v+1)))
-              -> session_system q env (subst_type_map T i l) (For i (Num l) (Num h) b e) (subst_type_map T i h)
-    | dif_ses_ch: forall q env T p n l l' t, type_vari env p (QT n,l) -> find_type T l (Some (l',t)) ->
-                 session_system q env T (Diffuse p) ([(l',CH)])
-    | pseq_ses_type: forall q env T e1 e2 T1 T2 T3 T4, session_system q env T e1 T1 -> up_types T T1 T2 ->
-                       session_system q env T2 e2 T3 -> add_to_types T3 T1 T4 ->
-                       session_system q env T (PSeq e1 e2) T4.
+              -> session_system q env (subst_type_map T i l) (For i (Num l) (Num h) b e) (subst_type_map T i h).
+
+
+
+
