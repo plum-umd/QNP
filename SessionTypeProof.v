@@ -413,6 +413,35 @@ Proof.
   apply assem_bool_st; try easy.
 Qed.
 
+Lemma simple_subst_ses: forall s i l, simple_ses (subst_session s i l) -> (forall v, simple_ses (subst_session s i v)).
+Proof.
+  intros.
+  induction s. simpl in *. easy.
+  simpl in *. inv H.
+  unfold subst_range in *. destruct a. destruct p. inv H0.
+  constructor.
+  unfold simple_bound in *.
+  unfold subst_bound in *.
+  destruct b0. bdestruct (i =? v1); easy. easy.
+  unfold simple_bound,subst_bound in *.
+  destruct b. bdestruct (i =? v1); easy. easy.
+  apply IHs. easy.
+Qed.
+
+Lemma simple_tenv_subst_right: forall T i l,
+  simple_tenv (subst_type_map T i l) -> (forall v, simple_tenv (subst_type_map T i v)).
+Proof.
+  intros. unfold simple_tenv in *.
+  intros. induction T; simpl in *. easy.
+  destruct a0. simpl in *. destruct H0. inv H0.
+  specialize (H (subst_session s i l) b). 
+  assert ((subst_session s i l, b) = (subst_session s i l, b) \/
+    In (subst_session s i l, b) (subst_type_map T i l)). left. easy.
+  apply H in H0. eapply simple_subst_ses. apply H0.
+  apply IHT. intros. apply H with (b := b0). right. easy.
+  easy.
+Qed.
+
 Lemma type_soundness : 
     forall e rmax t aenv s tenv tenv', @env_state_eq tenv (snd s) -> kind_env_stack aenv (fst s) ->
       @session_system rmax t aenv tenv e tenv' -> freeVarsNotCPExp aenv e -> @qstate_wt (snd s) -> simple_tenv tenv ->
@@ -676,9 +705,59 @@ Proof.
   split. easy.
   exists s''. split. apply seq_sem with (s1 := s'); try easy.
   easy.
--
-
-Admitted.
-
+- split. easy.
+  exists s.
+  split. constructor. assert (h-l = 0) by lia. rewrite H5 in *. constructor.
+  split. easy. split. easy. easy.
+- split. eapply simple_tenv_subst_right. apply H4.
+  remember (h-l) as na.
+  assert (h=l+na) by lia. rewrite H7 in *. clear H7. clear h.
+  assert (exists s' : state,
+          ForallA rmax (@qfor_sem) na env s l i b e s' /\
+          kind_env_stack env (fst s') /\
+          qstate_wt (snd s') /\ env_state_eq (subst_type_map T i (l+na)) (snd s')).
+  assert (forall v, freeVarsNotCPExp env (If (subst_bexp b i v) (subst_pexp e i v))) as Y1.
+  intros.
+  unfold freeVarsNotCPExp in *.
+  intros;simpl in *. apply H2 with (x := x); try easy.
+  apply in_app_iff in H7. destruct H7. apply freeVarBexp_subst in H7. 
+  apply in_app_iff. left. easy.
+  apply freeVarPExp_subst in H7.
+  apply in_app_iff. right. easy.
+  clear H. clear H2. clear Heqna.
+  induction na;intros;simpl in *.
+  exists s. split. constructor. split. easy. split. easy.
+  replace (l+0) with l by lia. easy.
+  assert (forall v : nat,
+        l <= v < l + na ->
+        @session_system rmax q env (subst_type_map T i v) (If (subst_bexp b i v) (subst_pexp e i v))
+          (subst_type_map T i (v + 1))).
+  intros. apply H0. lia.
+  assert (forall v : nat,
+        l <= v < l + na ->
+        freeVarsNotCPExp env (If (subst_bexp b i v) (subst_pexp e i v)) ->
+        simple_tenv (subst_type_map T i v) ->
+        forall s : stack * qstate,
+        env_state_eq (subst_type_map T i v) (snd s) ->
+        kind_env_stack env (fst s) ->
+        qstate_wt (snd s) ->
+        simple_tenv (subst_type_map T i (v + 1)) /\
+        (exists s' : state,
+           @qfor_sem rmax env s (If (subst_bexp b i v) (subst_pexp e i v)) s' /\
+           kind_env_stack env (fst s') /\
+           qstate_wt (snd s') /\ env_state_eq (subst_type_map T i (v + 1)) (snd s'))).
+  intros. apply H1; try lia; try easy.
+  destruct (IHna H H2) as [sa [X1 [X2 [X3 X4]]]].
+  assert (l <= l+ na < l + S na) by lia.
+  specialize (Y1 (l+na)).
+  apply simple_tenv_subst_right with (v := (l+na)) in H4 as Y2.
+  destruct (H1 (l+na) H7 Y1 Y2 sa X4 X2 X3) as [Y3 [sb [Y4 [Y5 [Y6 Y7]]]]].
+  exists sb. split. apply ForallA_cons with (s' := sa); try easy.
+  split. easy. split. easy.
+  replace ((l + na + 1)) with (l + S na) in * by lia. easy.
+  destruct H7 as [sa [Y1 [Y2 [Y3 Y4]]]].
+  exists sa. split. constructor.
+  replace (l + na - l) with na by lia. easy. easy.
+Qed.
 
 

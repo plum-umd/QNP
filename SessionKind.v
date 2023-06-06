@@ -440,3 +440,68 @@ Proof.
   exists (negb x). constructor. easy.
 Qed.
 
+Lemma subst_aexp_eq_var: forall b i v x, subst_aexp b i v = BA x -> b = BA x /\ x <> i.
+Proof.
+  induction b; intros;simpl in *; try easy.
+  bdestruct (i =? x); subst. inv H. split. easy. intros R. subst. inv H. easy.
+  destruct (subst_aexp b1 i v) eqn:eq1. inv H.
+  destruct (subst_aexp b2 i v) eqn:eq2; try inv H. inv H. inv H. inv H.
+  destruct (subst_aexp b1 i v) eqn:eq1; try inv H.
+  destruct (subst_aexp b2 i v) eqn:eq2; try inv H1. 
+Qed.
+
+Lemma in_list_sub_if: forall l x i, In x (list_sub l i) -> In x l.
+Proof.
+  induction l;intros;simpl in *; try easy.
+  bdestruct (a =? i). subst. apply IHl in H. right. easy.
+  simpl in *. destruct H; subst. left. easy.
+  apply IHl in H. right. easy.
+Qed.
+
+Lemma in_list_sub_app_iff: forall l1 l2 x i, In x (list_sub (l1++l2) i)
+    <-> In x (list_sub l1 i) \/ In x (list_sub l2 i).
+Proof.
+Admitted.
+
+Lemma freeVarAExp_subst: forall b i v x, In x (freeVarsAExp (subst_aexp b i v))
+        -> In x (list_sub (freeVarsAExp b) i).
+Proof.
+  induction b;intros;simpl in *; try easy.
+  bdestruct (x=?i). rewrite H0 in *. bdestruct (i=?i). simpl in *. easy. lia.
+  bdestruct (i =? x). rewrite H1 in H0. easy. simpl in *. easy.
+  destruct (subst_aexp b1 i v) eqn:eq1. simpl in *. destruct H; subst.
+  apply subst_aexp_eq_var in eq1. destruct eq1. subst.
+  apply list_sub_not_in. lia. simpl in *. left. easy.
+  apply subst_aexp_eq_var in eq1. destruct eq1. subst.
+  bdestruct (x =? i). subst.
+  simpl in *. bdestruct (x0 =? i). lia. simpl in *. right. apply IHb2 in H. easy.
+  apply list_sub_not_in. lia. simpl in *.
+  apply IHb2 in H. apply in_list_sub_if in H. right. easy.
+Admitted.
+
+Lemma freeVarCBExp_subst: forall b i v x, In x (freeVarsCBexp (subst_cbexp b i v))
+        -> In x (list_sub (freeVarsCBexp b) i).
+Proof.
+  induction b;intros;simpl in *; try easy.
+  apply in_app_iff in H. destruct H. apply freeVarAExp_subst in H.
+  apply in_list_sub_app_iff. left. easy.
+  apply freeVarAExp_subst in H. apply in_list_sub_app_iff. right. easy.
+  apply in_app_iff in H. destruct H. apply freeVarAExp_subst in H.
+  apply in_list_sub_app_iff. left. easy.
+  apply freeVarAExp_subst in H. apply in_list_sub_app_iff. right. easy.
+Qed.
+
+Lemma freeVarBexp_subst: forall b i v x, In x (freeVarsBexp (subst_bexp b i v))
+        -> In x (list_sub (freeVarsBexp b) i).
+Proof.
+  induction b;intros;simpl in *; try easy.
+  apply freeVarCBExp_subst in H. easy.
+Admitted.
+
+Lemma freeVarPExp_subst: forall b i v x, In x (freeVarsPExp (subst_pexp b i v))
+        -> In x (list_sub (freeVarsPExp b) i).
+Proof.
+  induction b;intros;simpl in *; try easy.
+Admitted.
+
+

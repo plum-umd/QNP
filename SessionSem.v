@@ -388,6 +388,13 @@ Inductive dis_sem : nat -> nat -> nat -> nat -> (nat -> C * rz_val) -> (list nat
           (fst acc+2^pos,assem_dis (trans_nat la f pos) (snd (f m)) (snd acc) (sum_c_list la f) pos (fst acc) (2^pos)).
 
 (*big step semantics. *)
+Inductive ForallA (rmax:nat) (P: nat -> aenv -> state -> pexp -> state -> Prop):
+             nat -> aenv -> state -> nat -> var -> bexp -> pexp -> state -> Prop :=
+      | ForallA_nil : forall env l x b e s, ForallA rmax P 0 env s l x b e s
+      | ForallA_cons : forall n env l x b e s s' s'', ForallA rmax P n env s l x b e s' ->
+              P rmax env s' (If (subst_bexp b x (l+n)) (subst_pexp e x (l+n))) s''
+             -> ForallA rmax P (S n) env s l x b e s''.
+
 Inductive qfor_sem {rmax:nat}
            : aenv -> state -> pexp -> state -> Prop :=
   | state_eq_sem: forall aenv e s f f' S, @state_equiv rmax f f' -> qfor_sem aenv (s,f') e S -> qfor_sem aenv (s,f) e S
@@ -441,10 +448,9 @@ Inductive qfor_sem {rmax:nat}
                 dis_sem n n' m m f nil (m',acc) ->  @up_state rmax s (l++l1) (Cval m' acc) s' ->
                 qfor_sem aenv s (Diffuse x) s' *)
   | seq_sem: forall aenv e1 e2 s s1 s2, qfor_sem aenv s e1 s1 -> qfor_sem aenv s1 e2 s2 -> qfor_sem aenv s (PSeq e1 e2) s2
-  | for_0 : forall aenv s x l h b p, h <= l -> qfor_sem aenv s (For x (Num l) (Num h) b p) s
-  | for_s : forall aenv s s' s'' x l h b p, l < h -> qfor_sem aenv s (If b p) s'
-               -> qfor_sem aenv s' (For x (Num (l+1)) (Num h) b p) s'' ->
-                  qfor_sem aenv s (For x (Num l) (Num h) b p) s''.
+  | for_sem: forall aenv s s' x l h b p, ForallA rmax (@qfor_sem) (h-l) aenv s l x b p s' 
+           -> qfor_sem aenv s (For x (Num l) (Num h) b p) s'.
+
 
 
 (*small step semantics. *)
@@ -482,10 +488,11 @@ Inductive step {rmax:nat}
   | for_step_0 : forall aenv s x l h b p, h <= l -> step aenv s (For x (Num l) (Num h) b p) s PSKIP
   | for_step_s : forall aenv s x l h b p, l < h -> 
           step aenv s (For x (Num l) (Num h) b p) s (PSeq (If b p) (For x (Num (l+1)) (Num h) b p))
-  | diffuse_step_a: forall aenv s s' x n l n' l1 m f m' acc, type_vari aenv x (QT n,l) ->
+ (* | diffuse_step_a: forall aenv s s' x n l n' l1 m f m' acc, type_vari aenv x (QT n,l) ->
                 @find_state rmax s l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
                 dis_sem n n' m m f nil (m',acc) ->  @up_state rmax s (l++l1) (Cval m' acc) s' ->
-                step aenv s (Diffuse x) s' PSKIP.
+                step aenv s (Diffuse x) s' PSKIP
+  *).
 
 
 (*

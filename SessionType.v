@@ -251,7 +251,8 @@ Inductive session_system {rmax:nat}
     | pseq_ses_type: forall q env T e1 e2 T1 T2, session_system q env T e1 T1 ->
                        session_system q env T1 e2 T2 ->
                        session_system q env T (PSeq e1 e2) T2
-    | qfor_ses_ch: forall q env T i l h b e, 
+    | qfor_ses_no: forall q env T i l h b e, h < l -> session_system q env T (For i (Num l) (Num h) b e) T
+    | qfor_ses_ch: forall q env T i l h b e, l <= h ->
         (forall v, l <= v < h -> session_system q env (subst_type_map T i v) (If (subst_bexp b i v) (subst_pexp e i v)) (subst_type_map T i (v+1)))
               -> session_system q env (subst_type_map T i l) (For i (Num l) (Num h) b e) (subst_type_map T i h).
 
