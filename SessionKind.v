@@ -167,7 +167,7 @@ Definition freeVarsNotCPExp (env:aenv) (a:pexp) :=
 
 
 Definition kind_env_stack (env:aenv) (s:stack) : Prop :=
-  forall x t, AEnv.MapsTo x (Mo t) env -> AEnv.In x s.
+  forall x, AEnv.MapsTo x (Mo MT) env -> AEnv.In x s.
 
 Fixpoint simp_aexp (a:aexp) :=
    match a with BA y => None
@@ -290,7 +290,7 @@ Proof.
   intros. remember (Mo MT, nil) as t.
   induction H1; simpl in *.
   destruct H1; subst.
-  destruct (H b MT); try easy.
+  destruct (H b); try easy.
   exists x. destruct x.
   constructor; easy.
   apply H0 in H2. contradiction. simpl. left. easy.

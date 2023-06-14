@@ -200,6 +200,8 @@ Inductive env_equiv : type_map -> type_map -> Prop :=
 
 Axiom env_equiv_trans : forall T1 T2 T3, env_equiv T1 T2 -> env_equiv T2 T3 -> env_equiv T1 T3.
 
+Axiom env_equiv_cong : forall S1 S2 S3, @env_equiv S1 S2 -> @env_equiv (S1++S3) (S2++S3).
+
 Inductive find_env {A:Type}: list (session * A) -> session -> option (session * A) -> Prop :=
   | find_env_empty : forall l, find_env nil l None
   | find_env_many_1 : forall S x y t, ses_sub x y -> find_env ((y,t)::S) x (Some (y,t))
@@ -377,6 +379,10 @@ Inductive state_equiv {rmax:nat} : qstate -> qstate -> Prop :=
                   @split_state rmax n v (v1,v2) -> state_equiv ((x++y,v)::a) ((x,v1)::(y,v2)::a).
 
 Axiom state_equiv_trans : forall rmax S1 S2 S3, @state_equiv rmax S1 S2 -> @state_equiv rmax S2 S3 -> @state_equiv rmax S1 S3.
+
+Axiom state_equiv_sym : forall rmax S1 S2, @state_equiv rmax S1 S2 -> @state_equiv rmax S2 S1.
+
+Axiom state_equiv_cong : forall rmax S1 S2 S3, @state_equiv rmax S1 S2 -> @state_equiv rmax (S1++S3) (S2++S3).
 
 (* partial measurement list filter.  *)
 
@@ -626,3 +632,42 @@ Inductive type_state_elem_same : se_type -> state_elem -> Prop :=
       nor_state_same: forall p r, type_state_elem_same TNor (Nval p r)
     | had_state_same: forall bl, type_state_elem_same THad (Hval bl)
     | ch_state_same: forall m bl, type_state_elem_same CH (Cval m bl).
+
+
+(* Session Properties. *)
+Fixpoint dom_to_ses (l : list session) :=
+  match l with nil => nil
+        | (a::al) => a++(dom_to_ses al)
+  end.
+
+Fixpoint gen_qubits (x:var) (l n:nat) :=
+  match n with 0 => nil | S m => (x,m)::(gen_qubits x l m) end.
+
+Definition gen_qubit_range (r:range) :=
+  match r with  (x,BNum l,BNum h) => Some (gen_qubits x l (h-l)) | _ => None end.
+
+Fixpoint gen_qubit_ses (s:session) :=
+   match s with nil => Some nil | x::xl =>
+     match gen_qubit_ses xl with None => None
+                               | Some al => 
+           match gen_qubit_range x with None => None
+                                  | Some a => Some (a++al)
+           end
+      end
+    end.
+
+Definition sub_qubits (s1 s2: session) : Prop :=
+    match gen_qubit_ses s1 with None => False
+          | Some al =>
+     match gen_qubit_ses s2 with None => False
+            | Some bl => (forall x, In x al -> In x bl)
+     end
+    end.
+
+Definition dis_qubits (s1 s2: session) : Prop :=
+    match gen_qubit_ses s1 with None => False
+          | Some al =>
+     match gen_qubit_ses s2 with None => False
+            | Some bl => (Lists.ListSet.set_inter posi_eq_dec al bl = nil)
+     end
+    end.

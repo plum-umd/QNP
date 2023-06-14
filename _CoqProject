@@ -39,6 +39,6 @@ SessionDef.v
 SessionKind.v
 SessionType.v
 SessionSem.v
-SessionProof.v
 QafnySQIR.v
 SessionTypeProof.v
+

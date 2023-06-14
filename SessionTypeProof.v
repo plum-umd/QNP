@@ -203,16 +203,13 @@ Proof.
   intros. inv H.
 Admitted.
 
-
-Definition kind_env_stack (env:aenv) (s:stack) : Prop :=
-  forall x t, AEnv.MapsTo x (Mo t) env -> AEnv.In x s.
-
 Definition kind_env_wf (env:aenv) : Prop :=
   forall x n, AEnv.MapsTo x (QT n) env -> n > 0.
 
 Definition env_wf (env:type_map) : Prop :=
    forall x t, In (x,t) env -> simple_ses x.
 
+(*
 Inductive env_state_eqv {r:nat} : type_map -> qstate ->  Prop :=
     env_state_eqv_rule : forall l1 l2 l1' l2', 
       env_equiv l1 l1' -> @state_equiv r l2 l2' -> env_state_eq l1' l2' -> env_state_eqv l1 l2.
@@ -220,7 +217,7 @@ Inductive env_state_eqv {r:nat} : type_map -> qstate ->  Prop :=
 Lemma env_state_equiv :
   forall rmax s t1 t2, @env_state_eqv rmax t1 s -> env_equiv t1 t2 -> (exists s1, @state_equiv rmax s s1 /\ @env_state_eqv rmax t2 s1).
   Proof. Admitted.
-
+*)
 Lemma env_equiv_simple_type : forall T T', env_equiv T T' -> simple_tenv T -> simple_tenv T'.
 Proof.
   intros. induction H; simpl in *. easy.
@@ -308,7 +305,7 @@ Proof.
   intros. eapply H. simpl. right. apply H0.
 Qed.
 
-Lemma aenv_find_add : forall k v (m:aenv),
+Lemma aenv_find_add {A:Type}: forall k v (m:AEnv.t A),
         AEnv.find k (AEnv.add k v m) = Some v.
 Proof.
       intros.
@@ -317,7 +314,7 @@ Proof.
       easy.
 Qed.
 
-Lemma aenv_mapsto_add1 : forall k v1 v2 (s:aenv),
+Lemma aenv_mapsto_add1 {A:Type}: forall k v1 v2 (s:AEnv.t A),
         AEnv.MapsTo k v1 (AEnv.add k v2 s) -> v1 = v2.
 Proof.
       intros.
@@ -503,8 +500,8 @@ Proof.
   split. 
   unfold kind_env_stack in *. intros.
   bdestruct (x1 =? x); subst.
-  apply X4 with (t := MT). apply AEnv.add_1. easy.
-  apply X4 with (t := t). apply AEnv.add_2. lia. easy.
+  apply X4. apply AEnv.add_1. easy.
+  apply X4. apply AEnv.add_2. lia. easy.
   easy.
   unfold freeVarsNotCAExp, freeVarsNotCPExp in *.
   intros. simpl in *. apply H2 with (x0 := x0); try easy.
@@ -552,8 +549,8 @@ Proof.
   split.
   unfold kind_env_stack in *; intros; simpl in *.
   bdestruct (x0 =? x); subst.
-  apply Y3 with (t := MT). apply AEnv.add_1. easy.
-  apply Y3 with (t := t). apply AEnv.add_2. lia. easy.
+  apply Y3. apply AEnv.add_1. easy.
+  apply Y3. apply AEnv.add_2. lia. easy.
   easy.
  -
   destruct s; simpl in *.
