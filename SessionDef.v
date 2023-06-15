@@ -419,22 +419,18 @@ Definition mask_type (l:session) (m n:nat) (t:type_cfac) :=
    ExT (build_type_facs m n t) (fun v => CH (Some (build_type_pars m n v t))).
 *)
 
-Fixpoint to_sum_c' (m n v:nat) (f : nat -> C*rz_val) (acc: R) :=
-   match m with 0 => acc 
-           | S m' => if a_nat2fb (snd (f m')) n =? v then
-            to_sum_c' m' n v f (acc+((Cmod (fst (f m')))^2))%R
-            else to_sum_c' m' n v f acc
+Fixpoint to_sum_c (m n v:nat) (f : nat -> C*rz_val) :=
+   match m with 0 => 0%R 
+           | S m' => if a_nat2fb (snd (f m')) n =? v then ((to_sum_c m' n v f)+((Cmod (fst (f m')))^2))%R
+                     else to_sum_c m' n v f
    end.
-Definition to_sum_c m n v f := sqrt (to_sum_c' m n v f (0%R)). 
 
-
-Fixpoint build_state_par (m n v i:nat) (r:R) (f acc:nat -> C * rz_val) :=
-    match m with 0 => (i,acc)
-              | S m' => if a_nat2fb (snd (f m')) n =? v
-             then build_state_par m' n v (i+1) r f (fun x => if x =? i then ((fst (f m') / r)%C,lshift_fun (snd (f m')) n) else acc x)
-             else build_state_par m' n v i r f acc
+Fixpoint build_state_pars (m n v:nat) (r:R) (f:nat -> C * rz_val) :=
+    match m with 0 => (0,(fun i => (C0,allfalse)))
+              | S m' => match build_state_pars m' n v r f with (i,acc) => 
+                  if a_nat2fb (snd (f m')) n =? v then (i+1,update acc i ((fst (f m') / r)%C,lshift_fun (snd (f m')) n)) else (i,acc)
+                       end
     end.
-Definition build_state_pars m n v r f := build_state_par m n v 0 r f (fun i => (C0,allfalse)).
 
 Definition build_state_ch n v (t : state_elem) := 
      match t with | Cval m f => match build_state_pars m n v (to_sum_c m n v f) f with (m',f') => Some (Cval m' f') end
@@ -614,9 +610,9 @@ Inductive find_state {rmax} : state -> session -> option (session * state_elem) 
     | find_qstate_rule: forall M S S' x t, @state_equiv rmax S S' -> find_env S' x t -> find_state (M,S) x t.
 
 
-Inductive pick_mea : qstate -> (R * nat) -> Prop :=
-   pick_meas : forall S x n l m b i r bl,
-          0 <= i < m -> b i = (r,bl) -> pick_mea  (((x,BNum 0,BNum n)::l, Cval m b)::S) (Cmod r, a_nat2fb bl n).
+Inductive pick_mea : nat -> state_elem -> (R * nat) -> Prop :=
+   pick_meas : forall n m b i r bl,
+          0 <= i < m -> b i = (r,bl) -> pick_mea n (Cval m b) (Cmod r, a_nat2fb bl n).
 
 
 Definition update_cval (l:state) (a:var) (v: R * nat) := (AEnv.add a v (fst l),snd l).

@@ -181,7 +181,7 @@ Qed.
 
 
 Lemma pick_mea_exists {rmax:nat}: forall S l m b x n, @qstate_wt ((((x,BNum 0,BNum n)::l, Cval m b)::S)) ->
-          exists r v, @pick_mea (((x,BNum 0,BNum n)::l, Cval m b)::S) (r,v).
+          exists r v, @pick_mea n (Cval m b) (r,v).
 Proof.
   intros.
   unfold qstate_wt in *.
@@ -196,8 +196,8 @@ Proof.
 Qed. 
 
 
-Lemma mask_state_exists: forall S l x n m bl r v,
-             @pick_mea (((x,BNum 0,BNum n)::l, Cval m bl)::S) (r,v) ->
+Lemma mask_state_exists: forall n m bl r v,
+             @pick_mea n (Cval m bl) (r,v) ->
           (exists na p, build_state_ch n v (Cval m bl) = Some (Cval na p) /\ na > 0).
 Proof.
   intros. inv H.

@@ -404,7 +404,7 @@ Inductive qfor_sem {rmax:nat}
   | let_sem_m : forall aenv s s' x a n e, eval_aexp (fst s) a n -> qfor_sem (AEnv.add x (Mo MT) aenv) (update_cval s x n)  e s'
              -> qfor_sem aenv s (Let x (AE a) e) s'
   | let_sem_q : forall aenv W s s' l x a n e r v va va', AEnv.MapsTo a (QT n) aenv ->
-                       @pick_mea (((a,BNum 0,BNum n)::l,va)::s) (r,v) -> build_state_ch n v va = Some va' -> 
+                       @pick_mea n va (r,v) -> build_state_ch n v va = Some va' -> 
                     qfor_sem (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e s'
                   -> qfor_sem aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) s'
 
@@ -465,7 +465,7 @@ Definition qfor_sem_ind':
              P rmax (AEnv.add x (Mo MT) aenv) (update_cval s x n) e s' ->
              P rmax aenv s (Let x (AE a) e) s') -> 
        (forall (aenv: aenv) (W:stack) (s :qstate) (s':state) (l:session) (x:var) (a:var) (n:nat) (e:pexp) (r:R) (v:nat) (va va':state_elem),
-              AEnv.MapsTo a (QT n) aenv -> @pick_mea (((a,BNum 0,BNum n)::l,va)::s) (r,v) -> build_state_ch n v va = Some va' -> 
+              AEnv.MapsTo a (QT n) aenv -> @pick_mea n va (r,v) -> build_state_ch n v va = Some va' -> 
            @qfor_sem rmax (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e s' ->
            P rmax (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e s'
            -> P rmax aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) s') -> 
@@ -588,7 +588,7 @@ Inductive step {rmax:nat}
   | let_step_m : forall aenv s x a n e, eval_aexp (fst s) a n 
              -> step aenv s (Let x (AE a) e) (update_cval s x n) e
   | let_step_q : forall aenv W s l x a n e r v va va', AEnv.MapsTo a (QT n) aenv ->
-                       @pick_mea (((a,BNum 0,BNum n)::l,va)::s) (r,v) -> build_state_ch n v va = Some va' 
+                       @pick_mea n va (r,v) -> build_state_ch n v va = Some va' 
                   -> step (AEnv.add x (Mo MT) aenv) (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) (AEnv.add x (r,v) W, (l,va')::s) e
 
   | appu_step_nor : forall aenv W s a e l r b ra ba, eval_nor rmax aenv a r b e = Some (ra,ba) 

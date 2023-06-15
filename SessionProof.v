@@ -188,6 +188,18 @@ Inductive simple_qpred_elem : qpred_elem -> Prop :=
 
 Definition simple_qpred (Q: qpred) := Forall (fun a => simple_qpred_elem a) Q.
 
+Inductive simp_pred_elem: cpred -> sval -> state_elem -> cpred * (sval * state_elem) -> Prop :=
+   | simp_pred_id :forall W s v, simp_pred_elem W (SV s) v (W,(SV s,v))
+   | simp_pred_mea: forall W x n s va va' r v, @pick_mea n va (r,v)
+           -> build_state_ch n v va = Some va' -> simp_pred_elem W (FM x n (SV s)) va ((CEq (BA x) (MNum r v))::W, (SV s,va')).
+
+
+Inductive simp_pred : cpred -> qpred -> (cpred * qpred) -> Prop :=
+   | simp_pred_empty : forall W, simp_pred W nil (W,nil)
+   | simp_pred_many : forall W W' W'' P P' s v a,
+            simp_pred W P (W',P') -> simp_pred_elem W' s v (W'',a) -> simp_pred W ((s,v)::P) (W'',a::P').
+
+
 Inductive triple {rmax:nat} : 
           atype -> aenv -> type_map -> cpred*qpred -> pexp -> cpred*qpred -> Prop :=
       | triple_frame: forall q env T T1 T' l W W' P Q e R, type_check_proof rmax q env T T1 (W,P) (W',Q) e ->
@@ -207,16 +219,18 @@ Inductive triple {rmax:nat} :
             type_aexp env a (Mo MT,nil) -> ~ AEnv.In x env ->
             triple q (AEnv.add x (Mo MT) env) T ((CEq (BA x) a)::W,P) e Q -> triple q env T (W,P) (Let x (AE a) e) Q
 
-      | let_q_pf:  forall q env tenv W P P' x y n l e Q, AEnv.MapsTo y (QT n) env ->
-            subst_ses_qpred P ((y,BNum 0,BNum n)::l) (FM x n (SV l)) P' ->
-            triple q (AEnv.add x (Mo MT) env) ((l,CH)::tenv) (W,P') e Q
-            -> triple q env (((y,BNum 0,BNum n)::l,CH)::tenv) (W,P) (Let x (Meas y) e) Q.
+      | let_q_pf:  forall q env T T1 W P P' x v y n l e Q,
+              type_check_proof rmax q (AEnv.add x (Mo MT) env) ((l, CH) :: T) T1 P' Q e ->
+            AEnv.MapsTo y (QT n) env ->  ~ AEnv.In x env ->
+            simp_pred W ((FM x n (SV l),v)::P) P' ->
+            triple q (AEnv.add x (Mo MT) env) ((l,CH)::T) P' e Q
+            -> triple q env (((y,BNum 0,BNum n)::l,CH)::T) (W,(SV ((y,BNum 0,BNum n)::l),v)::P) (Let x (Meas y) e) Q.
 (*
       | apph_pf: forall q env T x n l b, type_vari env x (QT n,l) -> find_type T l (Some (l,TNor)) ->
             triple q env T ([SEq (SV l) (Nval (C1) b)]) (AppSU (RH x)) ([SEq (SV l) (Hval (fun i => (update allfalse 0 (b i))))])
       | appu_pf : forall q env T l l1 m b e ba,  find_type T l (Some (l++l1,CH)) ->
                 eval_ch rmax env l m b e = Some ba ->
-                triple q env T ([SEq (SV (l++l1)) (Cval m b)]) (AppU l e) ([SEq (SV (l++l1)) (Cval m ba)])
+                triple q env T ([SEq (SV (l++l1)) (Cval m b)]) (AppU l e) ([SEq (SV (l++l1)) (Cval m ba)]).
       | dis_pf : forall q env T x n l l1 n' m f m' acc, type_vari env x (QT n,l) -> find_type T l (Some (l++l1,CH)) ->
                  ses_len l1 = Some n' -> dis_sem n n' m m f nil (m',acc) -> 
                 triple q env T ([SEq (SV (l++l1)) (Cval m f)]) (Diffuse x) ([SEq (SV (l++l1)) (Cval m' acc)])
@@ -408,6 +422,92 @@ Proof.
   constructor. apply IHeval_cabexp. easy.
 Qed.
 
+Lemma simp_pred_simple: forall W P Q, simp_pred W P Q -> simple_qpred (snd Q).
+Proof.
+  intros. induction H; unfold simple_qpred in *; intros;simpl in *.
+  constructor.
+  constructor. inv H0. constructor. constructor. easy.
+Qed. 
+
+Lemma simple_qpred_simp: forall W P, simple_qpred P -> simp_pred W P (W,P).
+Proof.
+  intros. induction H. constructor. destruct x.
+  apply simp_pred_many with (W' := W); try easy.
+  inv H. constructor.
+Qed.
+
+Lemma simp_pred_elem_same : forall W s v P Q, simp_pred_elem W s v P -> simp_pred_elem W s v Q -> P = Q.
+Proof.
+  intros. generalize dependent Q.
+  induction H; intros; simpl in *.
+  inv H0. easy.
+  inv H1.
+Admitted.
+
+Lemma simp_pred_same: forall W P Q Q', simp_pred W P Q -> simp_pred W P Q' -> Q = Q'.
+Proof.
+  intros. generalize dependent Q'.
+  induction H; intros;simpl in *. inv H0. easy.
+  inv H1. apply IHsimp_pred in H7. inv H7.
+  apply simp_pred_elem_same with (P := (W''0,a0)) in H0; try easy.
+  inv H0. easy.
+Qed.
+
+Lemma pick_mea_exist_same: forall n n0 m ba bl r v, n <= n0 ->
+    (forall j : nat, j < m -> fst (bl j) = fst (ba j) /\ (forall i : nat, i < n0 -> snd (bl j) i = snd (ba j) i)) ->
+     pick_mea n (Cval m ba) (r, v) -> pick_mea n (Cval m bl) (r, v).
+Proof.
+  intros. remember (r,v) as V. inv H1. inv H6.
+  specialize (H0 i). assert (i < m) by lia. apply H0 in H1.
+  destruct H1. destruct (bl i) eqn:eq1. simpl in *. rewrite H7 in H1. simpl in *. subst.
+  rewrite H7 in H2. simpl in *.
+  assert (a_nat2fb bl0 n = a_nat2fb b n).
+  clear H0 eq1 H5 H7. unfold a_nat2fb. induction n; intros;simpl in *. easy.
+  rewrite IHn; try lia.
+  specialize (H2 n). rewrite H2 ; try lia.
+  rewrite H1.
+  apply pick_meas with (i := i); try easy.
+Qed.
+
+Lemma build_state_ch_exist_same: forall n n0 m ba bl v, n <= n0 ->
+    (forall j : nat, j < m -> fst (bl j) = fst (ba j) /\ (forall i : nat, i < n0 -> snd (bl j) i = snd (ba j) i)) ->
+     build_state_ch n v (Cval m ba) = build_state_ch n v (Cval m bl).
+Proof.
+  intros. unfold build_state_ch.
+  assert ((to_sum_c m n v ba) = (to_sum_c m n v bl)).
+  induction m; intros; simpl in *. easy.
+  assert ((forall j : nat,
+       j < m ->
+       fst (bl j) = fst (ba j) /\
+       (forall i : nat, i < n0 -> snd (bl j) i = snd (ba j) i))).
+  intros. apply H0. lia. apply IHm in H1.
+  assert (a_nat2fb (@snd C rz_val (ba m)) n = a_nat2fb (@snd C rz_val (bl m)) n).
+  clear H1 IHm.
+  unfold a_nat2fb in *. induction n;intros;simpl in *. easy.
+  rewrite IHn; try lia.
+  specialize (H0 m). assert (m < S m) by lia. apply H0 in H1. destruct H1.
+  rewrite H2; try lia. easy.
+  rewrite H2. rewrite H1.
+  assert ((@fst C rz_val (ba m)) = ((@fst C rz_val (bl m)))).
+  specialize (H0 m). assert (m < S m) by lia.
+  apply H0 in H3. destruct H3. easy. rewrite H3. easy.
+  rewrite H1. remember (to_sum_c m n v bl) as f. clear H1. clear Heqf.
+  assert (build_state_pars m n v f ba = build_state_pars m n v f bl).
+  induction m; intros;simpl in *. easy.
+  assert ((forall j : nat,
+       j < m ->
+       fst (bl j) = fst (ba j) /\
+       (forall i : nat, i < n0 -> snd (bl j) i = snd (ba j) i))).
+  intros. apply H0. lia. apply IHm in H1.
+  assert (a_nat2fb (@snd C rz_val (ba m)) n = a_nat2fb (@snd C rz_val (bl m)) n).
+  clear H1 IHm.
+  unfold a_nat2fb in *. induction n;intros;simpl in *. easy.
+  rewrite IHn; try lia.
+  specialize (H0 m). assert (m < S m) by lia. apply H0 in H1. destruct H1.
+  rewrite H2; try lia. easy.
+  rewrite H2.
+Admitted.
+
 Lemma proof_soundness: forall e rmax t env s tenv tenv' P Q, 
      @env_state_eq tenv (snd s) -> kind_env_stack_full env (fst s) ->
       type_check_proof rmax t env tenv tenv' P Q e -> freeVarsNotCPExp env e -> @qstate_wt (snd s) -> simple_tenv tenv ->
@@ -531,6 +631,79 @@ Proof.
   unfold freeVarsNotCPExp,freeVarsNotCAExp in *. intros. simpl in *. apply H2 with (x0 := x0); try easy.
   apply in_app_iff. left. easy.
  -
-
-Admitted.
+  assert (freeVarsNotCPExp (AEnv.add x (Mo MT) env) e).
+  unfold freeVarsNotCPExp in *. 
+  intros.
+  bdestruct (x0 =? x); subst.
+  apply aenv_mapsto_add1 in H13. inv H13. easy.
+  apply AEnv.add_3 in H13; try lia.
+  apply H2 with (x0 := x0). simpl.
+  right.
+  simpl in *.
+  apply list_sub_not_in; try easy. easy.
+  assert (simple_tenv ((l, CH) :: T)).
+  unfold simple_tenv in *. intros. simpl in *.
+  destruct H13. inv H13.
+  specialize (H4 ((y, BNum 0, BNum n) :: a) CH).
+  assert (((y, BNum 0, BNum n) :: a, CH) = ((y, BNum 0, BNum n) :: a, CH) \/
+     In ((y, BNum 0, BNum n) :: a, CH) T). left. easy.
+  apply H4 in H13.
+  inv H13. easy. apply H4 with (b:= b). right. easy.
+  apply simp_pred_simple in H3 as X1. inv H6. inv H3.
+  apply simple_qpred_simp with (W := W) in H17 as X2; try easy.
+  specialize (IHtriple H12 H13 X1 T1 H).
+  apply simp_pred_same with (Q := (W', P'0)) in X2; try easy. inv X2.
+  destruct H as [X2 [X3 X4]].
+  destruct s. destruct H11. simpl in *. inv H21.
+  inv H8. inv H21. inv H3. inv H22.
+  specialize (IHtriple ((AEnv.add x (r,v0) s, (l,va')::l2))).
+  assert (X5 := H19).
+  apply mask_state_exists in H19 as [na [pa [Y1 Y2]]].
+  rewrite H24 in Y1. inv Y1.
+  assert (env_state_eq ((l, CH) :: T)
+             (snd (AEnv.add x (r, v0) s, (l, Cval na pa) :: l2))).
+  constructor; try easy. constructor.
+  assert (kind_env_stack_full (AEnv.add x (Mo MT) env)
+             (fst (AEnv.add x (r, v0) s, (l, Cval na pa) :: l2))).
+  unfold kind_env_stack_full in *. intros. split.
+  intros. bdestruct (x0 =? x); subst. exists (r,v0). apply AEnv.add_1. easy.
+  apply AEnv.add_3 in H6; try lia. apply H9 in H6. destruct H6.
+  exists x1. apply AEnv.add_2. lia. easy.
+  intros. bdestruct (x0 =? x); subst. apply AEnv.add_1. easy. destruct H6.
+  apply AEnv.add_3 in H6; try lia. assert (AEnv.In x0 s). exists x1. easy. apply H9 in H11.
+  apply AEnv.add_2. lia. easy.
+  assert (qstate_wt (snd (AEnv.add x (r, v0) s, (l, Cval na pa) :: l2))).
+  unfold qstate_wt in *. intros. simpl in *. destruct H8. inv H8. lia. apply (H10 s0 m0 bl0). right. easy.
+  assert (model (AEnv.add x (r, v0) s, (l, Cval na pa) :: l2)
+             (CEq (BA x) (MNum r v0) :: W, (SV l, Cval na pa) :: P)).
+  split. simpl.
+  constructor. apply ceq_asem with (r1 := r) (r2 := r) (n1 := v0) (n2 := v0); try easy.
+  constructor. apply AEnv.add_1. easy. constructor.
+  unfold cmodel in H.
+  assert (~ AEnv.In x s). intros R. apply H9 in R. assert (AEnv.In x env). exists (Mo MT). easy. easy.
+  clear X2 X3 X4 X5 H0 H1 H5 X1 IHtriple H7 H9 H10 H12 H13 H16 H17 H20 H24 Y2 H18 H15 H23 H14 H3 H6 H8.
+  induction H. constructor. constructor.
+  apply eval_cabexp_not_exists. easy. easy. easy.
+  simpl in *.
+  assert (exists nb, ses_len l = Some nb).
+  unfold ses_len in *.
+  destruct (get_core_ses ((y, BNum 0, BNum n) :: l)) eqn:eq1; try easy. simpl in *.
+  destruct (get_core_ses l) eqn:eq2; try easy. inv eq1. simpl in *.
+  exists (ses_len_aux l1). easy. destruct H11.
+  apply model_many with (n := x0); try easy.
+  constructor. intros. split. easy. intros. easy.
+  destruct (IHtriple H3 H6 H8 H11) as [Wa [sa [sb [G1 [G2 G3]]]]].
+  exists Wa,sa,sb.
+  split. easy.
+  split. 
+  assert (n <= n0).
+  unfold ses_len in *.
+  unfold ses_len in *.
+  destruct (get_core_ses ((y, BNum 0, BNum n) :: l)) eqn:eq1; try easy. simpl in *.
+  destruct (get_core_ses l) eqn:eq2; try easy. inv eq1. simpl in *.
+  inv H15. lia.
+  apply let_sem_q with (r0 := r) (v := v0) (va' := Cval na pa); try easy.
+  apply pick_mea_exist_same with (n0 := n0) (ba := r2); try easy.
+  rewrite build_state_ch_exist_same with (n0 := n0) (bl := bl) in H24; try easy. easy.
+Qed.
 
