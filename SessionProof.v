@@ -58,7 +58,7 @@ Definition fresh (l:nat) := l +1.
 
 Inductive qpred_equiv {rmax:nat} : qpred -> qpred -> Prop :=
      | qpred_id : forall S, qpred_equiv S S
-     | qpred_empty : forall v S, qpred_equiv ((SV nil,v)::S) S
+ (*    | qpred_empty : forall v S, qpred_equiv ((SV nil,v)::S) S *)
      | qpred_comm :forall a1 a2, qpred_equiv (a1++a2) (a2++a1)
      | qpred_ses_assoc: forall s v S S', qpred_equiv S S' -> qpred_equiv ((s,v)::S) ((s,v)::S')
      | qpred_ses_eq: forall s s' v S, ses_eq s s' -> qpred_equiv ((SV s,v)::S) ((SV s',v)::S)
@@ -419,7 +419,6 @@ Lemma qpred_equiv_state_eq: forall rmax s P Q, @qpred_equiv rmax P Q -> qmodel s
 Proof.
   intros. generalize dependent s. induction H; intros;simpl in *.
   exists s. split. easy. constructor.
-  inv H0. exists s0. split. easy. apply state_empty.
   assert (G := H0).
   apply qmodel_app in H0 as [q1 [q2 [X1 X2]]]. subst.
   exists (q2++q1). split.
@@ -568,12 +567,71 @@ Qed.
 
 Axiom app_length_same : forall l1 l2 l3 l4 n, ses_len l1 = Some n -> ses_len l3 = Some n -> l1++l2 = l3 ++ l4 -> l1 = l3 /\ l2 = l4.
 
-Lemma type_preserve: forall rmax q env T' l s s' e, @session_system rmax q env [(l,CH)] e T' 
-  -> env_state_eq ([(l,CH)]) (snd s) -> kind_env_stack_full env (fst s) -> @qfor_sem rmax env s e s'
+Lemma ses_eq_simple: forall l l1, ses_eq l l1 -> simple_ses l -> simple_ses l1.
+Proof.
+ intros. induction H. easy. inv H0. apply IHses_eq. easy.
+ apply IHses_eq. constructor. easy. easy. inv H0. constructor. easy. easy. easy.
+ inv H0. inv H8. apply IHses_eq. constructor; try easy.
+Qed.
+
+Lemma simple_ses_app_combine: forall l l1, simple_ses l -> simple_ses l1 -> simple_ses (l++l1).
+Proof.
+  intros. induction H. simpl. easy. constructor; try easy.
+Qed.
+
+Lemma state_preserve: forall rmax q env T' l s s' e, @session_system rmax q env [(l,CH)] e T' 
+  -> env_state_eq ([(l,CH)]) (snd s) -> kind_env_stack_full env (fst s) -> @qfor_sem rmax env s e s' -> simple_ses l
         -> env_state_eq T' (snd s') /\ kind_env_stack_full env (fst s').
 Proof.
   intros. remember ([(l,CH)]) as T. generalize dependent l. generalize dependent s. generalize dependent s'.
-  induction H; intros;simpl in *; subst.
+  induction H; intros;simpl in *; subst. destruct s0. simpl in *.
+  assert (X1 := H1). inv H1. inv H9.
+  inv H; try easy.
+  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l).
+  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H. easy. easy.
+  destruct a1. simpl in *. subst.
+  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l). simpl in *.
+  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H; try easy.
+  inv H5. apply app_eq_nil in H6. destruct H6; subst. simpl in *.
+  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l).
+  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H; try easy.
+  inv H8.
+  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l).
+  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H; try easy.
+  inv H8; try easy.
+  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l).
+  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H; try easy.
+  apply app_eq_nil in H1. destruct H1; subst. simpl in *.
+  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l).
+  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H; try easy.
+  inv H10.
+  apply state_eq_sem with (f := [(s'0, Cval m bl)]) in H3; try easy.
+  assert (env_state_eq ([(s'0, CH)]) ([(s'0, Cval m bl)])).
+  constructor. constructor. constructor.
+  specialize (IHsession_system s' (s0, [(s'0, Cval m bl)]) H H2 H3 s'0).
+  assert ([(s'0, CH)] = [(s'0, CH)] ) by easy. apply IHsession_system in H1; try easy.
+  apply ses_eq_simple with (l := l); try easy.
+  apply state_ses_eq. apply ses_eq_comm. easy.
+  inv H10.
+  apply simple_ses_app_l in H4 as X2. apply simple_ses_app_r in H4 as X3.
+  inv X3. unfold simple_bound in H5. destruct x; try easy. unfold simple_bound in H6. destruct y; try easy.
+  inv H7. unfold simple_bound in H8. destruct x; try easy. unfold simple_bound in H9. destruct y; try easy.
+  apply simple_ses_len_exists in X2 as X3. destruct X3 as [n3 X3].
+  apply simple_ses_len_exists in H10 as X4. destruct X4 as [n4 X4].
+  assert (env_state_eq ([(l1 ++(a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2, CH)])
+       ([(l1 ++ (a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2, Cval m (mut_fch_state n3 (n0-n) (n2-n1) bl))])).
+  constructor. constructor. constructor.
+  apply state_eq_sem with (f := ([(l1 ++ (a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2, Cval m (mut_fch_state n3 (n0-n) (n2-n1) bl))])) in H3; try easy.
+  specialize (IHsession_system s' (s0,([(l1 ++ (a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2, Cval m (mut_fch_state n3 (n0-n) (n2-n1) bl))]))
+            H H2 H3 (l1 ++ (a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2)).
+  assert ([(l1 ++ (a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2,CH)] = [(l1 ++(a0, BNum n1, BNum n2):: (a, BNum n, BNum n0) :: l2,CH)]) by easy.
+  apply IHsession_system in H1; try easy.
+  apply simple_ses_app_combine; try easy. constructor; try easy. constructor; try easy.
+  apply state_equiv_sym.
+  apply state_mut with (n5 := n3) (n6 := (n0-n)) (n7 := n2 -n1); try easy.
+  unfold ses_len. simpl in *. replace (n0 - n + 0) with (n0-n) by lia. easy.
+  unfold ses_len. simpl in *. replace (n2 - n1 + 0) with (n2-n1) by lia. easy.
+  constructor.
 Admitted.
 
 Lemma proof_soundness: forall e rmax t env s tenv tenv' P Q, 
@@ -867,7 +925,7 @@ Proof.
   destruct (IHtriple (s,([(l1,Cval (fst (grab_bool f' m0 n0)) bl)])) H6 H12 H16 H23) as [Wa [sa [sb [Y2 [Y3 Y4]]]]].
   inv X4. simpl in *. inv H29. inv H36. inv H35. inv H8. inv H31. inv H32. inv H33; try easy.
   inv Y2. simpl in *. inv H29. inv H36. inv H35.
-  apply type_preserve with (s := (s, [(l0, Cval (fst (grab_bool f' m0 n0)) bl)])) (s' := (Wa,sb)) in X3 as Y5; try easy.
+  apply state_preserve with (s := (s, [(l0, Cval (fst (grab_bool f' m0 n0)) bl)])) (s' := (Wa,sb)) in X3 as Y5; try easy.
   destruct Y5 as [Y5 Y6]. simpl in *. inv Y5. inv H35. inv H36.
   apply state_equiv_single_ch_same in Y4. destruct Y4;subst.
   inv H9. inv H38. inv H37; try easy.
@@ -882,7 +940,9 @@ Proof.
   apply (if_sem_q env s Wa l l0 n n1 nil nil b e m0 m' r1 f' (Cval (fst (grab_bool f' m0 n)) bl) (Cval m bl1) f'' fc); try easy.
   apply (bexp_eval_same env b n) with (n2 := n2) (bl := bl0); try easy.
   apply (qfor_sem_region rmax q) with (n := n1) (r := r0); try easy.
-  constructor.
+  constructor. unfold simple_tenv in H4.
+  specialize (H4 (l++l0) CH). assert (In (l ++ l0, CH) [(l ++ l0, CH)]). simpl. left. easy.
+  apply H4 in H29. apply simple_ses_app_r in H29. easy.
  -
   destruct s. exists s, q0, q0. split. easy.
   split. apply for_sem. assert (h - l = 0) by lia. rewrite H8. apply ForallA_nil.

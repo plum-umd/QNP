@@ -117,8 +117,6 @@ Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' ->
 Proof.
    intros. generalize dependent S. induction H0...
   - intros. exists S0. split. constructor. easy.
-  - intros... 
-    inv H. exists l2. split. constructor. easy.
   - intros. apply env_state_eq_app in H as X1.
     destruct X1 as [b1 [b2 [X1 [X2 X3]]]]; subst.
     exists (b2 ++ b1). split. apply state_comm. apply env_state_eq_app_comm; try easy.
@@ -217,7 +215,6 @@ Lemma env_state_equiv :
 Lemma env_equiv_simple_type : forall T T', env_equiv T T' -> simple_tenv T -> simple_tenv T'.
 Proof.
   intros. induction H; simpl in *. easy.
-  unfold simple_tenv in *. intros. apply (H0 a b). simpl. right. easy.
   unfold simple_tenv in *. intros.
   apply (H0 a b). apply in_or_app. apply in_app_iff in H. destruct H. right. easy. left. easy.
   unfold simple_tenv in *. intros.
