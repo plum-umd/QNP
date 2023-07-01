@@ -38,15 +38,12 @@ Definition aty_eq  (t1 t2:atype) : bool :=
                         end
    end.
 
-(* Ethan: above can be automatically generated as follows: *)
 Scheme Equality for atype.
 Print atype_beq.
 Check atype_eq_dec.
 
 Notation "i '=a=' j" := (aty_eq i j) (at level 50).
 
-(* Ethan: I think a couple of these lemmas aren't necessary...
- * We can just use atype_eq_dec, right? *)
 Lemma aty_eqb_eq : forall a b, a =a= b = true -> a = b.
 Proof.
  intros. unfold aty_eq in H.
@@ -126,14 +123,6 @@ Notation "e0 [<] e1 @ e3 [ e4 ]" := (BLt e0 e1 e3 e4) (at level 50) : pexp_scope
 
 Notation "* e0 [ e1 ]" := (BTest e0 e1) (at level 50) : pexp_scope.
 
-(* Define the ground term type system 
-Inductive type_rotation := TV (b:aexp) | Infty.
-*)
-
-
-(* Ethan: I don't remember what is this tuple... *)
-
-
 Inductive maexp := AE (n:aexp) | Meas (x:var).
 
 Coercion AE : aexp >-> maexp.
@@ -160,8 +149,6 @@ Inductive single_u := RH (p:varia) | SQFT (x:var) | SRQFT (x:var).
 
 Inductive pexp := PSKIP 
             | Let (x:var) (n:maexp) (e:pexp)
-              (*| InitQubit (p:posi) *) 
-              (* Ethan: Init = reset = trace out = measurement... commeneted out *)
             | AppSU (e:single_u)
             | AppU (l:session) (e:exp) 
             | PSeq (s1:pexp) (s2:pexp)

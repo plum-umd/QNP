@@ -86,6 +86,10 @@ Fixpoint eval_ch (rmax:nat) (env:aenv) (l:session) (m:nat) f (e:exp) :=
           end
    end.
 
+Definition eval_to_had (n:nat) (b:rz_val) := (fun i => if i <? n then (update allfalse 0 (b i)) else allfalse).
+
+Definition eval_to_nor (n:nat) (b:nat -> rz_val) := (fun i => if i <? n then b i 0 else false).
+
 Lemma type_exp_exists_oqasm: forall env e n l, type_exp env e (QT n,l) 
    -> (exists e', compile_exp_to_oqasm e = Some e').
 Proof.
@@ -190,7 +194,6 @@ Proof.
   apply mapsto_always_same with (v1 := t0) in H1; subst; try easy.
 Qed.
 
-(*TODO: Le Chang, please finish this. It is similar to efresh_exp_sem_irrelevant proof in OQASMProof. *)
 Lemma compile_exp_WF : forall e ea l aenv qenv vl x v n, compile_ses_qenv aenv l = (qenv, vl)
       -> compile_exp_to_oqasm e = Some ea -> type_exp aenv e (QT n, l) -> v >= qenv x 
       -> exp_WF qenv ea.
@@ -313,6 +316,23 @@ Inductive eval_bexp : qstate -> bexp -> qstate -> Prop :=
                        ((((x,BNum 0,BNum n)::(z,BNum i,BNum (S i))::l),(Cval m (eval_rlt_bool f m n y)))::s)
     | btext_sem : forall s z i, eval_bexp s (BTest z (Num i)) s.
 
+Lemma eval_bexp_det: forall q b q1 q2, eval_bexp q b q1 -> eval_bexp q b q2 -> q1 = q2.
+Proof.
+  intros. induction b;intros;simpl in *.
+  inv H. inv H. inv H0. easy. inv H0. easy.
+  inv H. inv H0. easy. inv H0. easy. inv H. inv H0. easy.
+  inv H.
+Qed.
+
+Axiom bexp_eval_same: forall env b n n2 l l1 m r bl f, type_bexp env b (QT n, l) -> ses_len l = Some n ->
+   ses_len (l ++ l1) = Some n2 ->
+   (forall j : nat,
+      j < m ->
+      fst (r j) = fst (bl j) /\
+      (forall i : nat, i < n2 -> snd (r j) i = snd (bl j) i)) ->
+   eval_bexp ([(l ++ l1, Cval m bl)]) b ([(l ++ l1, Cval m f)]) ->
+   eval_bexp ([(l ++ l1, Cval m r)]) b ([(l ++ l1, Cval m f)]).
+
 Inductive assem_elem : nat -> nat -> rz_val -> (nat-> C * rz_val) -> list nat -> Prop :=
     assem_elem_0 : forall size c f, assem_elem 0 size c f nil
   | assem_elem_st : forall size c f m l, assem_elem m size c f l -> cut_n (snd (f m)) size = c
@@ -413,11 +433,11 @@ Inductive qfor_sem {rmax:nat}
   | appu_sem_ch : forall aenv W s a e l b m ba, eval_ch rmax aenv a m b e = Some ba
           -> qfor_sem aenv (W,(a++l,Cval m b)::s) (AppU a e) (W,(a++l,Cval m ba)::s)
 
-  | appsu_sem_h_nor : forall aenv W s p a r b, @simp_varia aenv p a ->
-          qfor_sem aenv (W,([a],Nval r b)::s) (AppSU (RH p)) (W,([a],(Hval (fun i => (update allfalse 0 (b i)))) )::s)
+  | appsu_sem_h_nor : forall aenv W s p a r b n, @simp_varia aenv p a -> ses_len ([a]) = Some n ->
+          qfor_sem aenv (W,([a],Nval r b)::s) (AppSU (RH p)) (W,([a],(Hval (eval_to_had n b)) )::s)
 
-  | appsu_sem_h_had : forall aenv W s p a b, @simp_varia aenv p a 
-                   -> qfor_sem aenv (W,([a],Hval b)::s) (AppSU (RH p)) (W,([a],(Nval C1 (fun j => b j 0)))::s)
+  | appsu_sem_h_had : forall aenv W s p a b n, @simp_varia aenv p a -> ses_len ([a]) = Some n ->
+          qfor_sem aenv (W,([a],Hval b)::s) (AppSU (RH p)) (W,([a],(Nval C1 (eval_to_nor n b)))::s)
   (* rewrite the tenv type for oqasm with respect to the ch list type. *)
 
   | if_sem_ct : forall aenv s s' b e, simp_bexp b = Some true -> qfor_sem aenv s e s' -> qfor_sem aenv s (If b e) s'
@@ -476,13 +496,14 @@ Definition qfor_sem_ind':
        (forall (aenv: aenv) (W:stack) (s:qstate) (a:session) (e:exp) (l:session) (b : nat -> C * rz_val) (m:nat) (ba:nat -> C * rz_val),
               eval_ch rmax aenv a m b e = Some ba ->
              P rmax aenv (W,(a++l,Cval m b)::s) (AppU a e) (W,(a++l,Cval m ba)::s)) ->
-       (forall (aenv: aenv) (W:stack) (s:qstate) (p:varia) (a:range) (r:C) (b : rz_val),
-              @simp_varia aenv p a ->
-             P rmax aenv (W,([a],Nval r b)::s) (AppSU (RH p)) (W,([a],(Hval (fun i => (update allfalse 0 (b i)))) )::s)) ->
 
-       (forall (aenv: aenv) (W:stack) (s:qstate) (p:varia) (a:range) (b : nat -> rz_val),
-              @simp_varia aenv p a ->
-             P rmax aenv (W,([a],Hval b)::s) (AppSU (RH p)) (W,([a],(Nval C1 (fun j => b j 0)))::s)) ->
+       (forall (aenv: aenv) (W:stack) (s:qstate) (p:varia) (a:range) (r:C) (b : rz_val) (n:nat),
+              @simp_varia aenv p a -> ses_len ([a]) = Some n ->
+             P rmax aenv (W,([a],Nval r b)::s) (AppSU (RH p)) (W,([a],(Hval (eval_to_had n b)) )::s)) ->
+
+       (forall (aenv: aenv) (W:stack) (s:qstate) (p:varia) (a:range) (b : nat -> rz_val) (n:nat),
+              @simp_varia aenv p a -> ses_len ([a]) = Some n ->
+             P rmax aenv (W,([a],Hval b)::s) (AppSU (RH p)) (W,([a],(Nval C1 (eval_to_nor n b)))::s)) ->
        (forall (aenv: aenv) (s s':state) (b:bexp) (e:pexp),
               simp_bexp b = Some true -> @qfor_sem rmax aenv s e s' -> P rmax aenv s e s' -> P rmax aenv s (If b e) s') ->
        (forall (aenv: aenv) (s:state) (b:bexp) (e:pexp),
@@ -522,8 +543,8 @@ Proof.
                  ST5 aenv W s s' l x a n e r v va va' Henv Hpick Hbd Hw _
          | appu_sem_nor aenv W s a e l r b ra ba Hev => ST6 aenv W s a e l r b ra ba Hev
          | appu_sem_ch aenv W s a e l b m ba Hev => ST7 aenv W s a e l b m ba Hev
-         | appsu_sem_h_nor aenv W s p a r b Hsp => ST8 aenv W s p a r b Hsp
-         | appsu_sem_h_had aenv W s p a b Hsp => ST9 aenv W s p a b Hsp
+         | appsu_sem_h_nor aenv W s p a r b n Hsp Hlen => ST8 aenv W s p a r b n Hsp Hlen
+         | appsu_sem_h_had aenv W s p a b n Hsp Hlen => ST9 aenv W s p a b n Hsp Hlen
          | if_sem_ct aenv s s' b e Hsp Hw => ST10 aenv s s' b e Hsp Hw _
          | if_sem_cf aenv s b e Hsp => ST11 aenv s b e Hsp
          | if_sem_q aenv W W' l l1 n n' s s' b e m m' f f' fc fc' fc'' fa Hty Hev Hses Hmut1 Hw Hmut2 Has

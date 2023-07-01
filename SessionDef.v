@@ -144,6 +144,30 @@ Fixpoint get_core_ses (l:session) :=
 
 Definition ses_len (l:session) := match get_core_ses l with None => None | Some xl => Some (ses_len_aux xl) end.
 
+Lemma get_core_ses_app: forall l l' l1 l1', get_core_ses l = Some l' -> get_core_ses l1 = Some l1' 
+     -> get_core_ses (l++l1) = Some (l'++l1').
+Proof.
+  induction l;intros;simpl in *. inv H. simpl in *. easy.
+  destruct a. destruct p. destruct b0. easy. destruct b. easy.
+  destruct (get_core_ses l) eqn:eq1; try easy. inv H. rewrite (IHl l0 l1 l1'); try easy.
+Qed.
+
+Lemma ses_len_aux_add : forall l l1, ses_len_aux (l++l1) = (ses_len_aux l) + (ses_len_aux l1).
+Proof.
+  induction l;intros;simpl in *; try easy.
+  destruct a. destruct p. rewrite IHl. lia.
+Qed.
+
+Lemma ses_len_app_add: forall l l1 n n1, ses_len l = Some n -> ses_len l1 = Some n1
+     -> ses_len (l++l1) = Some (n+n1).
+Proof.
+  intros. unfold ses_len in *.
+  destruct (get_core_ses l) eqn:eq1; try easy.
+  destruct (get_core_ses l1) eqn:eq2; try easy.
+  specialize (get_core_ses_app l l0 l1 l2 eq1 eq2) as X1.
+  rewrite X1. rewrite ses_len_aux_add. inv H. inv H0. easy.
+Qed.
+
 Inductive subtype :  se_type -> se_type -> Prop :=
    | sub_refl: forall a, subtype a a 
    | nor_ch:  subtype TNor CH

@@ -41,4 +41,5 @@ SessionType.v
 SessionSem.v
 QafnySQIR.v
 SessionTypeProof.v
+SessionProof.v
 

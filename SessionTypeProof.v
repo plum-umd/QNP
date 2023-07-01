@@ -47,7 +47,6 @@ Proof.
   exists a'. split. apply find_env_many_2. auto. auto. auto. auto.
 Qed.
 
-(*TODO: Le Chang, additional theorem. *)
 Lemma env_state_eq_app: forall S a1 a2, env_state_eq (a1++a2) S
       -> exists b1 b2, env_state_eq (a1++a2) (b1++b2) /\ S = b1 ++ b2 /\ length b1 = length a1.
 Proof.
@@ -126,7 +125,6 @@ Proof.
   - intros.
 Admitted.
 
-(*TODO: Le Chang, us eht result in find_env_state. *)
 Lemma find_type_state : forall s s' t r T S, env_state_eq T S -> find_type T s (Some (s++s',t))
        -> (exists S' a, @state_equiv r S S' /\ find_env S' s (Some (s++s',a)) /\ type_state_elem_same t a).
 Proof.
@@ -143,8 +141,6 @@ Proof.
   exists a. split. apply find_qstate_rule with (S'0 := S'); try easy. apply X3. easy.
 Qed.
 
-(*TODO: Le Chang, please finish the proof.
-  Should be easy, just have sub-lemma to induct on find_env. see what is its relation with up_state. *)
 Lemma find_state_up_good {rmax}: forall S s s' v v', @find_state rmax S s (Some (s',v)) -> exists S', @up_state rmax S s v' S'.
 Proof.
   intros. inv H.
@@ -233,6 +229,16 @@ Proof.
                In (a, b) S -> simple_ses a).
   intros. apply (H0 a0 b0). right. easy.
   specialize (IHenv_equiv H2). apply (IHenv_equiv a b). easy.
+Admitted.
+
+Lemma state_equiv_single_ch_same: forall rmax l m b m' b', @state_equiv rmax ([(l,Cval m b)]) ([(l,Cval m' b')]) -> m = m' /\ b = b'.
+Proof.
+  intros. remember ([(l, Cval m b)]) as s. remember ([(l, Cval m' b')]) as s'. induction H;subst;simpl in *; try easy.
+  inv Heqs'. easy. destruct a1. simpl in *. subst. simpl in *. inv Heqs'. easy. inv Heqs.
+  apply app_eq_nil in H1. destruct H1; subst. simpl in *. inv Heqs'. easy.
+  inv Heqs. inv Heqs'. easy.
+  inv Heqs. inv Heqs'. easy. inv Heqs. inv Heqs'. inv H0.
+  inv Heqs. inv Heqs'.
 Admitted.
 
 Lemma find_env_simple: forall T l l' t, @find_env se_type T l (Some (l',t)) -> simple_tenv T -> simple_ses l'.
@@ -596,7 +602,11 @@ Proof.
   eapply H4. right. apply H6.
   destruct s; simpl in *. inv H1.
   inv H11.
-  exists (s,([a],(Hval (fun i => (update allfalse 0 (r i)))) )::l2).
+  assert (simple_ses ([a])) as X1.
+  unfold simple_tenv in *. specialize (H4 ([a]) TNor). assert (In ([a], TNor) (([a], TNor) :: T)).
+  simpl. left. easy.
+  apply H4 in H1. easy. apply simple_ses_len_exists in X1 as X2. destruct X2 as [x X2].
+  exists (s,([a],(Hval (eval_to_had x r)) )::l2).
   split. apply appsu_sem_h_nor; try easy.
   split.
   easy.
@@ -610,7 +620,11 @@ Proof.
   eapply H4. right. apply H6.
   destruct s; simpl in *. inv H1.
   inv H11.
-  exists (s,([a],(Nval C1 (fun j => bl j 0)))::l2).
+  assert (simple_ses ([a])) as X1.
+  unfold simple_tenv in *. specialize (H4 ([a]) THad). assert (In ([a], THad) (([a], THad) :: T)).
+  simpl. left. easy.
+  apply H4 in H1. easy. apply simple_ses_len_exists in X1 as X2. destruct X2 as [x X2].
+  exists (s,([a],(Nval C1 (eval_to_nor x bl)))::l2).
   split. apply appsu_sem_h_had; try easy.
   split. easy. split.
   simpl in *. unfold qstate_wt in *.

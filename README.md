@@ -1,14 +1,14 @@
-# QNP
+# Qafny
 
-Quantum Natural Proof (QNP) is a project to utilize classical separation logic frameworks to verify quantum program properties.
+Qafny is a project to utilize classical separation logic frameworks to verify quantum program properties.
 
 ## Overview
 
-Many quantum programs are assured by formal verification, but such verification is usually laborious and time-consuming. This paper proposes quantum natural proof (QNP), an automated proof system for verifying classical quantum hybrid algorithms. Natural proofs are a subclass of proofs that are amenable to completely automated reasoning, provide sound but incomplete procedures, and capture common reasoning tactics in program verification. The core of QNP is a quantum proof system, named the Qafny proof system. It views quantum operations as classical array aggregate operations with the guidance of a type system, which can be effectively verified in a classical separation logic framework. The proof system includes proof rules for proving properties of programs containing quantum conditionals, which is the first system that enables such proving power. We have shown the soundness and completeness of the Qafny proof system as well as the soundness of the proof system compilation from Qafny to Dafny. By using the QNP implementation in Dafny, we enable the automated verification, with the saving of both human efforts and computer execution time, for many classical quantum hybrid algorithms, including GHZ, Shor’s algorithm, Grover’s algorithm, and quantum walk algorithm. In addition, quantum programs written in Qafny can be compiled to quantum circuits so that every verified quantum program can be run on a quantum machine.
+Many quantum programs are assured by formal verification, but such verification is usually laborious and time-consuming. This paper proposes Qafny, an automated proof system for verifying classical quantum hybrid algorithms. The core of Qafny is a quantum proof system, named the Qafny proof system. It views quantum operations as classical array aggregate operations with the guidance of a type system, which can be effectively verified in a classical separation logic framework. The proof system includes proof rules for proving properties of programs containing quantum conditionals, which is the first system that enables such proving power. We have shown the soundness and completeness of the Qafny proof system as well as the soundness of the proof system compilation from Qafny to Dafny. By using the Qafny implementation in Dafny, we enable the automated verification, with the saving of both human efforts and computer execution time, for many classical quantum hybrid algorithms, including GHZ, Shor’s algorithm, Grover’s algorithm, and quantum walk algorithm. In addition, quantum programs written in Qafny can be compiled to quantum circuits so that every verified quantum program can be run on a quantum machine.
 
 ## Setup
 
-To compile QNP, you will need [Coq](https://coq.inria.fr/) and [QuickChick](https://github.com/QuickChick/QuickChick). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.12-8.14**.
+To compile Qafny, you will need [Coq](https://coq.inria.fr/) and [QuickChick](https://github.com/QuickChick/QuickChick). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.12-8.14**.
 
 Assuming you have opam installed (following the instructions in the link above), follow the steps below to set up your environment.
 ```
@@ -32,7 +32,7 @@ opam install coq-quickchick
 * We require Coq version >= 8.12. We have tested compilation with 8.12.2, 8.13.2, and 8.14.0.
 * opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
 
-## Compiling & Running QNP
+## Compiling & Running Qafny
 
 Run `make` in the top-level directory to compile our Coq proofs. See the README in the experiments directory for information on how to run QNP to generate the data in our paper.
 
@@ -42,7 +42,8 @@ Run `make` in the top-level directory to compile our Coq proofs. See the README 
 * SessionDef.v - Session and state syntax and equation rules.
 * SessionType.v - The Qafny Type system.
 * SessionSem.v - The LQafny language semantics.
-* SessionProof.v - The Qafny proof system.
+* SessionTypeProof.v - The Qafny Type system Soundness Proof.
+* SessionProof.v - The Qafny proof system and Soundness/Completeness Proof.
 * QafnySQIR.v - The LQafny to SQIR compilation.
 * Testing.v - The testing facility for the LQafny to SQIR compilation.
 

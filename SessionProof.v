@@ -119,6 +119,19 @@ Inductive subst_ses_qpred : qpred -> session -> sval -> qpred -> Prop :=
  | subst_ses_many: forall a b x v a' l l', subst_ses_sval a x v a' -> subst_ses_qpred l x v l'
                 -> subst_ses_qpred ((a,b)::l) x v ((a',b)::l').
 
+Inductive resolve_frozen : qpred -> qpred -> Prop :=
+   | resolve_frozen_many_1 : forall l q, resolve_frozen ([(SV l,q)]) ([(SV l,q)])
+   | resolve_frozen_many_2 : forall l l1 m f f' fc b n n1, @eval_bexp ([(l++l1,Cval m f)]) b ([(l++l1,Cval m f')])
+          -> ses_len l = Some n -> ses_len l1 = Some n1 -> 
+          mut_state 0 n n1 (Cval (fst (grab_bool f' m n)) (snd (grab_bool f' m n))) fc
+               -> resolve_frozen ((Frozen b (SV l) (SV l1),Cval m f)::nil) ((SV l1,fc)::nil).
+
+Inductive resolve_unfrz : qpred -> qpred -> Prop :=
+   | resolve_unfrz_many_1 : forall l q l' q', resolve_unfrz ((SV l,q)::[(SV l',q')]) ((SV l,q)::[(SV l',q')])
+   | resolve_unfrz_many_2 : forall l l1 q m f m' f' f'' fc b n n1, ses_len l = Some n -> ses_len l1 = Some n1 ->
+          eval_bexp ([(l++l1,Cval m f)]) b ([(l++l1,Cval m f')]) -> mut_state 0 n1 n q (Cval m' f'') -> assem_bool m m' n f' f'' fc ->
+       resolve_unfrz ((Unfrozen n (BNeg b) (SV (l++l1)),Cval m f)::[((Unfrozen n b (SV (l++l1)),q))]) ([(SV (l++l1),Cval (fst fc) (snd fc))]).
+
 Fixpoint ses_in (s:session) (l:list session) :=
   match l with nil => False
        | (a::xl) => ((ses_eq a s) \/ (ses_in s xl))
@@ -200,6 +213,15 @@ Inductive simp_pred : cpred -> qpred -> (cpred * qpred) -> Prop :=
             simp_pred W P (W',P') -> simp_pred_elem W' s v (W'',a) -> simp_pred W ((s,v)::P) (W'',a::P').
 
 
+Axiom qfor_sem_region: forall rmax q env e l n W Wa m r r1 ma bl, ses_len l = Some n
+  -> (forall j : nat,
+      j < m ->
+      fst (r j) = fst (r1 j) /\
+      (forall i : nat, i < n -> snd (r j) i = snd (r1 j) i)) ->
+   @session_system rmax q env ([(l, CH)]) e ([(l, CH)])
+   -> @qfor_sem rmax env (W, ([(l, Cval ma bl)])) e (Wa, ([(l, Cval m r)]))
+   -> @qfor_sem rmax env (W, ([(l, Cval ma bl)])) e (Wa, ([(l, Cval m r1)])).
+
 Inductive triple {rmax:nat} : 
           atype -> aenv -> type_map -> cpred*qpred -> pexp -> cpred*qpred -> Prop :=
       | triple_frame: forall q env T T1 T' l W W' P Q e R, type_check_proof rmax q env T T1 (W,P) (W',Q) e ->
@@ -224,13 +246,30 @@ Inductive triple {rmax:nat} :
             AEnv.MapsTo y (QT n) env ->  ~ AEnv.In x env ->
             simp_pred W ((FM x n (SV l),v)::P) P' ->
             triple q (AEnv.add x (Mo MT) env) ((l,CH)::T) P' e Q
-            -> triple q env (((y,BNum 0,BNum n)::l,CH)::T) (W,(SV ((y,BNum 0,BNum n)::l),v)::P) (Let x (Meas y) e) Q.
+            -> triple q env (((y,BNum 0,BNum n)::l,CH)::T) (W,(SV ((y,BNum 0,BNum n)::l),v)::P) (Let x (Meas y) e) Q
+      | appu_nor_pf : forall q env W l l1 r b e ra ba, eval_nor rmax env l r b e = Some (ra,ba) ->
+                triple q env ([(l++l1,TNor)]) (W,([(SV (l++l1),Nval r b)])) (AppU l e) (W, ([(SV (l++l1),Nval ra ba)]))
+      | appu_ch_pf : forall q env W l l1 m b e ba, eval_ch rmax env l m b e = Some ba ->
+                triple q env ([(l++l1,CH)]) (W,([(SV (l++l1),Cval m b)])) (AppU l e) (W, ([(SV (l++l1),Cval m ba)]))
+      | apph_nor_pf: forall q env W p a r b n, @simp_varia env p a -> ses_len ([a]) = Some n ->
+            triple q env ([([a], TNor)]) (W,([(SV ([a]),Nval r b)])) (AppSU (RH p)) (W, ([(SV ([a]),(Hval (eval_to_had n b)))]))
+
+      | apph_had_pf: forall q env W p a b n, @simp_varia env p a -> ses_len ([a]) = Some n ->
+            triple q env ([([a], THad)]) (W,([(SV ([a]),Hval b)])) (AppSU (RH p)) (W, ([(SV ([a]),(Nval C1 (eval_to_nor n b)))]))
+      | if_c_t : forall q env T T1 P Q b e, type_check_proof rmax q env T T1 P Q e -> simp_bexp b = Some true ->
+                 triple q env T P e Q -> triple q env T P (If b e) Q
+      | if_c_f : forall q env T P b e, simp_bexp b = Some false ->
+                 triple q env T P e P -> triple q env T P (If b e) P
+      | if_q : forall q env W W' P P' P'' Q Pa Qa Qa' b e n l l1, type_bexp env b (QT n,l) -> 
+                    type_check_proof rmax q env ([(l1,CH)]) ([(l1,CH)]) (W,P'') (W',Q) e -> ses_len l = Some n ->
+                   subst_ses_qpred P (l++l1) (Frozen b (SV l) (SV l1)) P' -> resolve_frozen P' P'' ->
+                subst_ses_qpred P (l++l1) (Unfrozen n (BNeg b) (SV (l++l1))) Pa ->
+                simple_qpred Q -> subst_ses_qpred Q l1 (Unfrozen n b (SV (l++l1))) Qa -> resolve_unfrz (Pa++Qa) Qa' ->
+                  triple q env ([(l1,CH)]) (W,P'') e (W',Q) -> triple q env ([(l++l1,CH)]) (W,P) (If b e) (W',Qa')
+
+      | for_pf_f : forall q env T x l h b p P, h <= l -> triple q env T P (For x (Num l) (Num h) b p) P.
+
 (*
-      | apph_pf: forall q env T x n l b, type_vari env x (QT n,l) -> find_type T l (Some (l,TNor)) ->
-            triple q env T ([SEq (SV l) (Nval (C1) b)]) (AppSU (RH x)) ([SEq (SV l) (Hval (fun i => (update allfalse 0 (b i))))])
-      | appu_pf : forall q env T l l1 m b e ba,  find_type T l (Some (l++l1,CH)) ->
-                eval_ch rmax env l m b e = Some ba ->
-                triple q env T ([SEq (SV (l++l1)) (Cval m b)]) (AppU l e) ([SEq (SV (l++l1)) (Cval m ba)]).
       | dis_pf : forall q env T x n l l1 n' m f m' acc, type_vari env x (QT n,l) -> find_type T l (Some (l++l1,CH)) ->
                  ses_len l1 = Some n' -> dis_sem n n' m m f nil (m',acc) -> 
                 triple q env T ([SEq (SV (l++l1)) (Cval m f)]) (Diffuse x) ([SEq (SV (l++l1)) (Cval m' acc)])
@@ -238,15 +277,8 @@ Inductive triple {rmax:nat} :
       | for_pf : forall q env T x l h b p P i, l <= i < h ->
             triple q env T (cpred_subst_c P x i) (If (subst_bexp b x i) (subst_pexp p x i)) (cpred_subst_c P x (i+1)) ->
             triple q env T (cpred_subst_c P x l) (For x (Num l) (Num h) b p) (cpred_subst_c P x h)
-      | if_c_1 : forall q env T P Q b e, simp_bexp b = Some true ->
-                 triple q env T P e Q -> triple q env T P (If b e) Q
-      | if_c_2 : forall q env T P b e, simp_bexp b = Some false ->
-                 triple q env T P e P -> triple q env T P (If b e) P
-      | if_q : forall q env T T' P P' Pa Q Q' Qa b e n l l1, type_bexp env b (QT n,l) -> find_type T l (Some (l++l1,CH)) ->
-                  up_type T l1 CH T' -> subst_ses_cpred P (l++l1) (Frozen b (SV l) (SV l1)) P' -> pred_check q env ([(l1,CH)]) Q' ->
-                subst_ses_cpred P (l++l1) (Unfrozen n (BNeg b) (SV (l++l1))) Pa ->
-                subst_ses_cpred Q' l1 (Unfrozen n b (SV (l++l1))) Qa ->
-                  triple q env T' P' e (Q++Q') -> triple q env T P (If b e) (Pa++Qa)
+
+
       | seq_pf: forall q env tenv tenv' tenv'' P R Q e1 e2,
              @session_system rmax q env tenv e1 tenv' -> up_types tenv tenv' tenv'' -> pred_check q env tenv'' R ->
              triple q env tenv P e1 R -> triple q env tenv'' R e1 Q -> triple q env tenv P (PSeq e1 e2) Q.
@@ -508,6 +540,42 @@ Proof.
   rewrite H2.
 Admitted.
 
+Lemma eval_nor_switch_same : forall rmax env l l1 n r b b1 e, ses_len (l++l1) = Some n -> (forall i, i < n -> b i = b1 i) -> 
+        eval_nor rmax env l r b e = eval_nor rmax env l r b1 e.
+Admitted.
+
+Lemma eval_ch_switch_same : forall rmax env l l1 m n b b1 e, ses_len (l++l1) = Some n
+   -> (forall j : nat,
+      j < m ->
+      fst (b j) = fst (b1 j) /\
+      (forall i : nat, i < n -> snd (b j) i = snd (b1 j) i)) -> 
+        eval_ch rmax env l m b e = eval_ch rmax env l m b1 e.
+Admitted.
+
+Lemma eval_to_nor_switch_same: forall n r1 b, (forall i : nat, i < n -> r1 i = b i)
+      -> eval_to_had n r1 = eval_to_had n b.
+Proof.
+  intros. unfold eval_to_had in *. apply functional_extensionality.
+  intros. bdestruct (x <? n). rewrite H; try easy. easy.
+Qed.
+
+Lemma eval_to_had_switch_same: forall n r1 b, (forall i : nat, i < n -> r1 i = b i)
+      -> eval_to_nor n r1 = eval_to_nor n b.
+Proof.
+  intros. unfold eval_to_nor in *. apply functional_extensionality.
+  intros. bdestruct (x <? n). rewrite H; try easy. easy.
+Qed.
+
+Axiom app_length_same : forall l1 l2 l3 l4 n, ses_len l1 = Some n -> ses_len l3 = Some n -> l1++l2 = l3 ++ l4 -> l1 = l3 /\ l2 = l4.
+
+Lemma type_preserve: forall rmax q env T' l s s' e, @session_system rmax q env [(l,CH)] e T' 
+  -> env_state_eq ([(l,CH)]) (snd s) -> kind_env_stack_full env (fst s) -> @qfor_sem rmax env s e s'
+        -> env_state_eq T' (snd s') /\ kind_env_stack_full env (fst s').
+Proof.
+  intros. remember ([(l,CH)]) as T. generalize dependent l. generalize dependent s. generalize dependent s'.
+  induction H; intros;simpl in *; subst.
+Admitted.
+
 Lemma proof_soundness: forall e rmax t env s tenv tenv' P Q, 
      @env_state_eq tenv (snd s) -> kind_env_stack_full env (fst s) ->
       type_check_proof rmax t env tenv tenv' P Q e -> freeVarsNotCPExp env e -> @qstate_wt (snd s) -> simple_tenv tenv ->
@@ -705,5 +773,119 @@ Proof.
   apply let_sem_q with (r0 := r) (v := v0) (va' := Cval na pa); try easy.
   apply pick_mea_exist_same with (n0 := n0) (ba := r2); try easy.
   rewrite build_state_ch_exist_same with (n0 := n0) (bl := bl) in H24; try easy. easy.
+ -
+  destruct s. inv H7.
+  exists s,([(l++l1,Nval ra ba)]),([(l++l1,Nval ra ba)]).
+  split. split. easy. simpl.
+  unfold simple_tenv in *.
+  specialize (H4 (l++l1) TNor). assert (In (l ++ l1, TNor) [(l ++ l1, TNor)]). simpl. left. easy.
+  apply H4 in H7. apply simple_ses_len_exists in H7. destruct H7.
+  apply model_many with (n:= x); try easy.
+  constructor. intros. easy. constructor.
+  split. simpl in *. inv H9. inv H14. inv H15.
+  apply appu_sem_nor; try easy.
+  rewrite eval_nor_switch_same with (b1 := b) (l1 := l1) (n := n); try easy.
+  constructor.
+ -
+  destruct s. inv H7.
+  exists s,([(l++l1,Cval m ba)]),([(l++l1,Cval m ba)]).
+  split. split. easy. simpl.
+  unfold simple_tenv in *.
+  specialize (H4 (l++l1) CH). assert (In (l ++ l1, CH) [(l ++ l1, CH)]). simpl. left. easy.
+  apply H4 in H7. apply simple_ses_len_exists in H7. destruct H7.
+  apply model_many with (n:= x); try easy.
+  constructor. intros. easy. constructor.
+  split. simpl in *. inv H9. inv H14. inv H15.
+  apply appu_sem_ch; try easy.
+  rewrite eval_ch_switch_same with (b1 := b) (l1 := l1) (n := n); try easy.
+  constructor.
+ -
+  destruct s. inv H8. simpl in *.
+  inv H10. inv H16. inv H15.
+  exists s,([(([a]),Hval (eval_to_had n b))]),([(([a]),Hval (eval_to_had n b))]).
+  split. split. easy. simpl.
+  apply model_many with (n := n); try easy. constructor. intros. easy. constructor.
+  split. rewrite H0 in H14. inv H14.
+  rewrite <- eval_to_nor_switch_same with (r1 := r1); try easy.
+  constructor; try easy.
+  constructor. 
+ -
+  destruct s. inv H8. simpl in *.
+  inv H10. inv H16. inv H15.
+  exists s,([(([a]),(Nval C1 (eval_to_nor n b)))]),([(([a]),(Nval C1 (eval_to_nor n b)))]).
+  split. split. easy. simpl.
+  apply model_many with (n := n); try easy. constructor. intros. easy. constructor.
+  split. rewrite H0 in H14. inv H14.
+  rewrite <- eval_to_had_switch_same with (r1 := r1); try easy.
+  constructor; try easy.
+  constructor. 
+ -
+  assert (freeVarsNotCPExp env e) as X1.
+  unfold freeVarsNotCPExp in *.
+  intros. apply H2 with (x := x) (t := t); try easy. simpl. apply in_app_iff. right. easy.
+  destruct (IHtriple X1 H4 H6 T1 H s H3 H7 H8 H9) as [W [sa [sb [X2 [X3 X4]]]]].
+  exists W,sa,sb. split. easy.
+  split. apply if_sem_ct; try easy. easy.
+ -
+  destruct s. simpl in *. exists s,q0,q0.
+  split. easy. split. apply if_sem_cf; try easy. apply state_id.
+ -
+  assert (freeVarsNotCPExp env e) as X1.
+  unfold freeVarsNotCPExp in *.
+  intros. apply H2 with (x := x) (t := t); try easy. simpl. apply in_app_iff. right. easy.
+  assert (simple_tenv ([(l1, CH)])).
+  unfold simple_tenv in *.
+  intros. simpl in *. destruct H17; try easy. 
+  inv H17. assert ((l ++ a, CH) = (l++a, CH) \/ False). left. easy.
+  apply H4 in H17. apply simple_ses_app_r in H17. easy.
+  assert (Y1 := H0).
+  destruct H0 as [X2 [X3 X4]]. inv X2. inv H18. inv H24. simpl in *. subst.
+  destruct H12. inv H12. inv H20. inv H27. simpl in *. subst.
+  inv H3. inv H25. inv H28. inv H30. inv H6. inv H21. inv H20. inv H24. inv H29; try easy.
+  inv H5.
+  assert (simple_qpred ([(SV l1, Cval m bl)])).
+  constructor. constructor. constructor.
+  specialize (IHtriple X1 H17 H3 ([(l1, CH)]) Y1).
+  inv H16. destruct s. simpl in *. inv H6. inv H29. inv H25.
+  assert (env_state_eq ([(l1, CH)]) (snd (s, [(l1, Cval m bl)]))).
+  simpl in *. constructor. constructor. constructor.
+  assert (kind_env_stack_full env (fst (s, [(l1, Cval m bl)]))).
+  simpl in *. easy.
+  assert (m = (fst (grab_bool f' m0 n0))).
+  inv H28. easy. subst.
+  assert (qstate_wt
+             (snd
+                (s, [(l1, Cval (fst (grab_bool f' m0 n0)) bl)]))).
+  unfold qstate_wt in *.
+  intros. simpl in *. destruct H16; try easy. inv H16.
+  apply grab_bool_gt. apply H15 with (s := l ++ s0) (bl := r1). left. easy.
+  apply type_bexp_gt in H. rewrite H1 in H26. inv H26. easy.
+  assert (model (s, [(l1, Cval (fst (grab_bool f' m0 n0)) bl)])
+             (W, [(SV l1, Cval (fst (grab_bool f' m0 n0)) bl)])).
+  split. easy. simpl in *. apply model_many with (n := n1); try easy.
+  constructor. intros. easy. constructor.
+  destruct (IHtriple (s,([(l1,Cval (fst (grab_bool f' m0 n0)) bl)])) H6 H12 H16 H23) as [Wa [sa [sb [Y2 [Y3 Y4]]]]].
+  inv X4. simpl in *. inv H29. inv H36. inv H35. inv H8. inv H31. inv H32. inv H33; try easy.
+  inv Y2. simpl in *. inv H29. inv H36. inv H35.
+  apply type_preserve with (s := (s, [(l0, Cval (fst (grab_bool f' m0 n0)) bl)])) (s' := (Wa,sb)) in X3 as Y5; try easy.
+  destruct Y5 as [Y5 Y6]. simpl in *. inv Y5. inv H35. inv H36.
+  apply state_equiv_single_ch_same in Y4. destruct Y4;subst.
+  inv H9. inv H38. inv H37; try easy.
+  inv H7. inv H38. inv H37; try easy.
+  inv H10. rewrite H26 in H1. inv H1. rewrite H34 in H27. inv H27.
+  apply app_length_same with (n := n) in H30; try easy. destruct H30; subst. 
+  rewrite H41 in H34; inv H34.
+  exists Wa, ([((l++l0),Cval (fst fc) (snd fc))]), ([((l++l0),Cval (fst fc) (snd fc))]).
+  split. split. easy. simpl. apply model_many with (n := n + n1); try easy.
+  rewrite ses_len_app_add with (n := n) (n1 := n1); try easy. constructor. intros. easy. constructor.
+  split. apply eval_bexp_det with (q1 := [(l ++ l0, Cval m0 f'0)]) in H21; try easy. inv H21.
+  apply (if_sem_q env s Wa l l0 n n1 nil nil b e m0 m' r1 f' (Cval (fst (grab_bool f' m0 n)) bl) (Cval m bl1) f'' fc); try easy.
+  apply (bexp_eval_same env b n) with (n2 := n2) (bl := bl0); try easy.
+  apply (qfor_sem_region rmax q) with (n := n1) (r := r0); try easy.
+  constructor.
+ -
+  destruct s. exists s, q0, q0. split. easy.
+  split. apply for_sem. assert (h - l = 0) by lia. rewrite H8. apply ForallA_nil.
+  constructor.
 Qed.
 
