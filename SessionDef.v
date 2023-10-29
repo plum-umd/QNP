@@ -254,6 +254,8 @@ Inductive state_elem :=
 
 Definition qstate := list (session * state_elem).
 
+(*TODO: translate the qstate to SQIR state. *)
+
 Fixpoint n_rotate (rmax:nat) (r1 r2:rz_val) :=
    match rmax with 0 => r1
               | S n => if r2 n then n_rotate n (addto r1 n) r2 else n_rotate n r1 r2

@@ -112,6 +112,123 @@ Fixpoint trans_pexp (f:OQASMProof.vars) (dim:nat) (e:pexp) (avs: nat -> posi) : 
        | _ => None
   end.
 
+(*
+Inductive state_elem :=
+                 | Nval (p:C) (r:rz_val)
+                 | Hval (b:nat -> rz_val)
+                 | Cval (m:nat) (b : nat -> C * rz_val).
+
+Definition qstate := list (session * state_elem).
+
+Definition compile_val (v:val) (r_max : nat) : Vector 2 := 
+   match v with nval b r => Cexp (2*PI * (turn_angle r r_max)) .* ∣ Nat.b2n b ⟩
+            (* | hval b1 b2 r => RtoC(/ √ 2) * Cexp (2*PI * (turn_angle r r_max)) .*
+                              ((RtoC ((z_phase b1))) .* ∣0⟩ .+ (RtoC ((z_phase b2))) .* ∣1⟩) *)
+             | qval q r => RtoC(/ √ 2) * Cexp (2*PI * (turn_angle q r_max)) .* (∣0⟩ .+ (Cexp (2*PI * (turn_angle r r_max))) .* ∣1⟩)
+  end.
+
+Lemma WF_compile_val : forall v r, WF_Matrix (compile_val v r).
+Proof.
+  intros. unfold compile_val.
+  destruct v;auto with wf_db.
+Qed.
+
+Hint Resolve WF_compile_val : wf_db.
+
+(*example *)
+Definition trans_state (avs : nat -> posi) (rmax : nat) (f : posi -> val) : (nat -> Vector 2) :=
+        fun i => compile_val (f (avs i)) rmax.
+
+function: posi -> nat
+                 | Nval (p:C) (r:rz_val)
+                 | Hval (b:nat -> rz_val)
+                 | Cval (m:nat) (b : nat -> C * rz_val).
+*)
+
+Check vsum.
+
+Check find_pos.
+
+Check allfalse.
 
 
+(* n is the length, f is the mapping from posi to nat, s is a session, v is the virtual vector. *)
+Check fold_left.
+
+Fixpoint perm_range (f:OQASMProof.vars) (v:rz_val) (x:var) (i:nat) (j:nat)  (n:nat) (acc:rz_val) :=
+   match n with 0 => acc
+              | S m => update (perm_range f v x i j m acc) (find_pos f (x,i+m)) (v (j+m))
+   end.
+
+Fixpoint perm_vector (f:OQASMProof.vars) (s:session) (v:rz_val) (j:nat) := 
+  match s with [] => Some allfalse
+             | (x,BNum l, BNum r)::ne =>
+          if l <=? r then
+              (match perm_vector f ne v (j+(r-l))
+                   with None => None
+                      | Some acc => Some (perm_range f v x l j (r-l) acc)
+               end)
+          else None
+             | _ => None
+  end.
+
+
+
+Fixpoint gen_qfun {d} (f:OQASMProof.vars) (s:session) (size:nat) (m:nat) (b : nat -> C * rz_val)
+   : option (nat -> Vector d) :=
+   match m with 0 => Some (fun q => Zero)
+              | S ma => match perm_vector f s (snd (b ma)) 0
+                            with None => None
+                               | Some acc =>
+                         match gen_qfun f s size ma b
+                              with None => None
+                               | Some new_f =>
+                Some (update new_f ma ((fst (b ma)).* (@basis_vector d (a_nat2fb acc size))))
+                         end
+                        end
+   end.
+
+Definition trans_qstate (f:OQASMProof.vars) (s:qstate) :=
+    match s with (sa,Cval m b)::nil =>
+      match ses_len sa with None => None
+                            | Some na => 
+           match @gen_qfun (2^na) f sa na m b
+              with None => None
+                 | Some acc => Some (@vsum (2^na) m acc)
+           end
+      end
+              | _ => None
+   end.
+
+Definition trans_state_qafny (f:OQASMProof.vars) (s:state) :=
+  match s with (sa,q) => match trans_qstate f q 
+       with None => None
+          | Some acc => Some (sa,acc)
+      end
+  end.
+
+
+(*
+Lemma trans_pexp_sem :
+  forall dim e f tenv tenv' rmax vs (avs : nat -> posi),
+    vars_start_diff vs ->
+    vars_finite_bij vs ->
+    vars_sparse vs ->
+    vars_anti_same vs ->
+    exp_WF (size_env vs) e ->
+    at_match (size_env vs) tenv ->
+    exp_com_WF vs dim ->
+    exp_com_gt vs avs dim ->
+    well_typed_oexp (size_env vs) tenv e tenv' ->
+    right_mode_env (size_env vs) tenv f ->
+    avs_prop vs avs dim -> 
+    exp_rmax (size_env vs) rmax e ->
+    qft_uniform (size_env vs) tenv f ->
+    qft_gt (size_env vs) tenv f ->
+    dim > 0 ->
+    (uc_eval (fst (fst (trans_pexp vs dim e avs)))) × (vkron dim (trans_qstate avs rmax f)) 
+                =  vkron dim (trans_qstate (snd (trans_pexp vs dim e avs)) rmax (qfor_sem (size_env vs) e f)).
+Proof.
+
+*)
 

@@ -4403,6 +4403,7 @@ Qed.
 
 Hint Resolve WF_compile_val : wf_db.
 
+(*example *)
 Definition trans_state (avs : nat -> posi) (rmax : nat) (f : posi -> val) : (nat -> Vector 2) :=
         fun i => compile_val (f (avs i)) rmax.
 

@@ -47,6 +47,4 @@ Run `make` in the top-level directory to compile our Coq proofs. See the README 
 * QafnySQIR.v - The LQafny to SQIR compilation.
 * Testing.v - The testing facility for the LQafny to SQIR compilation.
 
-The `qdfy` directory contains the Qafny to Dafny compilation and program results.
-
 
