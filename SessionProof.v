@@ -224,13 +224,16 @@ Axiom qfor_sem_region: forall rmax q env e l n W Wa m r r1 ma bl, ses_len l = So
 
 Inductive triple {rmax:nat} : 
           atype -> aenv -> type_map -> cpred*qpred -> pexp -> cpred*qpred -> Prop :=
-      | triple_frame: forall q env T T1 T' l W W' P Q e R, type_check_proof rmax q env T T1 (W,P) (W',Q) e ->
-           fv_pexp env e l -> sub_qubits l (dom_to_ses(dom T)) -> sub_qubits (dom_to_ses (freeSesQPred R)) (dom_to_ses(dom T'))
-         -> dis_qubits (dom_to_ses(dom T)) (dom_to_ses(dom T')) -> triple q env T (W,P) e (W',Q) -> triple q env (T++T') (W,P++R) e (W',Q++R)
-      | triple_con_1: forall q env T T1 T' P P' Q e, type_check_proof rmax q env T' T1 P' Q e -> 
-            imply rmax P P' -> env_equiv T T' -> triple q env T' P' e Q -> triple q env T P e Q
-      | triple_con_2: forall q env T T' T1 P Q Q' e, type_check_proof rmax q env T T' P Q' e -> 
-            imply rmax Q' Q -> env_equiv T' T1 -> pred_check env T1 Q  -> triple q env T P e Q' -> triple q env T P e Q
+      | triple_frame: forall q env T T1 T' l W W' P Q e R, 
+                    type_check_proof rmax q env T T1 (W,P) (W',Q) e ->
+           fv_pexp env e l -> sub_qubits l (dom_to_ses(dom T)) 
+                  -> sub_qubits (dom_to_ses (freeSesQPred R)) (dom_to_ses(dom T'))
+         -> dis_qubits (dom_to_ses(dom T)) (dom_to_ses(dom T')) 
+              -> triple q env T (W,P) e (W',Q) -> triple q env (T++T') (W,P++R) e (W',Q++R)
+      | triple_con_1: forall q env T T1 P P' Q e, type_check_proof rmax q env T T1 P' Q e -> 
+            imply rmax P P' -> triple q env T P' e Q -> triple q env T P e Q
+      | triple_con_2: forall q env T T1 P Q Q' e, type_check_proof rmax q env T T1 P Q' e -> 
+            imply rmax Q' Q -> pred_check env T1 Q -> triple q env T P e Q' -> triple q env T P e Q
       | skip_pf: forall q env T P, triple q env T P PSKIP P
 
       | let_c_pf: forall q env T T1 P x v e Q,
@@ -239,7 +242,8 @@ Inductive triple {rmax:nat} :
       | let_m_pf: forall q env T T1 W P x a e Q,
             type_check_proof rmax q (AEnv.add x (Mo MT) env) T T1 ((CEq (BA x) a)::W,P) Q e ->
             type_aexp env a (Mo MT,nil) -> ~ AEnv.In x env ->
-            triple q (AEnv.add x (Mo MT) env) T ((CEq (BA x) a)::W,P) e Q -> triple q env T (W,P) (Let x (AE a) e) Q
+            triple q (AEnv.add x (Mo MT) env) T ((CEq (BA x) a)::W,P) e Q
+              -> triple q env T (W,P) (Let x (AE a) e) Q
 
       | let_q_pf:  forall q env T T1 W P P' x v y n l e Q,
               type_check_proof rmax q (AEnv.add x (Mo MT) env) ((l, CH) :: T) T1 P' Q e ->
@@ -308,12 +312,7 @@ Lemma session_system_local: forall rmax t env e l T T' T1,
     @session_system rmax t env T e T' -> @session_system rmax t env (T++T1) e (T'++T1).
 Proof.
   intros.
-  induction H2; simpl in *.
-  apply env_equiv_sub with (s' := T2) in H0; try easy.
-  apply env_equiv_dis with (s' := T2) in H1; try easy.
-  specialize (IHsession_system H H0 H1).
-  apply env_equiv_cong with (S3 := T1) in H2.
-  apply env_equiv_ses with (T5 := ((T2 ++ T1))); try easy.
+  induction H2; simpl in *; try easy.
   constructor.
 Admitted.
 
@@ -393,9 +392,8 @@ Proof.
   simpl in *.
 Admitted.
 
-Lemma qpred_state_consist: forall rmax T T' q q' P P', env_equiv T T' -> @state_equiv rmax q q' 
-         -> env_state_eq T q -> env_state_eq T' q' -> qpred_check T P -> qpred_check T' P' -> @qpred_equiv rmax P P'
-         -> qmodel q P -> qmodel q' P'.
+Lemma qpred_state_consist: forall rmax T q P P', env_state_eq T q
+      -> qpred_check T P -> qpred_check T P' -> @qpred_equiv rmax P P' -> qmodel q P'.
 Proof.
 Admitted.
 
@@ -415,7 +413,8 @@ Proof.
   inv H10. easy.
 Qed.
 
-Lemma qpred_equiv_state_eq: forall rmax s P Q, @qpred_equiv rmax P Q -> qmodel s P -> exists s', qmodel s' Q /\ @state_equiv rmax s s'.
+Lemma qpred_equiv_state_eq: forall rmax s P Q, @qpred_equiv rmax P Q -> 
+       qmodel s P -> exists s', qmodel s' Q /\ @state_equiv rmax s s'.
 Proof.
   intros. generalize dependent s. induction H; intros;simpl in *.
   exists s. split. easy. constructor.
@@ -426,9 +425,6 @@ Proof.
   apply qmodel_combine; try easy.
   apply state_comm.
 Admitted.
-
-Definition kind_env_stack_full (env:aenv) (s:stack) : Prop :=
-  forall x, AEnv.MapsTo x (Mo MT) env <-> AEnv.In x s.
 
 Lemma eval_aexp_not_exists: forall x s a v va, ~ AEnv.In x s -> eval_aexp s a va -> eval_aexp (AEnv.add x v s) a va.
 Proof.
@@ -579,66 +575,13 @@ Proof.
   intros. induction H. simpl. easy. constructor; try easy.
 Qed.
 
-Lemma state_preserve: forall rmax q env T' l s s' e, @session_system rmax q env [(l,CH)] e T' 
-  -> env_state_eq ([(l,CH)]) (snd s) -> kind_env_stack_full env (fst s) -> @qfor_sem rmax env s e s' -> simple_ses l
-        -> env_state_eq T' (snd s') /\ kind_env_stack_full env (fst s').
-Proof.
-  intros. remember ([(l,CH)]) as T. generalize dependent l. generalize dependent s. generalize dependent s'.
-  induction H; intros;simpl in *; subst. destruct s0. simpl in *.
-  assert (X1 := H1). inv H1. inv H9.
-  inv H; try easy.
-  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l).
-  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H. easy. easy.
-  destruct a1. simpl in *. subst.
-  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l). simpl in *.
-  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H; try easy.
-  inv H5. apply app_eq_nil in H6. destruct H6; subst. simpl in *.
-  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l).
-  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H; try easy.
-  inv H8.
-  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l).
-  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H; try easy.
-  inv H8; try easy.
-  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l).
-  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H; try easy.
-  apply app_eq_nil in H1. destruct H1; subst. simpl in *.
-  specialize (IHsession_system s' (s0,([(l, a)])) X1 H2 H3 l).
-  assert ([(l, CH)] = [(l, CH)] ) by easy. apply IHsession_system in H; try easy.
-  inv H10.
-  apply state_eq_sem with (f := [(s'0, Cval m bl)]) in H3; try easy.
-  assert (env_state_eq ([(s'0, CH)]) ([(s'0, Cval m bl)])).
-  constructor. constructor. constructor.
-  specialize (IHsession_system s' (s0, [(s'0, Cval m bl)]) H H2 H3 s'0).
-  assert ([(s'0, CH)] = [(s'0, CH)] ) by easy. apply IHsession_system in H1; try easy.
-  apply ses_eq_simple with (l := l); try easy.
-  apply state_ses_eq. apply ses_eq_comm. easy.
-  inv H10.
-  apply simple_ses_app_l in H4 as X2. apply simple_ses_app_r in H4 as X3.
-  inv X3. unfold simple_bound in H5. destruct x; try easy. unfold simple_bound in H6. destruct y; try easy.
-  inv H7. unfold simple_bound in H8. destruct x; try easy. unfold simple_bound in H9. destruct y; try easy.
-  apply simple_ses_len_exists in X2 as X3. destruct X3 as [n3 X3].
-  apply simple_ses_len_exists in H10 as X4. destruct X4 as [n4 X4].
-  assert (env_state_eq ([(l1 ++(a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2, CH)])
-       ([(l1 ++ (a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2, Cval m (mut_fch_state n3 (n0-n) (n2-n1) bl))])).
-  constructor. constructor. constructor.
-  apply state_eq_sem with (f := ([(l1 ++ (a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2, Cval m (mut_fch_state n3 (n0-n) (n2-n1) bl))])) in H3; try easy.
-  specialize (IHsession_system s' (s0,([(l1 ++ (a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2, Cval m (mut_fch_state n3 (n0-n) (n2-n1) bl))]))
-            H H2 H3 (l1 ++ (a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2)).
-  assert ([(l1 ++ (a0, BNum n1, BNum n2) :: (a, BNum n, BNum n0) :: l2,CH)] = [(l1 ++(a0, BNum n1, BNum n2):: (a, BNum n, BNum n0) :: l2,CH)]) by easy.
-  apply IHsession_system in H1; try easy.
-  apply simple_ses_app_combine; try easy. constructor; try easy. constructor; try easy.
-  apply state_equiv_sym.
-  apply state_mut with (n5 := n3) (n6 := (n0-n)) (n7 := n2 -n1); try easy.
-  unfold ses_len. simpl in *. replace (n0 - n + 0) with (n0-n) by lia. easy.
-  unfold ses_len. simpl in *. replace (n2 - n1 + 0) with (n2-n1) by lia. easy.
-  constructor.
-Admitted.
-
 Lemma proof_soundness: forall e rmax t env s tenv tenv' P Q, 
-     @env_state_eq tenv (snd s) -> kind_env_stack_full env (fst s) ->
-      type_check_proof rmax t env tenv tenv' P Q e -> freeVarsNotCPExp env e -> @qstate_wt (snd s) -> simple_tenv tenv ->
+     @env_state_eq tenv (snd s) -> kind_env_stack env (fst s) ->
+      type_check_proof rmax t env tenv tenv' P Q e -> freeVarsNotCPExp env e 
+      -> @qstate_wt (snd s) -> simple_tenv tenv ->
     @triple rmax t env tenv P e Q -> simple_qpred (snd P) -> model s P -> 
-          (exists W sa sb, model (W,sa) Q  /\ @qfor_sem rmax env s e (W,sb) /\ @state_equiv rmax sb sa).
+          (exists W sa sb, model (W,sa) Q  
+          /\ @qfor_sem rmax env s e (W,sb) /\ @state_equiv rmax sb sa).
 Proof.
   intros. generalize dependent s. generalize dependent tenv'. induction H5; intros;simpl in *.
  -
@@ -669,37 +612,30 @@ Proof.
   apply qfor_sem_local with (l := l) ; try easy.
   apply state_equiv_add. easy.
  -
-  apply env_equiv_simple_type in H1 as X1; try easy.
   apply simple_qpred_imply with (rmax := rmax) (Q := P') in H6 as X2; try easy.
-  specialize (IHtriple H2 X1 X2 T1 H).
+  specialize (IHtriple H2 H4 X2 T1 H).
   inv H0. destruct s.
-  unfold model in *; simpl in *. destruct H10 as [Y1 Y2].
+  unfold model in *; simpl in *. destruct H9 as [Y1 Y2].
   destruct H as [Y3 [Y4 Y5]]. destruct Y3 as [Y6 Y7].
-  destruct H3 as [Y8 Y9]. destruct Y8 as [Y10 Y11]. simpl in *.
-  apply (qpred_check_consist T T' P0 X2) in Y11 as Y12; try easy; subst.
-  specialize (IHtriple (s,q0) H7 H8 H9).
-  apply H11 in Y1 as Y3. simpl in *.
+  specialize (IHtriple (s,q0) H3 H7 H8).
+  apply H10 in Y1 as Y3. simpl in *.
   assert (cmodel s W' /\ qmodel q0 P0) by easy.
   destruct (IHtriple H) as [Wa [sa [sb [G1 [G2 G3]]]]].
   exists Wa,sa,sb. easy.
-  assert (X5 := H1).
-  apply env_state_eq_trans with (r := rmax) (S := snd s) in H1 as [sa [X6 X7]]; try easy.
-  destruct s. destruct H10 as [X8 X9].
+  destruct H9 as [X3 X4].
   destruct H as [Y1 [Y2 Y3]]. destruct Y1 as [Y1 Y4].
-  destruct H3 as [Y5 [Y6 Y7]]. destruct Y5 as [Y5 Y8].
+  destruct H1 as [Y5 [Y6 Y7]]. destruct Y5 as [Y5 Y8].
   simpl in *.
-  apply qpred_state_consist with (rmax:=rmax) (q := q0) (q' := sa) (P := P0) (P' := Q0) in X5 as G1; try easy.
-  apply qstate_wt_eq in X6 as G2; try easy.
-  assert (model (s,sa) (W,Q0)).
-  split. easy. easy.
-  destruct (IHtriple (s,sa) X7 H8 G2 H) as [Wa [sb [sb' [G3 [G4 G5]]]]].
-  exists Wa,sb,sb'. split. easy. split.
-  apply state_eq_sem with (f' := sa); try easy. easy.
+  apply qpred_state_consist with (T := T) (q := snd s) in H10 as X5; try easy.
+  destruct (IHtriple s H3 H7 H8); try easy.
+  destruct H as [sa [sb [Y9 [Y10 Y11]]]].
+  exists x,sa,sb; try easy.
  -
-  destruct (IHtriple H2 H4 H6 T' H s H8 H9 H10 H11) as [Wa [sa [sb [X1 [X2 X3]]]]].
-  inv H0. destruct X1. simpl in *. apply H12 in H0.
+  destruct (IHtriple H2 H4 H6 T1 H s H7 H8 H9 H10) as [Wa [sa [sb [X1 [X2 X3]]]]].
+  inv H0. destruct X1. simpl in *. apply H11 in H0.
   exists Wa,sa,sb. easy. destruct H3. destruct X1; simpl in *.
-  apply qpred_equiv_state_eq  with (s:= sa) in H12 as [sc [G1 G2]]; try easy.
+  destruct H3 as [Y1 Y2]. destruct H as [Y3 [Y4 Y5]]. simpl in *.
+  apply qpred_equiv_state_eq  with (s:= sa) in H11 as [sc [G1 G2]]; try easy.
   exists Wa,sc,sb. split. easy. split. easy. apply state_equiv_trans with (S2 := sa); try easy.
  - 
   destruct s. exists s,q0,q0. split. easy.
@@ -948,4 +884,20 @@ Proof.
   split. apply for_sem. assert (h - l = 0) by lia. rewrite H8. apply ForallA_nil.
   constructor.
 Qed.
+
+
+Lemma proof_completeness: forall e rmax t env s s' tenv tenv' P Q, 
+     @env_state_eq tenv (snd s) -> kind_env_stack_full env (fst s) ->
+      type_check_proof rmax t env tenv tenv' P Q e -> freeVarsNotCPExp env e -> @qstate_wt (snd s) -> simple_tenv tenv ->
+    @qfor_sem rmax env s e s' ->  simple_qpred (snd P) -> model s P -> 
+          (exists Q, model s' Q /\ @triple rmax t env tenv P e Q).
+Proof.
+  intros. generalize dependent P. generalize dependent tenv. generalize dependent tenv'.
+  induction H5 using qfor_sem_ind'; intros;simpl in *.
+Admitted.
+
+
+
+
+
 

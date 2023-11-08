@@ -195,8 +195,10 @@ Fixpoint subst_type_map (l:type_map) (x:var) (n:nat) :=
 
 Inductive session_system {rmax:nat}
            : atype -> aenv -> type_map -> pexp -> type_map -> Prop :=
+(*
     | env_equiv_ses: forall q env s T1 T2 T3, env_equiv T1 T2
          -> session_system q env T2 s T3 -> session_system q env T1 s T3
+*)
     | skip_ses : forall q env T, session_system q env T (PSKIP) T
     | assign_ses_c : forall q env x a v e T T', simp_aexp a = Some v ->
              session_system q env (subst_type_map T x v) (subst_pexp e x v) T'

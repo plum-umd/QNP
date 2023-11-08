@@ -24,9 +24,9 @@ Local Open Scope nat_scope.
 Definition is_class_type (t:ktype) := match t with Mo CT => True | Mo MT => True | _ => False end.
 
 Inductive union_f : (ktype * session) -> (ktype * session) -> (ktype * session) -> Prop :=
- | union_cl_1: forall l1 l2, union_f (Mo CT,l1) (Mo CT,l2) (Mo CT, nil)
- | union_cl_2: forall l1 l2, union_f (Mo CT,l1) (Mo MT,l2) (Mo MT, nil)
- | union_cl_3: forall l1 l2, union_f (Mo MT,l1) (Mo CT,l2) (Mo MT, nil)
+ | union_cl_1: union_f (Mo CT,nil) (Mo CT,nil) (Mo CT, nil)
+ | union_cl_2: union_f (Mo CT,nil) (Mo MT,nil) (Mo MT, nil)
+ | union_cl_3: union_f (Mo MT,nil) (Mo CT,nil) (Mo MT, nil)
  |  union_sl: forall a b l1 l2, is_class_type b -> union_f (QT a,l1) (b,l2) (QT a, l1)
  | union_sr: forall a b l1 l2, is_class_type a -> union_f (a,l1) (QT b,l2) (QT b, l1)
  | union_two: forall a b l1 l2, ses_dis (l1++l2) -> union_f (QT a,l1) (QT b,l2) (QT (a+b), l1++l2). 
@@ -167,7 +167,7 @@ Definition freeVarsNotCPExp (env:aenv) (a:pexp) :=
 
 
 Definition kind_env_stack (env:aenv) (s:stack) : Prop :=
-  forall x, AEnv.MapsTo x (Mo MT) env -> AEnv.In x s.
+  forall x, AEnv.MapsTo x (Mo MT) env <-> AEnv.In x s.
 
 Fixpoint simp_aexp (a:aexp) :=
    match a with BA y => None
@@ -290,11 +290,9 @@ Proof.
   intros. remember (Mo MT, nil) as t.
   induction H1; simpl in *.
   destruct H1; subst.
-  destruct (H b); try easy.
-  exists x. destruct x.
-  constructor; easy.
-  apply H0 in H2. contradiction. simpl. left. easy.
-  inv Heqt. inv Heqt.
+  apply H in H2.
+  destruct H2. exists x. destruct x. constructor. easy.
+  inv Heqt. inv Heqt. inv Heqt.
   exists (r,n); constructor.
   subst. inv H1.
   (* show e1 + e2 case, deal with cases, check if type e1 or e2 is CT.
@@ -503,5 +501,4 @@ Lemma freeVarPExp_subst: forall b i v x, In x (freeVarsPExp (subst_pexp b i v))
 Proof.
   induction b;intros;simpl in *; try easy.
 Admitted.
-
 

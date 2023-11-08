@@ -417,16 +417,19 @@ Inductive ForallA (rmax:nat) (P: nat -> aenv -> state -> pexp -> state -> Prop):
 
 Inductive qfor_sem {rmax:nat}
            : aenv -> state -> pexp -> state -> Prop :=
+(*
   | state_eq_sem: forall aenv e s f f' S, @state_equiv rmax f f' -> qfor_sem aenv (s,f') e S -> qfor_sem aenv (s,f) e S
+*)
   | skip_sem : forall aenv s, qfor_sem aenv s PSKIP s
   | let_sem_c : forall aenv s s' x a n e, simp_aexp a = Some n -> qfor_sem aenv s (subst_pexp e x n) s'
         -> qfor_sem aenv s (Let x (AE a) e) s'
-  | let_sem_m : forall aenv s s' x a n e, eval_aexp (fst s) a n -> qfor_sem (AEnv.add x (Mo MT) aenv) (update_cval s x n)  e s'
-             -> qfor_sem aenv s (Let x (AE a) e) s'
-  | let_sem_q : forall aenv W s s' l x a n e r v va va', AEnv.MapsTo a (QT n) aenv ->
+  | let_sem_m : forall aenv s s' W x a n e, eval_aexp (fst s) a n 
+           -> qfor_sem (AEnv.add x (Mo MT) aenv) (update_cval s x n)  e (W,s')
+             -> qfor_sem aenv s (Let x (AE a) e) (AEnv.remove x W,s')
+  | let_sem_q : forall aenv W W' s s' l x a n e r v va va', AEnv.MapsTo a (QT n) aenv ->
                        @pick_mea n va (r,v) -> build_state_ch n v va = Some va' -> 
-                    qfor_sem (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e s'
-                  -> qfor_sem aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) s'
+                    qfor_sem (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e (W',s')
+                  -> qfor_sem aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) (AEnv.remove x W',s')
 
   | appu_sem_nor : forall aenv W s a e l r b ra ba, 
       eval_nor rmax aenv a r b e = Some (ra,ba) -> qfor_sem aenv (W,(a++l,Nval r b)::s) (AppU a e) (W,(a++l,Nval ra ba)::s)
@@ -473,22 +476,24 @@ Inductive qfor_sem {rmax:nat}
 
 Definition qfor_sem_ind':
      forall (rmax:nat) (P : nat -> aenv -> state -> pexp -> state -> Prop),
+(*
        (forall (aenv: aenv) (e:pexp) (W:stack) (s s':qstate) (S:state),
             @state_equiv rmax s s' -> @qfor_sem rmax aenv (W,s') e S -> P rmax aenv (W,s') e S ->
              P rmax aenv (W,s) e S) -> 
+*)
        (forall (aenv: aenv) (S:state), P rmax aenv S PSKIP S) -> 
        (forall (aenv: aenv) (s s':state) (x:var) (a:aexp) (n:nat) (e:pexp),
               simp_aexp a = Some n -> @qfor_sem rmax aenv s (subst_pexp e x n) s' -> P rmax aenv s (subst_pexp e x n) s' ->
              P rmax aenv s (Let x (AE a) e) s') -> 
-       (forall (aenv: aenv) (s s':state) (x:var) (a:aexp) (n:R * nat) (e:pexp),
-             eval_aexp (fst s) a n -> @qfor_sem rmax (AEnv.add x (Mo MT) aenv) (update_cval s x n)  e s' ->
-             P rmax (AEnv.add x (Mo MT) aenv) (update_cval s x n) e s' ->
-             P rmax aenv s (Let x (AE a) e) s') -> 
-       (forall (aenv: aenv) (W:stack) (s :qstate) (s':state) (l:session) (x:var) (a:var) (n:nat) (e:pexp) (r:R) (v:nat) (va va':state_elem),
+       (forall (aenv: aenv) (s :state) (s' : qstate) (W:stack) (x:var) (a:aexp) (n:R * nat) (e:pexp),
+             eval_aexp (fst s) a n -> @qfor_sem rmax (AEnv.add x (Mo MT) aenv) (update_cval s x n)  e (W,s') ->
+             P rmax (AEnv.add x (Mo MT) aenv) (update_cval s x n) e (W,s') ->
+             P rmax aenv s (Let x (AE a) e) (AEnv.remove x W,s')) -> 
+       (forall (aenv: aenv) (W W':stack) (s s' :qstate) (l:session) (x:var) (a:var) (n:nat) (e:pexp) (r:R) (v:nat) (va va':state_elem),
               AEnv.MapsTo a (QT n) aenv -> @pick_mea n va (r,v) -> build_state_ch n v va = Some va' -> 
-           @qfor_sem rmax (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e s' ->
-           P rmax (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e s'
-           -> P rmax aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) s') -> 
+           @qfor_sem rmax (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e (W',s') ->
+           P rmax (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e (W',s')
+           -> P rmax aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) (AEnv.remove x W',s')) -> 
 
        (forall (aenv: aenv) (W:stack) (s:qstate) (a:session) (e:exp) (l:session) (r:C) (b : rz_val) (ra:C) (ba:rz_val),
               eval_nor rmax aenv a r b e = Some (ra,ba) ->
@@ -531,16 +536,16 @@ Definition qfor_sem_ind':
 
        (forall (aenv: aenv) (S:state) (e:pexp) (S':state), @qfor_sem rmax aenv S e S' -> P rmax aenv S e S').
 Proof.
-  intros rmax P ST1 ST2 ST3 ST4 ST5 ST6 ST7 ST8 ST9 ST10 ST11 ST12 ST13 ST14.
+  intros rmax P ST2 ST3 ST4 ST5 ST6 ST7 ST8 ST9 ST10 ST11 ST12 ST13 ST14.
     refine
       (fix PF aenv S e S' (Hw : @qfor_sem rmax aenv S e S') {struct Hw} :=
          match Hw with
-         | state_eq_sem aenv e W s s' Sa Hseq Hw => ST1 aenv e W s s' Sa Hseq Hw _
+        (* | state_eq_sem aenv e W s s' Sa Hseq Hw => ST1 aenv e W s s' Sa Hseq Hw _ *)
          | skip_sem aenv s => ST2 aenv s
          | let_sem_c aenv s s' x a n e Hev Hw => ST3 aenv s s' x a n e Hev Hw _
-         | let_sem_m aenv s s' x a n e Hev Hw => ST4 aenv s s' x a n e Hev Hw _
-         | let_sem_q aenv W s s' l x a n e r v va va' Henv Hpick Hbd Hw =>
-                 ST5 aenv W s s' l x a n e r v va va' Henv Hpick Hbd Hw _
+         | let_sem_m aenv s s' W x a n e Hev Hw => ST4 aenv s s' W x a n e Hev Hw _
+         | let_sem_q aenv W W' s s' l x a n e r v va va' Henv Hpick Hbd Hw =>
+                 ST5 aenv W W' s s' l x a n e r v va va' Henv Hpick Hbd Hw _
          | appu_sem_nor aenv W s a e l r b ra ba Hev => ST6 aenv W s a e l r b ra ba Hev
          | appu_sem_ch aenv W s a e l b m ba Hev => ST7 aenv W s a e l b m ba Hev
          | appsu_sem_h_nor aenv W s p a r b n Hsp Hlen => ST8 aenv W s p a r b n Hsp Hlen
@@ -552,10 +557,10 @@ Proof.
          | seq_sem aenv e1 e2 s s1 s2 Hw1 Hw2 => ST13 aenv e1 e2 s s1 s2 Hw1 _ Hw2 _
          | for_sem aenv s s' x l h b p Hw => ST14 aenv s s' x l h b p Hw _
          end).
-   exact (PF aenv (W, s') e Sa Hw).
+  (* exact (PF aenv (W, s') e Sa Hw). *)
    exact (PF aenv s (subst_pexp e x n) s' Hw).
-   exact (PF (AEnv.add x (Mo MT) aenv) (update_cval s x n) e s' Hw).
-   exact (PF (AEnv.add x (Mo MT) aenv) (AEnv.add x (r, v) W, (l, va') :: s) e s' Hw).
+   exact (PF (AEnv.add x (Mo MT) aenv) (update_cval s x n) e (W,s') Hw).
+   exact (PF (AEnv.add x (Mo MT) aenv) (AEnv.add x (r, v) W, (l, va') :: s) e (W',s') Hw).
    exact (PF aenv s e s' Hw).
    exact (PF aenv (W, (l1, fc) :: s) e (W', (l1, fc') :: s') Hw).
    exact (PF aenv s e1 s1 Hw1).
@@ -589,6 +594,7 @@ Proof.
   generalize dependent W. generalize dependent W'.
   induction H2 using qfor_sem_ind'; intros; subst.
   inv HeqSa. 
+(*
   assert ((W', s'0) = (W', s'0)) by easy.
   apply state_equiv_sub with (rmax:=rmax) (s' := s') in H1; try easy.
   apply state_equiv_dis with (rmax:=rmax) (s' := s') in H3; try easy.
@@ -597,6 +603,7 @@ Proof.
   apply state_equiv_cong with (S3 := s1) in H0.
   apply state_eq_sem with (f' := (s' ++ s1)); try easy.
   inv HeqSa. constructor.
+*)
 Admitted.
 
 
