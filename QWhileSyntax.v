@@ -170,6 +170,19 @@ Inductive pexp := PSKIP
             | CU (x:posi) (p:exp) (z:var) (args: list var) (q:aexp) (s:aexp) *)
              (* control-U on the reversible expression p from the control node x on to z. *)
 
+
+Fixpoint depth_pexp (e:pexp) : nat :=
+   match e with PSKIP => 0
+              | Let x n e => 1 + depth_pexp e
+              | AppSU a => 0
+              | AppU l e => 0
+              | PSeq e1 e2 => 1 + depth_pexp e1 + depth_pexp e2
+              | If x e => 1 + depth_pexp e
+              | For x l h b p => 1 + depth_pexp p
+              | Diffuse x => 0
+    end.
+
+
 Notation "p1 ; p2" := (PSeq p1 p2) (at level 50) : pexp_scope.
 
 Notation "p1 [<-] p2" := (AppU p1 p2) (at level 50) : pexp_scope.

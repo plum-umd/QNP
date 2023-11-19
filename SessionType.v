@@ -200,7 +200,8 @@ Inductive session_system {rmax:nat}
          -> session_system q env T2 s T3 -> session_system q env T1 s T3
 *)
     | skip_ses : forall q env T, session_system q env T (PSKIP) T
-    | assign_ses_c : forall q env x a v e T T', simp_aexp a = Some v ->
+    | assign_ses_c : forall q env x a v e T T', ~ AEnv.In x env -> 
+         simp_aexp a = Some v ->
              session_system q env (subst_type_map T x v) (subst_pexp e x v) T'
                   -> session_system q env T (Let x a e) T'
     | assign_ses_m1 : forall q env x a e T T', type_aexp env a (Mo MT,nil) -> ~ AEnv.In x env ->
@@ -253,8 +254,8 @@ Inductive session_system {rmax:nat}
     | pseq_ses_type: forall q env T e1 e2 T1 T2, session_system q env T e1 T1 ->
                        session_system q env T1 e2 T2 ->
                        session_system q env T (PSeq e1 e2) T2
-    | qfor_ses_no: forall q env T i l h b e, h < l -> session_system q env T (For i (Num l) (Num h) b e) T
-    | qfor_ses_ch: forall q env T i l h b e, l <= h ->
+    | qfor_ses_no: forall q env T i l h b e, h <= l -> session_system q env T (For i (Num l) (Num h) b e) T
+    | qfor_ses_ch: forall q env T i l h b e, l < h -> ~ AEnv.In i env ->
         (forall v, l <= v < h -> session_system q env (subst_type_map T i v) (If (subst_bexp b i v) (subst_pexp e i v)) (subst_type_map T i (v+1)))
               -> session_system q env (subst_type_map T i l) (For i (Num l) (Num h) b e) (subst_type_map T i h).
 

@@ -62,6 +62,20 @@ Definition turn_oqasm_ses rmax (l:session) (f:posi -> val) b  := turn_oqasm_ses'
 
 Definition cover_n (f:rz_val) (n:nat) := fun i => if i <? n then false else f i.
 
+Inductive match_value : nat -> state_elem -> state_elem -> Prop :=
+   match_nval : forall n p r1 r2, (forall i, i < n -> r1 i = r2 i) -> match_value n (Nval p r1) (Nval p r2)
+ | match_hval: forall n r1 r2, (forall i, i < n -> r1 i = r2 i) -> match_value n (Hval r1) (Hval r2)
+ | match_cval: forall n m r1 r2, (forall j, j < m -> fst (r1 j) = fst (r2 j) /\
+               (forall i, i < n -> (snd (r1 j)) i = (snd (r2 j)) i)) -> match_value n (Cval m r1) (Cval m r2).
+
+Check Forall2.
+
+Definition match_values (S1 S2: qstate) :=
+   Forall2 (fun s1 s2 => fst s1 = fst s2 /\
+           (match ses_len (fst s1) with Some n => match_value n (snd s1) (snd s2)
+                                | None => False
+            end)) S1 S2.
+
 Definition eval_nor (rmax:nat) (env:aenv) (l:session) (r:C) (b:rz_val) (e:exp) :=
    match compile_ses_qenv env l with (f,ss) =>
        match compile_exp_to_oqasm e with
@@ -77,6 +91,15 @@ Definition eval_nor (rmax:nat) (env:aenv) (l:session) (r:C) (b:rz_val) (e:exp) :
        end
      end.
 
+(*A similar proof was given in VQO: https://github.com/inQWIRE/VQO*)
+Definition turn_pair_nor (a:C *rz_val) := Nval (fst a) (snd a).
+
+Axiom eval_nor_switch_same : forall rmax env l l1 n r b b1 e v, ses_len (l++l1) = Some n 
+         -> (forall i, i < n -> b i = b1 i) -> 
+        eval_nor rmax env l r b e = Some v ->
+        exists v', (eval_nor rmax env l r b1 e = Some v'
+           /\ match_value n (turn_pair_nor v) (turn_pair_nor v')).
+
 Fixpoint eval_ch (rmax:nat) (env:aenv) (l:session) (m:nat) f (e:exp) :=
    match m with 0 => Some (fun _ => (C0 , allfalse))
           | S n => match eval_nor rmax env l (fst (f n)) (snd (f n)) e with None => None
@@ -85,6 +108,16 @@ Fixpoint eval_ch (rmax:nat) (env:aenv) (l:session) (m:nat) f (e:exp) :=
             end
           end
    end.
+
+(*The proof was given in VQO: https://github.com/inQWIRE/VQO*)
+Axiom eval_ch_switch_same : forall rmax env l l1 m n b b1 e v, ses_len (l++l1) = Some n
+   -> (forall j : nat,
+      j < m ->
+      fst (b j) = fst (b1 j) /\
+      (forall i : nat, i < n -> snd (b j) i = snd (b1 j) i)) -> 
+        eval_ch rmax env l m b e = Some v -> 
+       (exists v', eval_ch rmax env l m b1 e = Some v' /\ match_value n (Cval m v) (Cval m v')).
+
 
 Definition eval_to_had (n:nat) (b:rz_val) := (fun i => if i <? n then (update allfalse 0 (b i)) else allfalse).
 
@@ -425,11 +458,11 @@ Inductive qfor_sem {rmax:nat}
         -> qfor_sem aenv s (Let x (AE a) e) s'
   | let_sem_m : forall aenv s s' W x a n e, eval_aexp (fst s) a n 
            -> qfor_sem (AEnv.add x (Mo MT) aenv) (update_cval s x n)  e (W,s')
-             -> qfor_sem aenv s (Let x (AE a) e) (AEnv.remove x W,s')
+             -> qfor_sem aenv s (Let x (AE a) e) (fst s,s')
   | let_sem_q : forall aenv W W' s s' l x a n e r v va va', AEnv.MapsTo a (QT n) aenv ->
                        @pick_mea n va (r,v) -> build_state_ch n v va = Some va' -> 
                     qfor_sem (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e (W',s')
-                  -> qfor_sem aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) (AEnv.remove x W',s')
+                  -> qfor_sem aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) (W,s')
 
   | appu_sem_nor : forall aenv W s a e l r b ra ba, 
       eval_nor rmax aenv a r b e = Some (ra,ba) -> qfor_sem aenv (W,(a++l,Nval r b)::s) (AppU a e) (W,(a++l,Nval ra ba)::s)
@@ -488,12 +521,12 @@ Definition qfor_sem_ind':
        (forall (aenv: aenv) (s :state) (s' : qstate) (W:stack) (x:var) (a:aexp) (n:R * nat) (e:pexp),
              eval_aexp (fst s) a n -> @qfor_sem rmax (AEnv.add x (Mo MT) aenv) (update_cval s x n)  e (W,s') ->
              P rmax (AEnv.add x (Mo MT) aenv) (update_cval s x n) e (W,s') ->
-             P rmax aenv s (Let x (AE a) e) (AEnv.remove x W,s')) -> 
+             P rmax aenv s (Let x (AE a) e) (fst s,s')) -> 
        (forall (aenv: aenv) (W W':stack) (s s' :qstate) (l:session) (x:var) (a:var) (n:nat) (e:pexp) (r:R) (v:nat) (va va':state_elem),
               AEnv.MapsTo a (QT n) aenv -> @pick_mea n va (r,v) -> build_state_ch n v va = Some va' -> 
            @qfor_sem rmax (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e (W',s') ->
            P rmax (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e (W',s')
-           -> P rmax aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) (AEnv.remove x W',s')) -> 
+           -> P rmax aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) (W,s')) -> 
 
        (forall (aenv: aenv) (W:stack) (s:qstate) (a:session) (e:exp) (l:session) (r:C) (b : rz_val) (ra:C) (ba:rz_val),
               eval_nor rmax aenv a r b e = Some (ra,ba) ->
@@ -581,10 +614,6 @@ Lemma state_equiv_dis: forall rmax (s1 s s' : qstate), @state_equiv rmax s s' ->
 Proof.
 Admitted.
 
-Lemma state_equiv_add: forall rmax (s1 s s' : qstate), @state_equiv rmax s s' -> @state_equiv rmax (s++s1) (s'++s1).
-Proof.
-Admitted.
-
 Lemma qfor_sem_local: forall rmax env W W' e l s s' s1, 
  fv_pexp env e l -> sub_qubits l (dom_to_ses (dom s)) -> dis_qubits (dom_to_ses (dom s)) (dom_to_ses (dom s1)) ->
     @qfor_sem rmax env (W,s) e (W',s') -> @qfor_sem rmax env (W,s++s1) e (W',s'++s1).
@@ -593,7 +622,7 @@ Proof.
   generalize dependent s. generalize dependent s'.
   generalize dependent W. generalize dependent W'.
   induction H2 using qfor_sem_ind'; intros; subst.
-  inv HeqSa. 
+  inv HeqSa.  apply skip_sem.
 (*
   assert ((W', s'0) = (W', s'0)) by easy.
   apply state_equiv_sub with (rmax:=rmax) (s' := s') in H1; try easy.

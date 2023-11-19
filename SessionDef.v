@@ -93,7 +93,10 @@ Definition join_two_ses (a:(var * bound * bound)) (b:(var*bound*bound)) :=
           | _ => None
    end.
 
-Definition dom {A:Type} (l: list (session * A)) := fst (split l).
+Fixpoint dom {A:Type} (l: list (session * A)) :=
+    match l with [] => []
+               | ((a,b)::lm) => a::(dom lm)
+    end.
 
 Fixpoint join_ses_aux (a:(var * bound * bound)) (l:list ((var * bound * bound))) :=
      match l with [] => ([a])
@@ -145,6 +148,9 @@ Fixpoint get_core_ses (l:session) :=
    end.
 
 Definition ses_len (l:session) := match get_core_ses l with None => None | Some xl => Some (ses_len_aux xl) end.
+
+Axiom app_length_same : forall l1 l2 l3 l4 n, ses_len l1 = Some n 
+   -> ses_len l3 = Some n -> l1++l2 = l3 ++ l4 -> l1 = l3 /\ l2 = l4.
 
 Lemma get_core_ses_app: forall l l' l1 l1', get_core_ses l = Some l' -> get_core_ses l1 = Some l1' 
      -> get_core_ses (l++l1) = Some (l'++l1').
@@ -530,8 +536,7 @@ Definition subst_mexp (e:maexp) (x:var) (n:nat) :=
               | Meas y => Meas y
    end.
 
-Check List.fold_right.
-Fixpoint subst_pexp (e:pexp) (x:var) (n:nat) :=
+Fixpoint subst_pexp (e:pexp) (x:var) (n:nat) {struct e} :=
         match e with PSKIP => PSKIP
                    | Let y a e' => if y =? x then Let y (subst_mexp a x n) e' else Let y (subst_mexp a x n) (subst_pexp e' x n)
                    | AppSU (RH v) => AppSU (RH (subst_varia v x n))
@@ -543,6 +548,17 @@ Fixpoint subst_pexp (e:pexp) (x:var) (n:nat) :=
                    | Diffuse y => Diffuse y
                    | PSeq s1 s2 => PSeq (subst_pexp s1 x n) (subst_pexp s2 x n)
         end.
+
+Lemma depth_subst_pexp_same: forall e x v, depth_pexp (subst_pexp e x v) = depth_pexp e.
+Proof.
+ induction e;intros;simpl in *; try easy.
+ bdestruct (x =? x0); simpl in *; try easy.
+ rewrite IHe. easy.
+ destruct e; try easy.
+ rewrite IHe1. rewrite IHe2. easy. rewrite IHe. easy.
+ bdestruct (x =? x0); simpl in *; try easy.
+ rewrite IHe. easy. 
+Qed.
 
 (* Below is the kind checking system in Qanfy. It determines three kinds of variables:
    competely classical variables, classical variables as the result of quantum measurement,
@@ -665,7 +681,7 @@ Fixpoint dom_to_ses (l : list session) :=
   end.
 
 Fixpoint gen_qubits (x:var) (l n:nat) :=
-  match n with 0 => nil | S m => (x,m)::(gen_qubits x l m) end.
+  match n with 0 => nil | S m => (x,l+m)::(gen_qubits x l m) end.
 
 Definition gen_qubit_range (r:range) :=
   match r with  (x,BNum l,BNum h) => Some (gen_qubits x l (h-l)) | _ => None end.

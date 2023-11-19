@@ -2,23 +2,26 @@ Require Import Reals.
 Require Import Psatz.
 Require Import Complex.
 Require Import SQIR.
-Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat Permutation. 
+Require Import VectorStates NDSem UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat Permutation. 
 Require Import Dirac.
 Require Import QPE.
 Require Import BasicUtility.
 Require Import Classical_Prop.
 Require Import MathSpec.
 Require Import OQASM.
-Require Import OQASMProof.
 Require Import CLArith.
 Require Import RZArith.
 Require Import QWhileSyntax.
 Require Import SessionDef.
 Require Import SessionSem.
+Require Import SessionType.
+Require Import SessionTypeProof.
+Require Import OQASMProof.
 (**********************)
 (** Session Definitions **)
 (**********************)
 
+From Coq Require Recdef.
 Require Import Coq.FSets.FMapList.
 Require Import Coq.FSets.FMapFacts.
 Require Import Coq.Structures.OrderedTypeEx.
@@ -64,7 +67,31 @@ Definition rz_eq_circuit (x:var) (n:nat) (c:posi) (M:nat) :=
 
 Definition rz_lt_circuit (x:var) (n:nat) (c:posi) (M:nat) := rz_compare x n c M.
 
-Fixpoint trans_pexp (f:OQASMProof.vars) (dim:nat) (e:pexp) (avs: nat -> posi) : (option (base_com dim)) :=
+Section mergeSort.
+  Variable A : Type.
+  Variable le : A -> A -> bool.
+
+
+  Fixpoint insert (x : A) (ls : list A) : list A :=
+    match ls with
+      | nil => x :: nil
+      | h :: ls' =>
+        if le x h
+          then x :: ls
+          else h :: insert x ls'
+    end.
+
+
+  Fixpoint merge (ls1 ls2 : list A) : list A :=
+    match ls1 with
+      | nil => ls2
+      | h :: ls' => insert h (merge ls' ls2)
+    end.
+
+End mergeSort.
+
+
+Fixpoint trans_pexp (f:OQASMProof.vars) (dim:nat) (e:pexp) (avs: nat -> posi): (option (base_com dim)) :=
   match e with PSKIP => Some skip
              | Let x (AE (Num n)) s => trans_pexp f dim s avs
              | Let x (AE (MNum r n)) s => trans_pexp f dim s avs
@@ -86,7 +113,7 @@ Fixpoint trans_pexp (f:OQASMProof.vars) (dim:nat) (e:pexp) (avs: nat -> posi) : 
                                  | Some e2' => Some (e1' ; e2')
                               end
                             end
-             | Diffuse (AExp (BA x)) => Some (diff f dim x (vsize f x))
+           (*  | Diffuse (AExp (BA x)) => Some (diff f dim x (vsize f x)) *)
 
              | If (BEq (AExp (BA x)) (AExp (Num n)) y (Num v)) s => 
                    match trans_pexp f dim s avs with None => None
@@ -105,12 +132,13 @@ Fixpoint trans_pexp (f:OQASMProof.vars) (dim:nat) (e:pexp) (avs: nat -> posi) : 
 
              | If (BTest x (Num v)) s => 
                    match trans_pexp f dim s avs with 
-                      | Some (uc e') => Some (from_ucom (control (find_pos f (x,v)) e'))
+                      | Some (uc e') => Some (from_ucom (UnitaryOps.control (find_pos f (x,v)) e'))
                       | _ => None
                   end
 
        | _ => None
   end.
+
 
 (*
 Inductive state_elem :=
@@ -208,10 +236,9 @@ Definition trans_state_qafny (f:OQASMProof.vars) (s:state) :=
   end.
 
 
-(*
 Lemma trans_pexp_sem :
-  forall dim e f tenv tenv' rmax vs (avs : nat -> posi),
-    vars_start_diff vs ->
+  forall dim e e' s s' t sa sa' tenv (tenv' : type_map) (aenv : aenv) rmax vs (avs : nat -> posi),
+    (*vars_start_diff vs ->
     vars_finite_bij vs ->
     vars_sparse vs ->
     vars_anti_same vs ->
@@ -224,11 +251,35 @@ Lemma trans_pexp_sem :
     avs_prop vs avs dim -> 
     exp_rmax (size_env vs) rmax e ->
     qft_uniform (size_env vs) tenv f ->
-    qft_gt (size_env vs) tenv f ->
+    qft_gt (size_env vs) tenv f ->*)
     dim > 0 ->
-    (uc_eval (fst (fst (trans_pexp vs dim e avs)))) × (vkron dim (trans_qstate avs rmax f)) 
-                =  vkron dim (trans_qstate (snd (trans_pexp vs dim e avs)) rmax (qfor_sem (size_env vs) e f)).
+    @session_system rmax t aenv tenv e tenv' ->
+    @qfor_sem rmax aenv s e s' ->
+    trans_pexp vs dim e avs = Some e' ->
+    trans_state_qafny vs s' = Some sa' ->
+    trans_state_qafny vs s = Some sa ->
+    @nd_eval dim e' (snd sa) (snd sa').
 Proof.
+intros. generalize dependent tenv. generalize dependent tenv'. 
+   induction H1 using qfor_sem_ind';
+    intros; subst; simpl in *.
+- rewrite H3 in H4. inv H4. inv H2. apply nd_skip.
+- inv H5. rewrite H0 in *. inv H14. destruct a; simpl in *; try easy. inv H0.
+  eapply IHqfor_sem; try easy. admit. apply H15. apply type_aexp_mo_no_simp in H12.
+  rewrite H0 in H12. inv H12.
+- inv H5. apply simp_aexp_no_eval in H0. rewrite H0 in H14. inv H14.
+  destruct a; simpl in *; try easy. eapply IHqfor_sem; try easy. unfold trans_state_qafny in *.
+  destruct (trans_qstate vs s'); try easy. admit. unfold trans_state_qafny in *. destruct s in *; simpl in *. admit. apply H15.
+- admit.
+- inv H3.
+- admit.
+- inv H3.
+- inv H3.
+- destruct b in *; simpl in *; try easy.
+- destruct b in *; simpl in *; try easy.
+- admit.
+- admit. 
+- inv H2.
+Admitted.
 
-*)
-
+ 
