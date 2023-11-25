@@ -17,6 +17,7 @@ Require Import SessionKind.
 (** Unitary Programs **)
 (**********************)
 
+
 Require Import Coq.FSets.FMapList.
 Require Import Coq.FSets.FMapFacts.
 Require Import Coq.Structures.OrderedTypeEx.
@@ -68,7 +69,17 @@ Inductive match_value : nat -> state_elem -> state_elem -> Prop :=
  | match_cval: forall n m r1 r2, (forall j, j < m -> fst (r1 j) = fst (r2 j) /\
                (forall i, i < n -> (snd (r1 j)) i = (snd (r2 j)) i)) -> match_value n (Cval m r1) (Cval m r2).
 
-Check Forall2.
+Lemma match_value_trans: forall s1 s2 s3 n, match_value n s1 s2 -> match_value n s2 s3 -> match_value n s1 s3.
+Proof.
+  intros. induction H; intros; simpl in *; try easy. inv H0.
+  constructor. intros. rewrite H; try lia. rewrite H5; try lia. easy.
+  inv H0.
+  constructor. intros. rewrite H; try lia. rewrite H3; try lia. easy.
+  inv H0.
+  constructor. intros. apply H in H0 as X1. apply H5 in H0 as X2.
+  destruct X1. destruct X2. split. rewrite H1. rewrite H3. easy.
+  intros. rewrite H2; try lia. rewrite H4; try lia. easy.
+Qed.
 
 Definition match_values (S1 S2: qstate) :=
    Forall2 (fun s1 s2 => fst s1 = fst s2 /\
@@ -110,13 +121,50 @@ Fixpoint eval_ch (rmax:nat) (env:aenv) (l:session) (m:nat) f (e:exp) :=
    end.
 
 (*The proof was given in VQO: https://github.com/inQWIRE/VQO*)
-Axiom eval_ch_switch_same : forall rmax env l l1 m n b b1 e v, ses_len (l++l1) = Some n
+Lemma eval_ch_switch_same : forall m rmax env l l1 n b b1 e v, ses_len (l++l1) = Some n
    -> (forall j : nat,
       j < m ->
       fst (b j) = fst (b1 j) /\
       (forall i : nat, i < n -> snd (b j) i = snd (b1 j) i)) -> 
         eval_ch rmax env l m b e = Some v -> 
        (exists v', eval_ch rmax env l m b1 e = Some v' /\ match_value n (Cval m v) (Cval m v')).
+Proof.
+  induction m; intros; simpl in *.
+  exists (fun _ : nat => (C0, allfalse)).
+  split; try easy. constructor. intros. lia.
+  destruct (eval_nor rmax env l (@fst C rz_val (b m))
+       (@snd C rz_val (b m)) e) eqn:eq1; try easy.
+  destruct p.
+  assert (A1 := H0).
+  specialize (H0 m). assert (m < S m) by lia.
+  assert ((@fst C (forall _ : nat, bool) (b m)) = (@fst C rz_val (b m))) by easy.
+  assert ((@snd C (forall _ : nat, bool) (b m)) = (@snd C rz_val (b m))) by easy.
+  apply H0 in H2. destruct H2. rewrite H3 in *. rewrite H2 in eq1.
+  apply eval_nor_switch_same with (l1 := l1)
+     (n := n) (b1 := snd (b1 m)) in eq1 as X1; try easy.
+  destruct X1 as [va [X1 X2]].
+  assert ((@fst C (forall _ : nat, bool) (b1 m)) = (@fst C rz_val (b1 m))) by easy.
+  assert ((@snd C (forall _ : nat, bool) (b1 m)) = (@snd C rz_val (b1 m))) by easy.
+  rewrite H6 in *. rewrite H7 in *.
+  rewrite X1. destruct va. simpl in *.
+  destruct (eval_ch rmax env l m b e) eqn:eq2; try easy.
+  apply IHm with (l1 := l1) (n := n) (b1 := b1) in eq2; try easy.
+  destruct eq2 as [va [Y1 Y2]]. rewrite Y1. inv H1.
+  exists (update va m (c0, r0)). split; try easy.
+  constructor. intros. split.
+  bdestruct (m =? j); subst.
+  repeat rewrite update_index_eq. inv X2. simpl. easy.
+  repeat rewrite update_index_neq; try lia. inv X2.
+  inv Y2. specialize (H12 j). assert (j < m) by lia.
+  apply H12 in H9. destruct H9. easy.
+  intros.
+  bdestruct (m =? j); subst.
+  repeat rewrite update_index_eq. inv X2. simpl. rewrite H11. easy. easy.
+  repeat rewrite update_index_neq; try lia. inv X2.
+  inv Y2. specialize (H12 j). assert (j < m) by lia.
+  apply H13 in H10. destruct H10. rewrite H11. easy. easy.
+  intros. apply A1. lia.
+Qed.
 
 
 Definition eval_to_had (n:nat) (b:rz_val) := (fun i => if i <? n then (update allfalse 0 (b i)) else allfalse).
@@ -180,6 +228,12 @@ Lemma ses_len_simple: forall l, simple_ses l -> (exists na, ses_len l = Some na)
 Proof.
   intros. unfold ses_len. apply get_core_simple in H.
   destruct H. rewrite H. exists (ses_len_aux x). easy.
+Qed.
+
+Lemma ses_simple_shrink: forall l l1, simple_ses (l ++ l1) -> simple_ses l.
+Proof.
+  intros. induction l; intros; simpl in *; try easy. constructor.
+  inv H. constructor; try easy. apply IHl. easy.
 Qed.
 
 Lemma turn_oqasm_ses_simple: forall l n r f b, simple_ses l
@@ -319,13 +373,13 @@ Fixpoint eval_rlt_bool (f:nat -> C * rz_val) (m size v:nat) :=
                    (fst (f m'),update (snd (f m')) size (xorb (v <? (a_nat2fb (snd (f m')) size)) ((snd (f m')) size)))
   end.
 
-Fixpoint grab_bool_elem (f:nat -> C * rz_val) (m i size:nat) (acc:nat -> C * rz_val) :=
-  match m with 0 => (i,acc)
+Fixpoint grab_bool_elem (f:nat -> C * rz_val) (m size:nat) :=
+  match m with 0 => (0,(fun _ => (C0,allfalse)))
            | S m' => if (snd (f m')) size then 
-                  grab_bool_elem f m' (i+1) size (update acc i (f m'))
-                else grab_bool_elem f m' i size acc
+                  match grab_bool_elem f m' size with (i,acc) => (i+1,update acc i (f m')) end
+                else grab_bool_elem f m' size
    end.
-Definition grab_bool f m size := grab_bool_elem f m 0 size (fun _ => (C0,allfalse)).
+Definition grab_bool f m size := grab_bool_elem f m (size - 1).
 
 Axiom grab_bool_gt : forall f m size, m > 0 -> size > 0 -> fst (grab_bool f m size) > 0.
 
@@ -357,14 +411,23 @@ Proof.
   inv H.
 Qed.
 
-Axiom bexp_eval_same: forall env b n n2 l l1 m r bl f, type_bexp env b (QT n, l) -> ses_len l = Some n ->
-   ses_len (l ++ l1) = Some n2 ->
-   (forall j : nat,
-      j < m ->
-      fst (r j) = fst (bl j) /\
-      (forall i : nat, i < n2 -> snd (r j) i = snd (bl j) i)) ->
-   eval_bexp ([(l ++ l1, Cval m bl)]) b ([(l ++ l1, Cval m f)]) ->
-   eval_bexp ([(l ++ l1, Cval m r)]) b ([(l ++ l1, Cval m f)]).
+Inductive find_basis_elems (n n':nat) (f:rz_val) (fc:nat -> C*rz_val): 
+            nat -> nat -> (nat -> C * rz_val) -> Prop :=
+  find_basis_empty: find_basis_elems n n' f fc 0 0 (fun _ => (C0,allfalse))
+ | find_basis_many_1: forall i m acc, find_basis_elems n n' f fc i m acc -> 
+            f = cut_n (lshift_fun (snd (fc i)) n') n 
+         -> find_basis_elems n n' f fc (S i) (S m) (update acc m (fc i))
+ | find_basis_many_2: forall i m acc, find_basis_elems n n' f fc i m acc -> 
+            f <> cut_n (lshift_fun (snd (fc i)) n') n -> find_basis_elems n n' f fc (S i) m acc.
+
+(* The proof has been given in VQO based on the fact of quantum states. *)
+Axiom find_basis_elems_same: forall m1 n n1 f r r' mv fv,
+      (forall j : nat,
+      j < m1 ->
+      fst (r j) = fst (r' j) /\
+      (forall i : nat, i < n1 -> snd (r j) i = snd (r' j) i)) ->
+      find_basis_elems n n1 f r m1 mv fv ->
+      (exists fv', find_basis_elems n n1 f r' m1 mv fv' /\ match_value n1 (Cval mv fv) (Cval mv fv')).
 
 Inductive assem_elem : nat -> nat -> rz_val -> (nat-> C * rz_val) -> list nat -> Prop :=
     assem_elem_0 : forall size c f, assem_elem 0 size c f nil
@@ -373,21 +436,90 @@ Inductive assem_elem : nat -> nat -> rz_val -> (nat-> C * rz_val) -> list nat ->
   | assem_elem_sf : forall size c f m l, assem_elem m size c f l -> cut_n (snd (f m)) size <> c
                  -> assem_elem (S m) size c f l.
 
-Fixpoint assem_list (i:nat) (s:list nat) (f: nat -> C * rz_val) (acc:nat -> C*rz_val) :=
-    match s with nil => (i,acc) 
-              | (a::l) => (assem_list (i+1) l f (update acc i (f a)))
+Definition combine_two (n:nat) (f:rz_val) (g:rz_val) :=
+    (fun x => if x <? n then f x else g (x-n)).
+
+Fixpoint assem_list (m base n:nat) (f:rz_val) (fc: nat -> C * rz_val) (acc:nat -> C*rz_val) :=
+    match m with 0 => (base, acc)
+               | S m' => match assem_list m' base n f fc acc with (mv, fv) => 
+                           (S mv, (update fv mv (fst (fc m'), combine_two n f (snd (fc m')))))
+                        end
     end.
 
-Inductive assem_bool : nat -> nat -> nat -> (nat -> C * rz_val) -> (nat -> C * rz_val) -> (nat * (nat -> C*rz_val)) -> Prop :=
-    assem_bool_0: forall m' size f f', assem_bool 0 m' size f f' (0,fun _ => (C0,allfalse))
-  | assem_bool_sf: forall n i m' size f f' acc, assem_bool n m' size f f' (i,acc) ->
-               assem_elem m' size (cut_n (snd (f n)) size) f' nil -> 
-               assem_bool (S n) m' size f f' (i+1, update acc i (f n))
-  | assem_bool_st: forall n i l m' size f f' acc, assem_bool n m' size f f' (i,acc) ->
-               assem_elem m' size (cut_n (snd (f n)) size) f' l -> l <> nil ->
-               assem_bool (S n) m' size f f' (assem_list i l f' acc).
+Lemma assem_list_num_eq: forall m base n f fc acc mv fv,
+    assem_list m base n f fc acc = (mv, fv) -> mv = base + m.
+Proof.
+  induction m; intros; simpl in *; try easy. inv H. lia.
+  destruct (assem_list m base n f fc acc) eqn:eq1.
+  apply IHm in eq1; subst. inv H. lia.
+Qed.
 
-Axiom assem_bool_gt : forall m m' n f fc fa, m > 0 -> m' > 0 -> assem_bool m m' n f fc fa -> (fst fa) > 0.
+Lemma assem_list_same: forall m base n n1 bl r r' f f' mv fv,
+      (forall j : nat,
+      j < m ->
+      fst (r j) = fst (r' j) /\
+      (forall i : nat, i < n1 -> snd (r j) i = snd (r' j) i)) ->
+      (forall j : nat,
+      j < base ->
+      fst (f j) = fst (f' j) /\
+      (forall i : nat, i < n + n1 -> snd (f j) i = snd (f' j) i)) ->
+      assem_list m base n bl r f = (mv, fv) -> 
+      (exists fv', assem_list m base n bl r' f' = (mv,fv')
+          /\ match_value (n + n1) (Cval mv fv) (Cval mv fv')).
+Proof.
+  induction m; intros; simpl in *; try easy. inv H1.
+  exists f'. split; try easy.
+  constructor. intros. apply H0. easy.
+  destruct (assem_list m base n bl r f) eqn:eq1.
+  apply IHm with (n1 := n1) (r' := r') (f' := f') in eq1; try easy.
+  inv H1. destruct eq1 as [fv' [X1 X2]].
+  inv X2. rewrite X1; simpl in *.
+  exists (update fv' n0 (fst (r' m), combine_two n bl (snd (r' m)))).
+  split; try easy.
+  constructor. intros.
+  apply assem_list_num_eq in X1 as Y1; subst.
+  bdestruct (j =? base + m); subst.
+  repeat rewrite update_index_eq.
+  assert (m < S m) by lia.
+  apply H in H2. simpl in *. destruct H2.
+  replace ((@fst C (forall _ : nat, bool) (r m)))
+    with (@fst C rz_val (r m)) in * by easy.
+  rewrite H2. split; try easy.
+  intros. unfold combine_two in *.
+  bdestruct (i <? n). easy.
+  rewrite H4. easy. lia.
+  repeat rewrite update_index_neq by lia.
+  apply H3. lia.
+  intros. apply H. lia.
+Qed.
+
+(* first n is length of l and second is length of l1. third is num of elements *)
+Inductive assem_bool (n n':nat): nat -> (nat-> C * rz_val) -> state_elem -> state_elem -> Prop :=
+    assem_bool_empty: forall f fc, assem_bool n n' 0 f fc (Cval 0 (fun _ => (C0,allfalse)))
+  | assem_bool_many_1: forall i m m' f fc acc fv, assem_bool n n' i f (Cval m fc) (Cval m' acc) ->
+        find_basis_elems n n' (cut_n (snd (f i)) n) fc m 0 fv ->
+               assem_bool n n' (S i) f (Cval m fc) (Cval (S m') (update acc m' (f i)))
+  | assem_bool_many_2: forall i m m' f fc acc mv fv ma fa, assem_bool n n' i f (Cval m fc) (Cval m' acc) ->
+        0 < mv -> find_basis_elems n n' (cut_n (snd (f i)) n) fc m mv fv ->
+        assem_list mv m' n (cut_n (snd (f i)) n) fv acc = (ma, fa) -> 
+               assem_bool n n' (S i) f (Cval m fc) (Cval ma fa).
+
+Lemma assem_bool_gt : forall i n n' f m fc ma fa,
+   assem_bool n n' i f (Cval m fc) (Cval ma fa) -> ma >= i.
+Proof.
+  induction i; intros; simpl in *; try easy.
+  lia. inv H. apply IHi in H5. lia.
+  apply IHi in H6. apply assem_list_num_eq in H9; subst. lia.
+Qed.
+
+Lemma assem_bool_cval: forall n n' m f mv fv fca,
+      assem_bool n n' m f (Cval mv fv) fca -> (exists mv' fv', fca = Cval mv' fv').
+Proof.
+  induction m; intros; simpl in *. inv H.
+  exists 0,(fun _ : nat => (C0, allfalse)). easy.
+  inv H. exists (S m'), (update acc m' (f m)). easy.
+  exists ma,fa. easy.
+Qed.
 
 Fixpoint subst_qstate (l:qstate) (x:var) (n:nat) :=
   match l with nil => nil
@@ -464,8 +596,8 @@ Inductive qfor_sem {rmax:nat}
                     qfor_sem (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e (W',s')
                   -> qfor_sem aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) (W,s')
 
-  | appu_sem_nor : forall aenv W s a e l r b ra ba, 
-      eval_nor rmax aenv a r b e = Some (ra,ba) -> qfor_sem aenv (W,(a++l,Nval r b)::s) (AppU a e) (W,(a++l,Nval ra ba)::s)
+  | appu_sem_nor : forall aenv W s a e r b ra ba, 
+      eval_nor rmax aenv a r b e = Some (ra,ba) -> qfor_sem aenv (W,(a,Nval r b)::s) (AppU a e) (W,(a,Nval ra ba)::s)
   | appu_sem_ch : forall aenv W s a e l b m ba, eval_ch rmax aenv a m b e = Some ba
           -> qfor_sem aenv (W,(a++l,Cval m b)::s) (AppU a e) (W,(a++l,Cval m ba)::s)
 
@@ -482,22 +614,11 @@ Inductive qfor_sem {rmax:nat}
   | if_sem_mt : forall aenv M s S b e, eval_cbexp M b true -> qfor_sem aenv (M,s) e S -> qfor_sem aenv (M,s) (If b e) S
   | if_sem_mf : forall aenv M s b e, eval_cbexp M b false -> qfor_sem aenv (M,s) (If b e) (M,s)
 *)
-  | if_sem_q : forall aenv W W' l l1 n n' s s' b e m m' f f' fc fc' fc'' fa,
+  | if_sem_q : forall aenv W W' l l1 n n' s s' b e m f f' fc fc' fc'',
      type_bexp aenv b (QT n,l) -> @eval_bexp ((l++l1, Cval m f)::s) b ((l++l1, Cval m f')::s) -> ses_len l1 = Some n' ->
      mut_state 0 n n' (Cval (fst (grab_bool f' m n)) (snd (grab_bool f' m n))) fc ->
-     qfor_sem aenv (W,(l1,fc)::s) e (W',(l1,fc')::s') -> mut_state 0 n' n fc' (Cval m' fc'') ->
-     assem_bool m m' n f' fc'' fa ->
-     qfor_sem aenv (W,(l++l1, Cval m f)::s) (If b e) (W',(l++l1, Cval (fst fa) (snd fa))::s')
-(*
-  | if_sem_q : forall aenv l l1 n n' s s' sa sa' sac b e m m' f f' fc fc' fa,
-               type_bexp aenv b (QT n,l) -> @eval_bexp rmax aenv s b s' ->
-                @find_state rmax s' l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
-                 mut_state 0 n n' (Cval (fst (grab_bool f m n)) (snd (grab_bool f m n))) fc ->
-                @up_state rmax s' (l++l1) fc sa -> qfor_sem aenv sa e sa' ->
-                 @find_state rmax sa' l1 (Some (l1, fc')) -> mut_state 0 n' n fc' (Cval m' f') ->
-                assem_bool m m' n f f' fa -> @up_state rmax s (l++l1) (Cval (fst fa) (snd fa)) sac ->
-                    qfor_sem aenv s (If b e) sac
-*)
+     qfor_sem aenv (W,(l1,fc)::s) e (W',(l1,fc')::s') -> assem_bool n n' m f' fc' fc'' ->
+     qfor_sem aenv (W,(l++l1, Cval m f)::s) (If b e) (W',(l++l1, fc'')::s')
 
  (* | diffuse_a: forall aenv s s' x n l n' l1 m f m' acc, type_vari aenv x (QT n,l) ->
                 @find_state rmax s l (Some (l++l1, Cval m f)) -> ses_len l1 = Some n' ->
@@ -528,9 +649,9 @@ Definition qfor_sem_ind':
            P rmax (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e (W',s')
            -> P rmax aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) (W,s')) -> 
 
-       (forall (aenv: aenv) (W:stack) (s:qstate) (a:session) (e:exp) (l:session) (r:C) (b : rz_val) (ra:C) (ba:rz_val),
+       (forall (aenv: aenv) (W:stack) (s:qstate) (a:session) (e:exp) (r:C) (b : rz_val) (ra:C) (ba:rz_val),
               eval_nor rmax aenv a r b e = Some (ra,ba) ->
-             P rmax aenv (W,(a++l,Nval r b)::s) (AppU a e) (W,(a++l,Nval ra ba)::s)) ->
+             P rmax aenv (W,(a,Nval r b)::s) (AppU a e) (W,(a,Nval ra ba)::s)) ->
        (forall (aenv: aenv) (W:stack) (s:qstate) (a:session) (e:exp) (l:session) (b : nat -> C * rz_val) (m:nat) (ba:nat -> C * rz_val),
               eval_ch rmax aenv a m b e = Some ba ->
              P rmax aenv (W,(a++l,Cval m b)::s) (AppU a e) (W,(a++l,Cval m ba)::s)) ->
@@ -550,14 +671,13 @@ Definition qfor_sem_ind':
        (forall (aenv : aenv) (W W' : stack) (l : session)
          (l1 : list range) (n n' : nat)
          (s s' : list (list range * state_elem)) 
-         (b : bexp) (e : pexp) (m m' : nat) (f f' : nat -> C * rz_val)
-         (fc fc' : state_elem) (fc'' : nat -> C * rz_val)
-         (fa : nat * (nat -> C * rz_val)),
+         (b : bexp) (e : pexp) (m : nat) (f f' : nat -> C * rz_val)
+         (fc fc' fc'': state_elem),
         type_bexp aenv b (QT n,l) -> @eval_bexp ((l++l1, Cval m f)::s) b ((l++l1, Cval m f')::s) -> ses_len l1 = Some n' ->
         mut_state 0 n n' (Cval (fst (grab_bool f' m n)) (snd (grab_bool f' m n))) fc ->
         @qfor_sem rmax aenv (W,(l1,fc)::s) e (W',(l1,fc')::s') ->
-        P rmax aenv (W,(l1,fc)::s) e (W',(l1,fc')::s') -> mut_state 0 n' n fc' (Cval m' fc'') ->
-        assem_bool m m' n f' fc'' fa -> P rmax aenv (W,(l++l1, Cval m f)::s) (If b e) (W',(l++l1, Cval (fst fa) (snd fa))::s')) ->
+        P rmax aenv (W,(l1,fc)::s) e (W',(l1,fc')::s') -> assem_bool n n' m f' fc' fc'' ->
+        P rmax aenv (W,(l++l1, Cval m f)::s) (If b e) (W',(l++l1, fc'')::s')) ->
 
        (forall (aenv: aenv) (e1 e2:pexp) (s s1 s2:state),
            @qfor_sem rmax aenv s e1 s1 -> P rmax aenv s e1 s1 ->
@@ -579,14 +699,14 @@ Proof.
          | let_sem_m aenv s s' W x a n e Hev Hw => ST4 aenv s s' W x a n e Hev Hw _
          | let_sem_q aenv W W' s s' l x a n e r v va va' Henv Hpick Hbd Hw =>
                  ST5 aenv W W' s s' l x a n e r v va va' Henv Hpick Hbd Hw _
-         | appu_sem_nor aenv W s a e l r b ra ba Hev => ST6 aenv W s a e l r b ra ba Hev
+         | appu_sem_nor aenv W s a e r b ra ba Hev => ST6 aenv W s a e r b ra ba Hev
          | appu_sem_ch aenv W s a e l b m ba Hev => ST7 aenv W s a e l b m ba Hev
          | appsu_sem_h_nor aenv W s p a r b n Hsp Hlen => ST8 aenv W s p a r b n Hsp Hlen
          | appsu_sem_h_had aenv W s p a b n Hsp Hlen => ST9 aenv W s p a b n Hsp Hlen
          | if_sem_ct aenv s s' b e Hsp Hw => ST10 aenv s s' b e Hsp Hw _
          | if_sem_cf aenv s b e Hsp => ST11 aenv s b e Hsp
-         | if_sem_q aenv W W' l l1 n n' s s' b e m m' f f' fc fc' fc'' fa Hty Hev Hses Hmut1 Hw Hmut2 Has
-            => ST12 aenv W W' l l1 n n' s s' b e m m' f f' fc fc' fc'' fa Hty Hev Hses Hmut1 Hw _ Hmut2 Has
+         | if_sem_q aenv W W' l l1 n n' s s' b e m f f' fc fc' fc'' Hty Hev Hses Hmut1 Hw Has
+            => ST12 aenv W W' l l1 n n' s s' b e m f f' fc fc' fc'' Hty Hev Hses Hmut1 Hw _ Has
          | seq_sem aenv e1 e2 s s1 s2 Hw1 Hw2 => ST13 aenv e1 e2 s s1 s2 Hw1 _ Hw2 _
          | for_sem aenv s s' x l h b p Hw => ST14 aenv s s' x l h b p Hw _
          end).
@@ -614,6 +734,7 @@ Lemma state_equiv_dis: forall rmax (s1 s s' : qstate), @state_equiv rmax s s' ->
 Proof.
 Admitted.
 
+(*
 Lemma qfor_sem_local: forall rmax env W W' e l s s' s1, 
  fv_pexp env e l -> sub_qubits l (dom_to_ses (dom s)) -> dis_qubits (dom_to_ses (dom s)) (dom_to_ses (dom s1)) ->
     @qfor_sem rmax env (W,s) e (W',s') -> @qfor_sem rmax env (W,s++s1) e (W',s'++s1).
@@ -634,7 +755,7 @@ Proof.
   inv HeqSa. constructor.
 *)
 Admitted.
-
+*)
 
 (*small step semantics. *)
 Inductive step {rmax:nat}
@@ -648,8 +769,8 @@ Inductive step {rmax:nat}
                        @pick_mea n va (r,v) -> build_state_ch n v va = Some va' 
                   -> step (AEnv.add x (Mo MT) aenv) (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) (AEnv.add x (r,v) W, (l,va')::s) e
 
-  | appu_step_nor : forall aenv W s a e l r b ra ba, eval_nor rmax aenv a r b e = Some (ra,ba) 
-         -> step aenv (W,(a++l,Nval r b)::s) (AppU a e) (W,(a++l,Nval ra ba)::s) PSKIP
+  | appu_step_nor : forall aenv W s a e r b ra ba, eval_nor rmax aenv a r b e = Some (ra,ba) 
+         -> step aenv (W,(a,Nval r b)::s) (AppU a e) (W,(a,Nval ra ba)::s) PSKIP
 
   | appu_step_ch : forall aenv W s a e l b m ba, eval_ch rmax aenv a m b e = Some ba 
            -> step aenv (W,(a++l,Cval m b)::s) (AppU a e) (W,(a++l,Cval m ba)::s) PSKIP

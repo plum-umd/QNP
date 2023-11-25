@@ -195,11 +195,11 @@ Fixpoint subst_type_map (l:type_map) (x:var) (n:nat) :=
 
 Inductive session_system {rmax:nat}
            : atype -> aenv -> type_map -> pexp -> type_map -> Prop :=
-(*
-    | env_equiv_ses: forall q env s T1 T2 T3, env_equiv T1 T2
-         -> session_system q env T2 s T3 -> session_system q env T1 s T3
-*)
-    | skip_ses : forall q env T, session_system q env T (PSKIP) T
+
+    | sub_ses: forall q env s T T' T1,
+        session_system q env T s T' -> session_system q env (T++T1) s (T'++T1)
+
+    | skip_ses : forall q env, session_system q env nil (PSKIP) nil
     | assign_ses_c : forall q env x a v e T T', ~ AEnv.In x env -> 
          simp_aexp a = Some v ->
              session_system q env (subst_type_map T x v) (subst_pexp e x v) T'
@@ -209,18 +209,17 @@ Inductive session_system {rmax:nat}
     | meas_m1 : forall env x y e n l T T', AEnv.MapsTo y (QT n) env -> ~ AEnv.In x env ->
                session_system CT (AEnv.add x (Mo MT) env) ((l,CH)::T) e T'
               -> session_system CT env (((y,BNum 0,BNum n)::l,CH)::T) (Let x (Meas y) e) T'
-    | appu_ses_nor : forall q env T l l' e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
-                           session_system q env ((l++l', TNor)::T) (AppU l e) ((l++l', TNor)::T)
+    | appu_ses_nor : forall q env l e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
+                           session_system q env ([(l, TNor)]) (AppU l e) ([(l, TNor)])
+
+    | appu_ses_ch : forall q env l l' e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
+                           session_system q env ([(l++l', CH)]) (AppU l e) ([(l++l', CH)])
 
 
-    | appu_ses_ch : forall q env T l l' e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
-                           session_system q env ((l++l', CH)::T) (AppU l e) ((l++l', CH)::T)
-
-
-    | appu_ses_h_nor:  forall q env T p a m, type_vari env p (QT m, [a]) -> simp_varia env p a ->
-                    session_system q env (([a], TNor)::T) (AppSU (RH p)) (([a], THad)::T)
-    | appu_ses_h_had:  forall q env T p a m, type_vari env p (QT m, [a]) -> simp_varia env p a ->
-                    session_system q env (([a], THad)::T) (AppSU (RH p)) (([a], TNor)::T)
+    | appu_ses_h_nor:  forall q env p a m, type_vari env p (QT m, [a]) -> simp_varia env p a ->
+                    session_system q env ([([a], TNor)]) (AppSU (RH p)) ([([a], THad)])
+    | appu_ses_h_had:  forall q env p a m, type_vari env p (QT m, [a]) -> simp_varia env p a ->
+                    session_system q env ([([a], THad)]) (AppSU (RH p)) ([([a], TNor)])
 (*
     | appu_ses_h_ch:  forall q env T p l l' m, type_vari env p (QT m, l)
                   -> find_type T l (Some (l',(CH))) ->
@@ -246,8 +245,9 @@ Inductive session_system {rmax:nat}
     | qif_ses_m: forall env T b e T', type_bexp env b (Mo MT,nil) -> 
                 session_system CT env T e T' -> session_system CT env T (If b e) T'
 *)
-    | qif_ses_ch: forall q env T b n l l1 e, type_bexp env b (QT n,l) -> fv_pexp env e l1 ->
-                session_system MT env ((l1,CH)::T) e ((l1,CH)::T) -> session_system q env ((l++l1,CH)::T) (If b e) ((l++l1,CH)::T)
+    | qif_ses_ch: forall q env b n l l1 e, type_bexp env b (QT n,l) ->
+                session_system MT env ([(l1,CH)]) e ([(l1,CH)])
+             -> session_system q env ([(l++l1,CH)]) (If b e) ([(l++l1,CH)])
 
  (*   | dif_ses_ch: forall q env T p n l l' t, type_vari env p (QT n,l) -> find_type T l (Some (l',t)) ->
                  session_system q env T (Diffuse p) ([(l',CH)]) *)
@@ -256,8 +256,10 @@ Inductive session_system {rmax:nat}
                        session_system q env T (PSeq e1 e2) T2
     | qfor_ses_no: forall q env T i l h b e, h <= l -> session_system q env T (For i (Num l) (Num h) b e) T
     | qfor_ses_ch: forall q env T i l h b e, l < h -> ~ AEnv.In i env ->
-        (forall v, l <= v < h -> session_system q env (subst_type_map T i v) (If (subst_bexp b i v) (subst_pexp e i v)) (subst_type_map T i (v+1)))
-              -> session_system q env (subst_type_map T i l) (For i (Num l) (Num h) b e) (subst_type_map T i h).
+        (forall v, l <= v < h -> session_system q env (subst_type_map T i v) 
+                           (If (subst_bexp b i v) (subst_pexp e i v)) (subst_type_map T i (v+1)))
+              -> session_system q env (subst_type_map T i l) 
+                           (For i (Num l) (Num h) b e) (subst_type_map T i h).
 
 
 

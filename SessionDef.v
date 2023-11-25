@@ -160,6 +160,16 @@ Proof.
   destruct (get_core_ses l) eqn:eq1; try easy. inv H. rewrite (IHl l0 l1 l1'); try easy.
 Qed.
 
+Lemma get_core_ses_app_none: forall l l' l1, get_core_ses l = Some l' -> get_core_ses l1 = None 
+     -> get_core_ses (l++l1) = None.
+Proof.
+  induction l;intros;simpl in *. easy.
+  destruct a. destruct p. destruct b0; try easy.
+  destruct b; try easy.
+  destruct (get_core_ses l) eqn:eq1; try easy. inv H.
+  rewrite IHl with (l' := l0); try easy.
+Qed.
+
 Lemma ses_len_aux_add : forall l l1, ses_len_aux (l++l1) = (ses_len_aux l) + (ses_len_aux l1).
 Proof.
   induction l;intros;simpl in *; try easy.
@@ -174,6 +184,31 @@ Proof.
   destruct (get_core_ses l1) eqn:eq2; try easy.
   specialize (get_core_ses_app l l0 l1 l2 eq1 eq2) as X1.
   rewrite X1. rewrite ses_len_aux_add. inv H. inv H0. easy.
+Qed.
+
+Lemma ses_len_app_sub: forall l l1 n n1, ses_len l = Some n -> ses_len (l++l1) = Some n1
+     -> ses_len (l1) = Some (n1 - n).
+Proof.
+  intros. unfold ses_len in *.
+  destruct (get_core_ses l) eqn:eq1; try easy.
+  destruct (get_core_ses l1) eqn:eq2; try easy.
+  specialize (get_core_ses_app l l0 l1 l2 eq1 eq2) as X1.
+  rewrite X1 in H0. inv H0. rewrite ses_len_aux_add. inv H.
+  replace (ses_len_aux l0 + ses_len_aux l2 - ses_len_aux l0) with (ses_len_aux l2) by lia.
+  easy. apply get_core_ses_app_none with (l := l) (l' := l0) in eq2; try easy.
+  rewrite eq2 in H0. easy.
+Qed.
+
+Lemma ses_len_app_small: forall l l1 n n1, ses_len l = Some n -> ses_len (l++l1) = Some n1
+     -> n <= n1.
+Proof.
+  intros. apply ses_len_app_sub with (l1 := l1) (n1 := n1) in H as X1; try easy.
+  unfold ses_len in *.
+  destruct (get_core_ses l) eqn:eq1; try easy.
+  destruct (get_core_ses l1) eqn:eq2; try easy.
+  specialize (get_core_ses_app l l0 l1 l2 eq1 eq2) as X2.
+  rewrite X2 in H0. rewrite ses_len_aux_add in H0. inv H0. inv X1.
+  inv H. lia.
 Qed.
 
 Inductive subtype :  se_type -> se_type -> Prop :=
@@ -380,33 +415,34 @@ Inductive times_state {rmax:nat}: nat -> state_elem -> state_elem -> state_elem 
   | state_nor_nor_to: forall n r1 r2 p1 p2,
                times_state n (Nval r1 p1) (Nval r2 p2) (Nval (r1*r2)%C (join_val n p1 p2))
   | state_had_had_to: forall n p1 p2,
-               times_state n (Hval p1) (Hval p2) (Hval (join_val n p1 p2))
+               times_state n (Hval p1) (Hval p2) (Hval (join_val n p1 p2)).
  (* | state_ch_ch_to : forall n m1 m2 p1 p2,
-               times_state n (Cval m1 p1) (Cval m2 p2) (Cval (m1*m2) (car_fun_ch rmax n m1 m2 p1 p2)). *)
+               times_state n (Cval m1 p1) (Cval m2 p2) (Cval (m1*m2) (car_fun_ch rmax n m1 m2 p1 p2)). 
   | state_fch_fch_to : forall n m1 m2 p1 p2,
-               times_state n (Cval m1 p1) (Cval m2 p2) (Cval (m1*m2) (car_fun_fch n m1 m2 p1 p2)).
+               times_state n (Cval m1 p1) (Cval m2 p2) (Cval (m1*m2) (car_fun_fch n m1 m2 p1 p2)).*)
 
 Definition cut_n_rz (f:nat -> rz_val) (n:nat) := fun i => if i <? n then f i else allfalse.
 
 Inductive split_state {rmax:nat}: nat -> state_elem -> state_elem * state_elem -> Prop :=
   | nor_split_state: forall n r c, split_state n (Nval r c) (Nval r (cut_n c n), Nval C1 (lshift_fun c n))
-  | had_split_state: forall n r, split_state n (Hval r) (Hval (cut_n_rz r n), Hval (lshift_fun r n))
+  | had_split_state: forall n r, split_state n (Hval r) (Hval (cut_n_rz r n), Hval (lshift_fun r n)).
   (*| ch_split_state: forall n m r r1 r2, car_fun_ch rmax n m 1 r1 r2 = r
-                -> split_state n (Cval m r) (Cval m r1, Cval 1 r2) *)
+                -> split_state n (Cval m r) (Cval m r1, Cval 1 r2) 
   | fch_split_state: forall n m r r1 r2, car_fun_fch n m 1 r1 r2 = r
                 -> split_state n (Cval m r) (Cval m r1, Cval 1 r2).
-
+*)
 
 Inductive state_equiv {rmax:nat} : qstate -> qstate -> Prop :=
      | state_id : forall S, state_equiv S S
   (*   | state_empty : forall v S, state_equiv ((nil,v)::S) S *)
      | state_comm :forall a1 a2, state_equiv (a1++a2) (a2++a1)
      | state_ses_assoc: forall s v S S', state_equiv S S' -> state_equiv ((s,v)::S) ((s,v)::S')
-     | state_ses_eq: forall s s' v S, ses_eq s s' -> state_equiv ((s,v)::S) ((s',v)::S)
-     | state_sub: forall x v n u a, ses_len x = Some n -> @state_same rmax n v u -> state_equiv ((x,v)::a) ((x,u)::a)
+    (* | state_ses_eq: forall s s' v S, ses_eq s s' -> state_equiv ((s,v)::S) ((s',v)::S) 
+     | state_sub: forall x v n u a, ses_len x = Some n -> @state_same rmax n v u 
+                       -> state_equiv ((x,v)::a) ((x,u)::a) 
      | state_mut: forall l1 l2 n a n1 b n2 v u S, ses_len l1 = Some n -> ses_len ([a]) = Some n1 -> ses_len ([b]) = Some n2 ->
                      mut_state n n1 n2 v u ->
-                 state_equiv ((l1++(a::b::l2),v)::S) ((l1++(b::a::l2),u)::S)
+                 state_equiv ((l1++(a::b::l2),v)::S) ((l1++(b::a::l2),u)::S) *)
      | state_merge: forall x n v y u a vu, ses_len x = Some n -> 
                        @times_state rmax n v u vu -> state_equiv ((x,v)::((y,u)::a)) ((x++y,vu)::a)
      | state_split: forall x n y v v1 v2 a, ses_len x = Some n -> 
@@ -477,12 +513,8 @@ Fixpoint subst_aexp (a:aexp) (x:var) (n:nat) :=
     match a with BA y => if x =? y then Num n else BA y
               | Num a => Num a
               | MNum r a => MNum r a
-              | APlus c d => match ((subst_aexp c x n),(subst_aexp d x n)) with (Num q, Num t) =>  Num (q+t)
-                                | _ => APlus (subst_aexp c x n) (subst_aexp d x n) 
-                             end
-              | AMult c d => match ((subst_aexp c x n),(subst_aexp d x n)) with (Num q, Num t) =>  Num (q*t)
-                                | _ => AMult (subst_aexp c x n) (subst_aexp d x n) 
-                             end
+              | APlus c d =>  APlus (subst_aexp c x n) (subst_aexp d x n) 
+              | AMult c d =>  AMult (subst_aexp c x n) (subst_aexp d x n) 
     end.
 
 

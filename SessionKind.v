@@ -255,14 +255,6 @@ Lemma subst_aexp_not_eq: forall e x v, subst_aexp e x v <> x.
 Proof.
   induction e; intros; simpl in *; try easy.
   bdestruct (x0 =? x); subst; try easy. intros R. inv R. easy.
-  destruct (subst_aexp e1 x v) eqn:eq1.
-  easy.
-  destruct (subst_aexp e2 x v) eqn:eq2; try easy.
-  easy. easy. easy.
-  destruct (subst_aexp e1 x v) eqn:eq1.
-  easy.
-  destruct (subst_aexp e2 x v) eqn:eq2; try easy.
-  easy. easy. easy.
 Qed.
 
 Lemma freeVarsAExpNotIn: forall n x v, ~ In x (freeVarsAExp (subst_aexp n x v)).
@@ -704,10 +696,6 @@ Lemma subst_aexp_eq_var: forall b i v x, subst_aexp b i v = BA x -> b = BA x /\ 
 Proof.
   induction b; intros;simpl in *; try easy.
   bdestruct (i =? x); subst. inv H. split. easy. intros R. subst. inv H. easy.
-  destruct (subst_aexp b1 i v) eqn:eq1. inv H.
-  destruct (subst_aexp b2 i v) eqn:eq2; try inv H. inv H. inv H. inv H.
-  destruct (subst_aexp b1 i v) eqn:eq1; try inv H.
-  destruct (subst_aexp b2 i v) eqn:eq2; try inv H1. 
 Qed.
 
 Lemma in_list_sub_if: forall l x i, In x (list_sub l i) -> In x l.
@@ -756,28 +744,40 @@ Proof.
   apply freeVarAExp_subst in H. apply in_list_sub_app_iff. right. easy.
 Qed.
 
-(*
-Lemma freeVarBexp_subst: forall b i v x, In x (freeVarsBexp (subst_bexp b i v))
-        -> In x (list_sub (freeVarsBexp b) i).
+Lemma type_cbexp_no_qt: forall b env t n, type_cbexp env b t -> t <> QT n.
 Proof.
-  induction b; intros; simpl in *; try easy.
-  bdestruct (x =? i); subst.
-  specialize (freeVarsCBExpNotIn c i v) as X1. easy.
-  apply freeVarsCBExp_subst in H.
-  apply list_sub_not_in; try easy.
-  bdestruct (i =? i0); subst.
-  destruct H. subst. bdestruct (x0 =? i0); subst.
-  
-  intros. bdestruct (x =? i); subst.
-  specialize (freeVarsBExpNotIn b i v) as X1. easy.
-  apply list_sub_not_in; try easy.
-  apply freeVarsAExp_subst in H. easy.
-Admitted.
+ induction b;intros;simpl in *; try easy. inv H. unfold is_class_type in *.
+ destruct t1; try easy. destruct t2; try easy.
+ inv H. unfold is_class_type in *.
+ destruct t1; try easy. destruct t2; try easy.
+Qed.
 
-Lemma freeVarPExp_subst: forall b i v x, In x (freeVarsPExp (subst_pexp b i v))
-        -> In x (list_sub (freeVarsPExp b) i).
+Lemma type_bexp_ses_len : forall b l env n, type_bexp env b (QT n, l) -> ses_len l = Some n.
 Proof.
   induction b;intros;simpl in *; try easy.
-Admitted.
-*)
+  inv H. remember (QT n) as a. apply type_cbexp_no_qt with (n := n) in H3. subst. easy.
+  inv H. unfold ses_len in *;simpl in *. destruct v. simpl in *.
+  replace (m - 0 + 1) with (m+1) by lia. easy.
+  replace (m - 0 + (S v - v + 0)) with (m+1) by lia. easy.
+  unfold ses_len in *;simpl in *. destruct v. simpl in *.
+  replace (m - 0 + 1) with (m+1) by lia. easy.
+  replace (m - 0 + (S v - v + 0)) with (m+1) by lia. easy.
+  inv H. unfold ses_len in *;simpl in *. destruct v. simpl in *.
+  replace (m - 0 + 1) with (m+1) by lia. easy.
+  replace (m - 0 + (S v - v + 0)) with (m+1) by lia. easy.
+  unfold ses_len in *;simpl in *. destruct v. simpl in *.
+  replace (m - 0 + 1) with (m+1) by lia. easy.
+  replace (m - 0 + (S v - v + 0)) with (m+1) by lia. easy.
+  inv H. unfold ses_len in *;simpl in *. destruct v. simpl in *. easy.
+  replace (S v - v + 0) with 1 by lia. easy.
+  inv H. apply IHb in H2. easy.
+Qed.
+
+Lemma type_bexp_ses_len_gt : forall b l env n, type_bexp env b (QT n, l) -> ses_len l = Some n -> 0 < n.
+Proof.
+  induction b;intros;simpl in *; try easy.
+  inv H. remember (QT n) as a. apply type_cbexp_no_qt with (n := n) in H4. subst. easy.
+  inv H. lia. lia.
+  inv H. lia. lia. inv H. lia. inv H. apply IHb in H3. easy. easy.
+Qed.
 
