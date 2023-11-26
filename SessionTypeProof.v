@@ -113,46 +113,6 @@ Proof.
   apply env_state_eq_same_length in H2 as X1; try easy.
   apply env_state_eq_app_join; try easy.
 Qed.
-  
-
-(*
-Lemma env_state_eq_trans: forall r T T' S, env_state_eq T S -> env_equiv T T' -> (exists S', @state_equiv r S S' /\ env_state_eq T' S').
-Proof.
-   intros. generalize dependent S. induction H0...
-  - intros. exists S0. split. constructor. easy.
-  - intros. apply env_state_eq_app in H as X1.
-    destruct X1 as [b1 [b2 [X1 [X2 X3]]]]; subst.
-    exists (b2 ++ b1). split. apply state_comm. apply env_state_eq_app_comm; try easy.
-  - intros.
-Admitted.
-
-Lemma find_type_state : forall s s' t r T S, env_state_eq T S -> find_type T s (Some (s++s',t))
-       -> (exists S' a, @state_equiv r S S' /\ find_env S' s (Some (s++s',a)) /\ type_state_elem_same t a).
-Proof.
-  intros.  inv H0. 
-  (* use the env_state_eq_trans.  *)
-  specialize (find_env_state s s' t T S H) as X1.
-Admitted.
-
-Lemma find_type_state_1 : forall s s' t r T M S, env_state_eq T S -> find_type T s (Some (s++s',t))
-       -> (exists a, @find_state r (M,S) s (Some (s++s',a)) /\ type_state_elem_same t a).
-Proof.
-  intros. apply find_type_state with (r := r) (S := S) in H0.
-  destruct H0 as [S' [a [X1 [X2 X3]]]].
-  exists a. split. apply find_qstate_rule with (S'0 := S'); try easy. apply X3. easy.
-Qed.
-
-
-Lemma find_state_up_good {rmax}: forall S s s' v v', @find_state rmax S s (Some (s',v)) -> exists S', @up_state rmax S s v' S'.
-Proof.
-  intros. inv H.
-Admitted.
-
-Lemma find_state_up_good_1 {rmax}: forall S s s' v v', @find_state rmax S s (Some (s',v)) -> exists S', @up_state rmax S s' v' S'.
-Proof.
-  intros. inv H.
-Admitted.
-*)
 
 Lemma find_env_ch: forall T s s' t, find_env T s (Some (s',t)) -> (exists T', env_equiv T T' /\ find_env T' s (Some (s',CH))).
 Proof.
@@ -205,42 +165,6 @@ Definition kind_env_wf (env:aenv) : Prop :=
 Definition env_wf (env:type_map) : Prop :=
    forall x t, In (x,t) env -> simple_ses x.
 
-(*
-Inductive env_state_eqv {r:nat} : type_map -> qstate ->  Prop :=
-    env_state_eqv_rule : forall l1 l2 l1' l2', 
-      env_equiv l1 l1' -> @state_equiv r l2 l2' -> env_state_eq l1' l2' -> env_state_eqv l1 l2.
-
-Lemma env_state_equiv :
-  forall rmax s t1 t2, @env_state_eqv rmax t1 s -> env_equiv t1 t2 -> (exists s1, @state_equiv rmax s s1 /\ @env_state_eqv rmax t2 s1).
-  Proof. Admitted.
-
-Lemma env_equiv_simple_type : forall T T', env_equiv T T' -> simple_tenv T -> simple_tenv T'.
-Proof.
-  intros. induction H; simpl in *. easy.
-  unfold simple_tenv in *. intros.
-  apply (H0 a b). apply in_or_app. apply in_app_iff in H. destruct H. right. easy. left. easy.
-  unfold simple_tenv in *. intros.
-  simpl in H1. destruct H1. inv H1. apply (H0 a v). simpl. left. easy.
-  apply (H0 a b). simpl. right. easy.
-  unfold simple_tenv in *. intros.
-  simpl in *. destruct H1. inv H1. apply (H0 a b). left. easy.
-  assert (forall (a : session) (b : se_type),
-               In (a, b) S -> simple_ses a).
-  intros. apply (H0 a0 b0). right. easy.
-  specialize (IHenv_equiv H2). apply (IHenv_equiv a b). easy.
-Admitted.
-
-Lemma state_equiv_single_ch_same: forall rmax l m b m' b', @state_equiv rmax ([(l,Cval m b)]) ([(l,Cval m' b')]) -> m = m' /\ b = b'.
-Proof.
-  intros. remember ([(l, Cval m b)]) as s. remember ([(l, Cval m' b')]) as s'. induction H;subst;simpl in *; try easy.
-  inv Heqs'. easy. destruct a1. simpl in *. subst. simpl in *. inv Heqs'. easy. inv Heqs.
-  apply app_eq_nil in H1. destruct H1; subst. simpl in *. inv Heqs'. easy.
-  inv Heqs. inv Heqs'. easy.
-  inv Heqs. inv Heqs'. easy. inv Heqs. inv Heqs'. inv H0.
-  inv Heqs. inv Heqs'.
-Admitted.
-*)
-
 Lemma find_env_simple: forall T l l' t, @find_env se_type T l (Some (l',t)) -> simple_tenv T -> simple_ses l'.
 Proof.
   intros. remember (Some (l', t)) as a. induction H; subst; try easy.
@@ -279,18 +203,6 @@ Proof.
 Qed.
 
 
-(*
-Lemma update_env_simple: forall T l t T', update_env T l t T' -> simple_tenv T -> simple_ses l -> simple_tenv T'.
-Proof.
-  intros. induction H; simpl in *; try easy.
-  unfold simple_tenv in *. intros. simpl in *. inv H; try easy. inv H2. easy.
-  unfold simple_tenv in *. intros. simpl in *. inv H2. inv H3. easy.
-  apply H0 with (b := b). right. easy.
-  unfold simple_tenv in *. intros. simpl in *.
-  inv H3. inv H4.
-Admitted.
-*)
-
 Lemma simple_ses_app_l: forall l l', simple_ses (l++l') -> simple_ses l.
 Proof.
   intros. induction l; try easy. constructor.
@@ -302,22 +214,6 @@ Proof.
   intros. induction l; try easy. 
   simpl in *. inv H. apply IHl. easy.
 Qed.
-
-(*
-Lemma qstate_wt_eq : forall r S S', @qstate_wt S -> @state_equiv r S S' -> @qstate_wt S'.
-Proof.
-  intros.
-Admitted.
-*)
-
-(*
-Lemma qstate_wt_stack_eq: forall r W W' S, @qstate_wt r S -> @qstate_wt r (W',S).
-Proof.
- intros. unfold qstate_wt in *.
- intros. apply H with (s := s) (s' := s') (bl := bl).
- inv H0. apply find_qstate_rule with (S'0 := S'); try easy.
-Qed.
-*)
 
 Lemma simple_ses_subst: forall s x v, simple_ses s -> (subst_session s x v) = s.
 Proof.
@@ -413,22 +309,9 @@ Proof.
   exists MT. unfold meet_ktype in *. easy. exists MT. easy.
 Qed.
 
-Lemma eval_bexp_exists : forall aenv n b s l l1 m f, type_bexp aenv b (QT n, l) 
+(*We assume a subset of allowed bexp syntax. *)
+Axiom eval_bexp_exists : forall aenv n b s l l1 m f, type_bexp aenv b (QT n, l) 
    -> exists f', @eval_bexp ((l++l1, Cval m f)::s) b ((l++l1, Cval m f')::s).
-Proof.
-  intros. remember (QT n, l) as S. induction H.
-  apply type_cbexp_class in H. destruct H; subst. inv HeqS.
-  inv HeqS.
-  exists (eval_eq_bool f m m0 b). apply beq_sem_1.
-  inv HeqS.
-  exists (eval_eq_bool f m m0 b). apply beq_sem_2.
-  inv HeqS.
-  exists (eval_lt_bool f m m0 b). apply blt_sem_1.
-  inv HeqS.
-  exists (eval_rlt_bool f m m0 b). apply blt_sem_2.
-  inv HeqS.
-  exists f. apply btext_sem.
-Admitted.
 
 Lemma type_bexp_gt : forall env b n l, type_bexp env b (QT n, l) -> n > 0.
 Proof.

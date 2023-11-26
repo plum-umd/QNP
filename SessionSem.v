@@ -723,6 +723,7 @@ Proof.
    apply PF in H. apply ForallA_cons with (s' := s'). easy. easy.
 Qed.
 
+(*
 Lemma state_equiv_sub: forall rmax l s s', @state_equiv rmax s s' -> 
           sub_qubits l (dom_to_ses (dom s)) -> sub_qubits l (dom_to_ses (dom s')).
 Proof.
@@ -733,7 +734,7 @@ Lemma state_equiv_dis: forall rmax (s1 s s' : qstate), @state_equiv rmax s s' ->
        -> dis_qubits (dom_to_ses (dom s')) (dom_to_ses (dom s1)).
 Proof.
 Admitted.
-
+*)
 (*
 Lemma qfor_sem_local: forall rmax env W W' e l s s' s1, 
  fv_pexp env e l -> sub_qubits l (dom_to_ses (dom s)) -> dis_qubits (dom_to_ses (dom s)) (dom_to_ses (dom s1)) ->
