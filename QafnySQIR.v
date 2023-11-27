@@ -91,9 +91,9 @@ Section mergeSort.
 End mergeSort.
 
 
-Fixpoint trans_pexp (f:OQASMProof.vars) (dim:nat) (e:pexp) (avs: nat -> posi): (option (base_com dim)) :=
+Function trans_pexp (f:OQASMProof.vars) (dim:nat) (e:pexp) (avs: nat -> posi) {struct e}: (option (base_com dim)) :=
   match e with PSKIP => Some skip
-             | Let x (AE (Num n)) s => trans_pexp f dim s avs
+             | Let x (AE (Num n)) s => trans_pexp f dim (subst_pexp s x n) avs
              | Let x (AE (MNum r n)) s => trans_pexp f dim s avs
              | Let x (Meas y) s => match trans_pexp f dim s avs with None => None
                                     | Some cr => Some (trans_n_meas (vsize f y) (start f y) ; cr)

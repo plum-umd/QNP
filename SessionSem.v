@@ -102,7 +102,7 @@ Definition eval_nor (rmax:nat) (env:aenv) (l:session) (r:C) (b:rz_val) (e:exp) :
        end
      end.
 
-(*A similar proof was given in VQO: https://github.com/inQWIRE/VQO*)
+(* The theorems were proved in VQO: https://github.com/inQWIRE/VQO *)
 Definition turn_pair_nor (a:C *rz_val) := Nval (fst a) (snd a).
 
 Axiom eval_nor_switch_same : forall rmax env l l1 n r b b1 e v, ses_len (l++l1) = Some n 
@@ -110,6 +110,14 @@ Axiom eval_nor_switch_same : forall rmax env l l1 n r b b1 e v, ses_len (l++l1) 
         eval_nor rmax env l r b e = Some v ->
         exists v', (eval_nor rmax env l r b1 e = Some v'
            /\ match_value n (turn_pair_nor v) (turn_pair_nor v')).
+
+Axiom compile_exp_WF : forall e ea l aenv qenv vl x v n, compile_ses_qenv aenv l = (qenv, vl)
+      -> compile_exp_to_oqasm e = Some ea -> type_exp aenv e (QT n, l) -> v >= qenv x 
+      -> exp_WF qenv ea.
+
+Axiom compile_exp_fresh : forall e ea l aenv qenv vl x v n, compile_ses_qenv aenv l = (qenv, vl)
+      -> compile_exp_to_oqasm e = Some ea -> type_exp aenv e (QT n, l) -> v >= qenv x 
+      -> exp_fresh qenv (x,v) ea.
 
 Fixpoint eval_ch (rmax:nat) (env:aenv) (l:session) (m:nat) f (e:exp) :=
    match m with 0 => Some (fun _ => (C0 , allfalse))
@@ -280,26 +288,6 @@ Proof.
   specialize (H1 v0).
   apply mapsto_always_same with (v1 := t0) in H1; subst; try easy.
 Qed.
-
-Lemma compile_exp_WF : forall e ea l aenv qenv vl x v n, compile_ses_qenv aenv l = (qenv, vl)
-      -> compile_exp_to_oqasm e = Some ea -> type_exp aenv e (QT n, l) -> v >= qenv x 
-      -> exp_WF qenv ea.
-Proof.
-  induction e;intros;simpl in *.
-  inv H1. inv H0. constructor. simpl in *.
-  apply AEnv.find_1 in H7. rewrite H7 in H. inv H.
-  bdestruct (x =? x). lia. easy.
-  admit.
-  destruct a; try easy.
-  destruct (compile_exp_to_oqasm e) eqn:eq1; try easy. inv H0.
-  constructor. simpl in *. inv H1.
-Admitted.
-
-Lemma compile_exp_fresh : forall e ea l aenv qenv vl x v n, compile_ses_qenv aenv l = (qenv, vl)
-      -> compile_exp_to_oqasm e = Some ea -> type_exp aenv e (QT n, l) -> v >= qenv x 
-      -> exp_fresh qenv (x,v) ea.
-Proof.
-Admitted.
 
 Lemma eval_nor_exists {rmax : nat} : forall aenv l n c b e,
           type_exp aenv e (QT n,l) -> simple_ses l -> oracle_prop aenv l e
@@ -722,41 +710,6 @@ Proof.
    induction Hw. constructor.
    apply PF in H. apply ForallA_cons with (s' := s'). easy. easy.
 Qed.
-
-(*
-Lemma state_equiv_sub: forall rmax l s s', @state_equiv rmax s s' -> 
-          sub_qubits l (dom_to_ses (dom s)) -> sub_qubits l (dom_to_ses (dom s')).
-Proof.
-Admitted.
-
-Lemma state_equiv_dis: forall rmax (s1 s s' : qstate), @state_equiv rmax s s' -> 
-          dis_qubits (dom_to_ses (dom s)) (dom_to_ses (dom s1)) 
-       -> dis_qubits (dom_to_ses (dom s')) (dom_to_ses (dom s1)).
-Proof.
-Admitted.
-*)
-(*
-Lemma qfor_sem_local: forall rmax env W W' e l s s' s1, 
- fv_pexp env e l -> sub_qubits l (dom_to_ses (dom s)) -> dis_qubits (dom_to_ses (dom s)) (dom_to_ses (dom s1)) ->
-    @qfor_sem rmax env (W,s) e (W',s') -> @qfor_sem rmax env (W,s++s1) e (W',s'++s1).
-Proof.
-  intros. remember (W, s) as Sa. remember (W', s') as Sb.
-  generalize dependent s. generalize dependent s'.
-  generalize dependent W. generalize dependent W'.
-  induction H2 using qfor_sem_ind'; intros; subst.
-  inv HeqSa.  apply skip_sem.
-(*
-  assert ((W', s'0) = (W', s'0)) by easy.
-  apply state_equiv_sub with (rmax:=rmax) (s' := s') in H1; try easy.
-  apply state_equiv_dis with (rmax:=rmax) (s' := s') in H3; try easy.
-  assert ((W0, s') = (W0, s')) by easy.
-  specialize (IHqfor_sem H W' W0 s'0 H4 s' H1 H3 H5).
-  apply state_equiv_cong with (S3 := s1) in H0.
-  apply state_eq_sem with (f' := (s' ++ s1)); try easy.
-  inv HeqSa. constructor.
-*)
-Admitted.
-*)
 
 (*small step semantics. *)
 Inductive step {rmax:nat}
