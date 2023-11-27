@@ -1345,6 +1345,103 @@ Proof.
   replace ((l + na + 1)) with (l + S na) in * by lia. easy.
 Qed.
 
+Lemma type_preserves: forall na b e rmax q env i l T s s',
+  (forall v : nat, l <= v < l + na -> @session_system rmax q env (subst_type_map T i v)
+       (If (subst_bexp b i v) (subst_pexp e i v)) (subst_type_map T i (v + 1)))
+  -> env_state_eq (subst_type_map T i l) (snd s) -> kind_env_stack env (fst s) 
+  -> (forall v, freeVarsNotCPExp env (If (subst_bexp b i v) (subst_pexp e i v)))
+  -> (forall v : nat, simple_tenv (subst_type_map T i v))
+  -> ForallA rmax (@qfor_sem) na env s l i b e s'
+  -> AEnv.Equal (fst s) (fst s') /\ env_state_eq (subst_type_map T i (l + na)) (snd s').
+Proof.
+  induction na; intros; simpl in *; try easy.
+  inv H4. split. easy.
+  replace (l+0) with l by lia.
+  easy.
+  inv H4. apply IHna with (q := q) (T := T) in H6; try easy.
+  destruct H6.
+  apply type_preserve with (q := q) (T := (subst_type_map T i (l + na)))
+    (T' := (subst_type_map T i (l + S na))) in H7; try easy.
+  destruct H7 as [X1 [X2 X3]].
+  split. apply AEnvFacts.Equal_trans with (m' := fst s'0); try easy.
+  easy.
+  specialize (H (l+na)).
+  replace (l+na + 1) with (l + S na) in H by lia.
+  apply H. lia.
+  apply kind_env_stack_equal with (s2 := (fst s'0)) in H1; try easy.
+  intros. apply H. lia.
+Qed.
+
+Lemma eval_aexp_twice_same: forall s a v v1, eval_aexp s a v
+  -> eval_aexp s a v1 -> v = v1.
+Proof.
+  intros. generalize dependent v1. induction H; intros; simpl in *; try easy.
+  inv H0; try easy.
+  apply aenv_mapsto_always_same with (v1 := (r0,n0)) in H; try easy.
+  inv H0. easy.
+  inv H1.
+  rewrite H0 in H7. inv H7.
+  apply IHeval_aexp in H5. inv H5. easy.
+  apply simp_aexp_no_eval in H5. rewrite H5 in *. easy.
+  inv H1. apply simp_aexp_no_eval in H5. rewrite H5 in *. easy.
+  rewrite H0 in H7. inv H7.
+  apply IHeval_aexp in H5. inv H5. easy.
+  inv H1.
+  rewrite H0 in H7. inv H7.
+  apply IHeval_aexp in H5. inv H5. easy.
+  apply simp_aexp_no_eval in H5. rewrite H5 in *. easy.
+  inv H1. apply simp_aexp_no_eval in H5. rewrite H5 in *. easy.
+  rewrite H0 in H7. inv H7.
+  apply IHeval_aexp in H5. inv H5. easy.
+Qed.
+
+(*
+Lemma qfor_sem_single_out: forall rmax env s e s1 s2,
+   @qfor_sem rmax env s e s1 -> @qfor_sem rmax env s e s2 -> s1 = s2.
+Proof.
+  intros. generalize dependent s2.
+  induction H; intros; simpl in *; try easy.
+  inv H0. easy.
+  inv H1. apply IHqfor_sem. rewrite H in H8. inv H8. easy.
+  apply simp_aexp_no_eval in H8. rewrite H8 in *. easy.
+  inv H1. apply simp_aexp_no_eval in H. rewrite H in *. easy.
+  apply eval_aexp_twice_same with (v := n0) in H; try easy; subst.
+  apply IHqfor_sem in H9. inv H9. easy.
+  inv H3. inv H0. inv H15.
+  inv H1.
+Qed.
+*)
+
+Lemma foralla_sub: forall v rmax na env s l i b e s',
+    v <= na ->
+    ForallA rmax (@qfor_sem) na env s l i b e s'
+   -> exists sa, ForallA rmax (@qfor_sem) v env s l i b e sa 
+    /\ ForallA rmax (@qfor_sem) (na-v) env sa (l+v) i b e s'.
+Proof.
+  induction na; intros; simpl in *; try easy.
+  assert (v = 0) by lia. subst.
+  exists s. split. constructor.
+  replace (l+0) with l by lia.
+  easy.
+  bdestruct (v =? S na); subst.
+  replace (na-na) with 0 by lia.
+  exists s'. split. easy. constructor.
+  inv H0.
+  apply IHna in H3; try lia.
+  destruct H3 as [sa [X1 X2]].
+  exists sa. split; try easy.
+  assert (match v with
+                         | 0 => S na
+                         | S l0 => na - l0
+                         end  = S (na -v)).
+  destruct v. lia.
+  lia.
+  rewrite H0.
+  apply ForallA_cons with (s' := s'0); try easy.
+  replace ((l + v + (na - v))) with (l+na) by lia.
+  easy.
+Qed.
+
 Lemma set_inter_app:
  forall l l1 l2, ListSet.set_inter posi_eq_dec (l++l1) l2 = []
            -> ListSet.set_inter posi_eq_dec l1 l2 = [].
