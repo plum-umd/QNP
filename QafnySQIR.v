@@ -92,51 +92,49 @@ End mergeSort.
             
             (*Defining trans_pexp using induction relation *)
             
-Inductive trans_pexp_rel : OQASMProof.vars -> nat -> pexp -> (nat -> posi) -> option (base_com nat) -> Prop :=
-  | trans_pexp_skip : forall f dim avs,
-      trans_pexp_rel f dim PSKIP avs (Some skip)
+Inductive trans_pexp_rel (dim:nat) : OQASMProof.vars -> pexp -> (nat -> posi) -> option (base_com dim) -> Prop :=
+  | trans_pexp_skip : forall f avs,
+      trans_pexp_rel dim f PSKIP avs (Some skip)
+  | trans_pexp_let_num : forall f x n s avs e',
+      trans_pexp_rel dim f (subst_pexp s x n) avs (Some e') ->
+      trans_pexp_rel dim f (Let x (AE (Num n)) s) avs (Some e')
+  | trans_pexp_let_mnum : forall f x r n s avs,
+      trans_pexp_rel dim f s avs None ->
+      trans_pexp_rel dim f (Let x (AE (MNum r n)) s) avs None
 
-  | trans_pexp_let_num : forall f dim x n s avs ce,
-      subst_pexp s x n = Some ce ->
-      trans_pexp_rel f dim (Let x (AE (Num n)) s) avs (Some ce)
-  | trans_pexp_let_mnum : forall f dim x r n s avs,
-      trans_pexp_rel f dim s avs None ->
-      trans_pexp_rel f dim (Let x (AE (MNum r n)) s) avs None
-
-  | trans_pexp_let_meas : forall f dim x y s avs cr,
-      trans_pexp_rel f dim s avs (Some cr) ->
-      trans_pexp_rel f dim (Let x (Meas y) s) avs (Some (trans_n_meas (vsize f y) (start f y) ; cr))
-  | trans_pexp_appsu_index : forall f dim x i,
-      trans_pexp_rel f dim (AppSU (RH (Index x (Num i)))) avs (Some (from_ucom (SQIR.H (find_pos f (x,i)))))
+  | trans_pexp_let_meas : forall f x y s avs cr,
+      trans_pexp_rel dim f s avs (Some cr) ->
+      trans_pexp_rel dim f (Let x (Meas y) s) avs (Some (trans_n_meas (vsize f y) (start f y) ; cr))
+  | trans_pexp_appsu_index : forall f avs x i,
+      trans_pexp_rel dim f (AppSU (RH (Index x (Num i)))) avs (Some (from_ucom (SQIR.H (find_pos f (x,i)))))
   
-  | trans_pexp_appsu_rh_ba : forall f dim x avs,
-      trans_pexp_rel f dim (AppSU (RH (AExp (BA x)))) avs (Some (from_ucom (nH f dim x (vsize f x) 0)))
+  | trans_pexp_appsu_rh_ba : forall f x avs,
+      trans_pexp_rel dim f (AppSU (RH (AExp (BA x)))) avs (Some (from_ucom (nH f dim x (vsize f x) 0)))
   
-  | trans_pexp_appsu_sqft : forall f dim x avs,
-      trans_pexp_rel f dim (AppSU (SQFT x)) avs (Some (from_ucom (trans_qft f dim x (vsize f x))))
-  | trans_pexp_appsu_srqft : forall f dim x avs,
-      trans_pexp_rel f dim (AppSU (SRQFT x)) avs (Some (from_ucom (trans_rqft f dim x (vsize f x))))
-  | trans_pexp_appu : forall f dim l e avs ce,
+  | trans_pexp_appsu_sqft : forall f x avs,
+      trans_pexp_rel dim f (AppSU (SQFT x)) avs (Some (from_ucom (trans_qft f dim x (vsize f x))))
+  | trans_pexp_appsu_srqft : forall f x avs,
+      trans_pexp_rel dim f (AppSU (SRQFT x)) avs (Some (from_ucom (trans_rqft f dim x (vsize f x))))
+  | trans_pexp_appu : forall f l e avs e',
       compile_exp_to_oqasm e = Some e' ->
-      trans_exp f dim e' avs = (ce, _, _) ->
-      trans_pexp_rel f dim (AppU l e) avs (Some (from_ucom ce))
-  | trans_pexp_pseq : forall f dim e1 e2 avs e1' e2',
-      trans_pexp_rel f dim e1 avs (Some e1') ->
-      trans_pexp_rel f dim e2 avs (Some e2') ->
-      trans_pexp_rel f dim (PSeq e1 e2) avs (Some (Seq e1' e2'))
-  | trans_pexp_if_beq : forall f dim x y v n s avs s' ce,
-      trans_pexp_rel f dim s avs (Some s') ->
-      trans_exp_rel f dim (rz_eq_circuit x (vsize f x) (y, v) n) avs (ce, _, _) ->
-      trans_pexp_rel f dim (If (BEq (AExp (BA x)) (AExp (Num n)) y (Num v)) s) avs (Some (Seq ce s'))
-  | trans_pexp_if_blt : forall f dim x y v n s avs s' ce,
-      trans_pexp_rel f dim s avs (Some s') ->
-      trans_exp_rel f dim (rz_lt_circuit x (vsize f x) (y, v) n) avs (ce, _, _) ->
-      trans_pexp_rel f dim (If (BLt (AExp (BA x)) (AExp (Num n)) y (Num v)) s) avs (Some (Seq ce s'))
+      trans_pexp_rel dim f (AppU l e) avs (Some (from_ucom (fst (fst (trans_exp f dim e' avs)))))
+  | trans_pexp_pseq : forall f e1 e2 avs e1' e2',
+      trans_pexp_rel dim f e1 avs (Some e1') ->
+      trans_pexp_rel dim f e2 avs (Some e2') ->
+      trans_pexp_rel dim f (PSeq e1 e2) avs (Some (e1' ; e2'))
+  | trans_pexp_if_beq : forall f x y v n s avs s',
+      trans_pexp_rel dim f s avs (Some s') ->
+      trans_pexp_rel dim f (If (BEq (AExp (BA x)) (AExp (Num n)) y (Num v)) s)
+              avs (Some ((fst (fst (trans_exp f dim (rz_eq_circuit x (vsize f x) (y, v) n) avs))) ; s'))
+  | trans_pexp_if_blt : forall f x y v n s avs s',
+      trans_pexp_rel dim f s avs (Some s') ->
+      trans_pexp_rel dim f (If (BLt (AExp (BA x)) (AExp (Num n)) y (Num v)) s)
+            avs (Some (((fst (fst (trans_exp f dim (rz_eq_circuit x (vsize f x) (y, v) n) avs)))); s'))
    
-  | trans_pexp_if_btest : forall f dim x v s avs s' ce,
-      trans_pexp_rel f dim s avs (Some (uc s')) ->
+  | trans_pexp_if_btest : forall f x v s avs s' ce,
+      trans_pexp_rel dim f s avs (Some (uc s')) ->
       Some (from_ucom (UnitaryOps.control (find_pos f (x, v)) s')) = ce ->
-            trans_pexp_rel f dim (If (BTest x (Num v)) s) avs ce
+            trans_pexp_rel dim f (If (BTest x (Num v)) s) avs ce.
   | trans_pexp_rel_Default : forall f dim e s avs,
             (* Need to Define default case for remaining others
               Trans_pexp_rel f dim e s avs None   * ) . 
