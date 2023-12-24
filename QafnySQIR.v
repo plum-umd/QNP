@@ -14,6 +14,7 @@ Require Import RZArith.
 Require Import QWhileSyntax.
 Require Import SessionDef.
 Require Import SessionSem.
+Require Import SessionKind.
 Require Import SessionType.
 Require Import SessionTypeProof.
 Require Import OQASMProof.
@@ -95,9 +96,10 @@ End mergeSort.
 Inductive trans_pexp_rel (dim:nat) : OQASMProof.vars -> pexp -> (nat -> posi) -> option (base_com dim) -> Prop :=
   | trans_pexp_skip : forall f avs,
       trans_pexp_rel dim f PSKIP avs (Some skip)
-  | trans_pexp_let_num : forall f x n s avs e',
+  | trans_pexp_let_num : forall f x a n s avs e',
+      simp_aexp a = Some n ->
       trans_pexp_rel dim f (subst_pexp s x n) avs (Some e') ->
-      trans_pexp_rel dim f (Let x (AE (Num n)) s) avs (Some e')
+      trans_pexp_rel dim f (Let x (AE a) s) avs (Some e')
   | trans_pexp_let_mnum : forall f x r n s avs,
       trans_pexp_rel dim f s avs None ->
       trans_pexp_rel dim f (Let x (AE (MNum r n)) s) avs None
