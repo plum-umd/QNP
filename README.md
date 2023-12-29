@@ -38,12 +38,12 @@ Run `make` in the top-level directory to compile our Coq proofs. See the README 
 
 ## Directory Contents
 
-* QWhileSyntax.v - The LQafny language syntax.
-* SessionDef.v - Session and state syntax and equation rules.
-* SessionType.v - The Qafny Type system.
-* SessionSem.v - The LQafny language semantics.
-* SessionTypeProof.v - The Qafny Type system Soundness Proof.
-* SessionProof.v - The Qafny proof system and Soundness/Completeness Proof.
+* QafnySyntax.v - The LQafny language syntax.
+* LocusDef.v - Locus and state syntax and equation rules.
+* LocusType.v - The Qafny Type system.
+* LocusSem.v - The LQafny language semantics.
+* LocusTypeProof.v - The Qafny Type system Soundness Proof.
+* LocusProof.v - The Qafny proof system and Soundness/Completeness Proof.
 * QafnySQIR.v - The LQafny to SQIR compilation.
 * Testing.v - The testing facility for the LQafny to SQIR compilation.
 

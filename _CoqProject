@@ -35,11 +35,11 @@ OQIMP.v
 OracleExample.v
 ArithTesting.v
 ExtrOQASM.v
-QWhileSyntax.v
-SessionDef.v
-SessionKind.v
-SessionType.v
-SessionSem.v
-SessionTypeProof.v
-SessionProof.v
+QafnySyntax.v
+LocusDef.v
+LocusKind.v
+LocusType.v
+LocusSem.v
+LocusTypeProof.v
+LocusProof.v
 

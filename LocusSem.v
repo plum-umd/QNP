@@ -10,9 +10,9 @@ Require Import OQASM.
 Require Import OQASMProof.
 Require Import Classical_Prop.
 Require Import MathSpec.
-Require Import QWhileSyntax.
-Require Import SessionDef.
-Require Import SessionKind.
+Require Import QafnySyntax.
+Require Import LocusDef.
+Require Import LocusKind.
 (**********************)
 (** Unitary Programs **)
 (**********************)
@@ -34,12 +34,12 @@ Fixpoint compile_range_state (n st i:nat) (x:var) (b: rz_val) (f:posi -> val) :=
             | S m => (compile_range_state m st i x b f)[(x,st+m) |-> (nval (b (i+m)) allfalse)]
     end.
 
-Fixpoint compile_ses_state' (i:nat) (l:session) (b:rz_val) :=
+Fixpoint compile_ses_state' (i:nat) (l:locus) (b:rz_val) :=
    match l with nil => (fun _ => nval false allfalse)
            | ((x,BNum l,BNum r)::xl) => compile_range_state (r-l) l i x b (compile_ses_state' (i+(r-l)) xl b)
            | (_::xl) => compile_ses_state' i xl b
    end.
-Definition compile_ses_state (l:session) (b:rz_val) := compile_ses_state' 0 l b.
+Definition compile_ses_state (l:locus) (b:rz_val) := compile_ses_state' 0 l b.
 
 Fixpoint turn_oqasm_range (rmax n st i:nat) (x:var) (f:posi -> val) (r:rz_val) (b: rz_val) : option (rz_val * rz_val) :=
     match n with 0 => Some (r,b)
@@ -51,7 +51,7 @@ Fixpoint turn_oqasm_range (rmax n st i:nat) (x:var) (f:posi -> val) (r:rz_val) (
                end
     end.
 
-Fixpoint turn_oqasm_ses' (rmax i:nat) (l:session) (f:posi -> val) (b:rz_val) :=
+Fixpoint turn_oqasm_ses' (rmax i:nat) (l:locus) (f:posi -> val) (b:rz_val) :=
    match l with nil => Some (allfalse, b)
            | ((x,BNum l,BNum r)::xl) => 
                match turn_oqasm_ses' rmax (i+(r-l)) xl f b with None => None
@@ -59,7 +59,7 @@ Fixpoint turn_oqasm_ses' (rmax i:nat) (l:session) (f:posi -> val) (b:rz_val) :=
                end
            | _ => None
    end.
-Definition turn_oqasm_ses rmax (l:session) (f:posi -> val) b  := turn_oqasm_ses' rmax 0 l f b.
+Definition turn_oqasm_ses rmax (l:locus) (f:posi -> val) b  := turn_oqasm_ses' rmax 0 l f b.
 
 Definition cover_n (f:rz_val) (n:nat) := fun i => if i <? n then false else f i.
 
@@ -87,7 +87,7 @@ Definition match_values (S1 S2: qstate) :=
                                 | None => False
             end)) S1 S2.
 
-Definition eval_nor (rmax:nat) (env:aenv) (l:session) (r:C) (b:rz_val) (e:exp) :=
+Definition eval_nor (rmax:nat) (env:aenv) (l:locus) (r:C) (b:rz_val) (e:exp) :=
    match compile_ses_qenv env l with (f,ss) =>
        match compile_exp_to_oqasm e with
                 None => None
@@ -119,7 +119,7 @@ Axiom compile_exp_fresh : forall e ea l aenv qenv vl x v n, compile_ses_qenv aen
       -> compile_exp_to_oqasm e = Some ea -> type_exp aenv e (QT n, l) -> v >= qenv x 
       -> exp_fresh qenv (x,v) ea.
 
-Fixpoint eval_ch (rmax:nat) (env:aenv) (l:session) (m:nat) f (e:exp) :=
+Fixpoint eval_ch (rmax:nat) (env:aenv) (l:locus) (m:nat) f (e:exp) :=
    match m with 0 => Some (fun _ => (C0 , allfalse))
           | S n => match eval_nor rmax env l (fst (f n)) (snd (f n)) e with None => None
               | Some (ra,ba) => match eval_ch rmax env l n f e with None => None
@@ -511,7 +511,7 @@ Qed.
 
 Fixpoint subst_qstate (l:qstate) (x:var) (n:nat) :=
   match l with nil => nil
-          | (y,v)::yl => (subst_session y x n,v)::(subst_qstate yl x n)
+          | (y,v)::yl => (subst_locus y x n,v)::(subst_qstate yl x n)
   end.
 Definition subst_state (l:state) (x:var) n := (fst l,subst_qstate (snd l) x n).
 
@@ -631,16 +631,16 @@ Definition qfor_sem_ind':
              eval_aexp (fst s) a n -> @qfor_sem rmax (AEnv.add x (Mo MT) aenv) (update_cval s x n)  e (W,s') ->
              P rmax (AEnv.add x (Mo MT) aenv) (update_cval s x n) e (W,s') ->
              P rmax aenv s (Let x (AE a) e) (fst s,s')) -> 
-       (forall (aenv: aenv) (W W':stack) (s s' :qstate) (l:session) (x:var) (a:var) (n:nat) (e:pexp) (r:R) (v:nat) (va va':state_elem),
+       (forall (aenv: aenv) (W W':stack) (s s' :qstate) (l:locus) (x:var) (a:var) (n:nat) (e:pexp) (r:R) (v:nat) (va va':state_elem),
               AEnv.MapsTo a (QT n) aenv -> @pick_mea n va (r,v) -> build_state_ch n v va = Some va' -> 
            @qfor_sem rmax (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e (W',s') ->
            P rmax (AEnv.add x (Mo MT) aenv) (AEnv.add x (r,v) W, (l,va')::s) e (W',s')
            -> P rmax aenv (W,((a,BNum 0,BNum n)::l,va)::s) (Let x (Meas a) e) (W,s')) -> 
 
-       (forall (aenv: aenv) (W:stack) (s:qstate) (a:session) (e:exp) (r:C) (b : rz_val) (ra:C) (ba:rz_val),
+       (forall (aenv: aenv) (W:stack) (s:qstate) (a:locus) (e:exp) (r:C) (b : rz_val) (ra:C) (ba:rz_val),
               eval_nor rmax aenv a r b e = Some (ra,ba) ->
              P rmax aenv (W,(a,Nval r b)::s) (AppU a e) (W,(a,Nval ra ba)::s)) ->
-       (forall (aenv: aenv) (W:stack) (s:qstate) (a:session) (e:exp) (l:session) (b : nat -> C * rz_val) (m:nat) (ba:nat -> C * rz_val),
+       (forall (aenv: aenv) (W:stack) (s:qstate) (a:locus) (e:exp) (l:locus) (b : nat -> C * rz_val) (m:nat) (ba:nat -> C * rz_val),
               eval_ch rmax aenv a m b e = Some ba ->
              P rmax aenv (W,(a++l,Cval m b)::s) (AppU a e) (W,(a++l,Cval m ba)::s)) ->
 
@@ -656,7 +656,7 @@ Definition qfor_sem_ind':
        (forall (aenv: aenv) (s:state) (b:bexp) (e:pexp),
               simp_bexp b = Some false -> P rmax aenv s (If b e) s) ->
 
-       (forall (aenv : aenv) (W W' : stack) (l : session)
+       (forall (aenv : aenv) (W W' : stack) (l : locus)
          (l1 : list range) (n n' : nat)
          (s s' : list (list range * state_elem)) 
          (b : bexp) (e : pexp) (m : nat) (f f' : nat -> C * rz_val)
@@ -755,7 +755,7 @@ Inductive step {rmax:nat}
 
 (*
 
-Inductive session_system {rmax:nat}
+Inductive locus_system {rmax:nat}
            : atype -> aenv -> type_map -> pexp -> type_map -> Prop :=
 
 Inductive qfor_sem {rmax:nat}

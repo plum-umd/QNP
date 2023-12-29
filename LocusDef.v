@@ -9,9 +9,9 @@ Require Import OQASM.
 Require Import BasicUtility.
 Require Import Classical_Prop.
 Require Import MathSpec.
-Require Import QWhileSyntax.
+Require Import QafnySyntax.
 (**********************)
-(** Session Definitions **)
+(** Locus Definitions **)
 (**********************)
 
 Require Import ListSet.
@@ -22,17 +22,17 @@ Local Open Scope nat_scope.
 
 Check exp.
 
-(* Sessions can contain variables. a simple session means that it does not contain variables. *)
-(* A session is a list of ranges (x,n,m). Each range can be compiled to a list of qubits from x[n] to x[m].
-   Session A is a sub_session of another one B if every qubits in A is in B.
-   The determination of the sub_sessions and eq_sessions are based on 
+(* Loci can contain variables. a simple locus means that it does not contain variables. *)
+(* A locus is a list of ranges (x,n,m). Each range can be compiled to a list of qubits from x[n] to x[m].
+   Locus A is a sub_locus of another one B if every qubits in A is in B.
+   The determination of the sub_loci and eq_loci are based on 
    a decision procedure to determine if a range is in another one. *)
-Inductive simple_ses : session -> Prop :=
+Inductive simple_ses : locus -> Prop :=
     simple_ses_empty : simple_ses nil
   | simple_ses_many :  forall a x y l, simple_bound x -> simple_bound y -> simple_ses l -> simple_ses ((a,x,y)::l).
 
 
-Inductive ses_eq : session -> session -> Prop :=
+Inductive ses_eq : locus -> locus -> Prop :=
    ses_eq_empty : forall a, ses_eq a a
  | ses_eq_range_empty : forall x n a b, ses_eq a b -> ses_eq ((x,n,n)::a) b
  | ses_eq_split: forall x i n m a b, n <= i < m -> 
@@ -42,14 +42,14 @@ Inductive ses_eq : session -> session -> Prop :=
 
 Axiom ses_eq_comm: forall a b, ses_eq a b -> ses_eq b a.
 
-Fixpoint is_ses_empty (s:session) : Prop :=
+Fixpoint is_ses_empty (s:locus) : Prop :=
    match s with nil => False
               | (x,a,b)::xs => (a = b) /\ is_ses_empty xs
    end. 
 
 Axiom ses_eq_id: forall l, ses_eq l l.
 
-Inductive ses_sub : session -> session -> Prop :=
+Inductive ses_sub : locus -> locus -> Prop :=
    ses_sub_prop : forall a b b', ses_eq (a++b') b -> ses_sub a b.
 
 Definition in_range (r1 r2:range) :=
@@ -60,19 +60,19 @@ Definition in_range (r1 r2:range) :=
               | _ => False
   end.
 
-Inductive ses_dis_aux : range -> session -> Prop := 
+Inductive ses_dis_aux : range -> locus -> Prop := 
     ses_dis_aux_empty : forall r, ses_dis_aux r nil
   | ses_dis_aux_many: forall r a l, ~ in_range r a -> ses_dis_aux r l -> ses_dis_aux r (a::l).
 
 
-Inductive ses_dis_aux2 : range -> session -> Prop := 
+Inductive ses_dis_aux2 : range -> locus -> Prop := 
     ses_dis_empty : forall r, ses_dis_aux2 r nil
   | ses_dis_many: forall r a l, ses_dis_aux r (a::l) -> ses_dis_aux2 a l -> ses_dis_aux2 r (a::l).
 
-Definition ses_dis (s:session) :=
+Definition ses_dis (s:locus) :=
    match s with [] => True | (a::l) => ses_dis_aux2 a l end.
 
-Inductive two_ses_dis : session -> session -> Prop :=
+Inductive two_ses_dis : locus -> locus -> Prop :=
    two_ses_empty : forall s, two_ses_dis nil s
  | two_ses_many: forall a l s, ses_dis_aux a s -> two_ses_dis l s -> two_ses_dis (a::l) s. 
 
@@ -93,7 +93,7 @@ Definition join_two_ses (a:(var * bound * bound)) (b:(var*bound*bound)) :=
           | _ => None
    end.
 
-Fixpoint dom {A:Type} (l: list (session * A)) :=
+Fixpoint dom {A:Type} (l: list (locus * A)) :=
     match l with [] => []
                | ((a,b)::lm) => a::(dom lm)
     end.
@@ -110,8 +110,8 @@ Fixpoint join_ses (l1 l2:list ((var * bound * bound))) :=
                | x::xs => join_ses_aux x (join_ses xs l2)
    end.
 
-(*Putting all session units to be a whole big session. *)
-Fixpoint ses_map_dom (l1 : list session) :=
+(*Putting all locus units to be a whole big locus. *)
+Fixpoint ses_map_dom (l1 : list locus) :=
   match l1 with [] => []
              |a::b => join_ses a (ses_map_dom b)
   end.
@@ -122,8 +122,8 @@ Fixpoint ses_map_dom (l1 : list session) :=
 (* Below is the def for types and type environment. 
    We have subtype relations for types. Nor and Had are subtypes of CH. 
    Types are corresponding to the three quantum state forms. 
-   type_env is a map from sessions to types. 
-   Similar to session equations above, type_env domains (session) can also be joined and split. *)
+   type_env is a map from loci to types. 
+   Similar to locus equations above, type_env domains (locus) can also be joined and split. *)
 Definition type_cfac : Type := nat -> rz_val.
 Inductive se_type : Type := TNor | THad | CH.
 
@@ -131,14 +131,14 @@ Inductive se_type : Type := TNor | THad | CH.
 Inductive se_type : Type := THT (n:nat) (t:type_elem).
 *)
 
-Definition type_map := list (session * se_type).
+Definition type_map := list (locus * se_type).
 
 Definition simple_tenv (t:type_map) := forall a b, In (a,b) t -> simple_ses a.
 
 Fixpoint ses_len_aux (l:list (var * nat * nat)) :=
    match l with nil => 0 | (x,l,h)::xl => (h - l) + ses_len_aux xl end. 
 
-Fixpoint get_core_ses (l:session) :=
+Fixpoint get_core_ses (l:locus) :=
    match l with [] => Some nil
            | (x,BNum n, BNum m)::al => 
       match get_core_ses al with None => None
@@ -147,7 +147,7 @@ Fixpoint get_core_ses (l:session) :=
             | _ => None
    end.
 
-Definition ses_len (l:session) := match get_core_ses l with None => None | Some xl => Some (ses_len_aux xl) end.
+Definition ses_len (l:locus) := match get_core_ses l with None => None | Some xl => Some (ses_len_aux xl) end.
 
 Axiom app_length_same : forall l1 l2 l3 l4 n, ses_len l1 = Some n 
    -> ses_len l3 = Some n -> l1++l2 = l3 ++ l4 -> l1 = l3 /\ l2 = l4.
@@ -269,15 +269,15 @@ Axiom env_equiv_trans : forall T1 T2 T3, env_equiv T1 T2 -> env_equiv T2 T3 -> e
 
 Axiom env_equiv_cong : forall S1 S2 S3, @env_equiv S1 S2 -> @env_equiv (S1++S3) (S2++S3).
 
-Inductive find_env {A:Type}: list (session * A) -> session -> option (session * A) -> Prop :=
+Inductive find_env {A:Type}: list (locus * A) -> locus -> option (locus * A) -> Prop :=
   | find_env_empty : forall l, find_env nil l None
   | find_env_many_1 : forall S x y t, ses_sub x y -> find_env ((y,t)::S) x (Some (y,t))
   | find_env_many_2 : forall S x y v t, ~ ses_sub x y -> find_env S y t -> find_env ((x,v)::S) y t.
 
-Inductive find_type : type_map -> session -> option (session * se_type) -> Prop :=
+Inductive find_type : type_map -> locus -> option (locus * se_type) -> Prop :=
     | find_type_rule: forall S S' x t, env_equiv S S' -> find_env S' x t -> find_type S x t.
 
-Inductive update_env {A:Type}: list (session * A) -> session -> A -> list (session * A) -> Prop :=
+Inductive update_env {A:Type}: list (locus * A) -> locus -> A -> list (locus * A) -> Prop :=
   | up_env_empty : forall l t, update_env nil l t ([(l,t)])
   | up_env_many_1 : forall S x x' t t', ses_sub x x' -> update_env ((x',t)::S) x t' ((x,t')::S)
   | up_env_many_2 : forall S S' x y t t', ~ ses_sub x y -> update_env S x t' S' -> update_env ((y,t)::S) x t' ((y,t)::S').
@@ -285,15 +285,15 @@ Inductive update_env {A:Type}: list (session * A) -> session -> A -> list (sessi
 (* Define semantic state equations. *)
 (* Below is the def for states .
    States include two parts: stacks mapping from variables to classical numbers,
-   while qstate mapping from sessions to quantum state forms.
-   Similar to type env above, qstate domains (session) can also be joined and split. *)
+   while qstate mapping from loci to quantum state forms.
+   Similar to type env above, qstate domains (locus) can also be joined and split. *)
 
 Inductive state_elem :=
                  | Nval (p:C) (r:rz_val)
                  | Hval (b:nat -> rz_val)
                  | Cval (m:nat) (b : nat -> C * rz_val).
 
-Definition qstate := list (session * state_elem).
+Definition qstate := list (locus * state_elem).
 
 (*TODO: translate the qstate to SQIR state. *)
 
@@ -485,7 +485,7 @@ Fixpoint build_type_fac (m n:nat) (f:type_cfac) (acc: nat * type_cfac) :=
 Definition build_type_facs (m n:nat) (f:type_cfac) := build_type_fac m n f (0,fun i => allfalse).
 
 (*
-Definition mask_type (l:session) (m n:nat) (t:type_cfac) :=
+Definition mask_type (l:locus) (m n:nat) (t:type_cfac) :=
    ExT (build_type_facs m n t) (fun v => CH (Some (build_type_pars m n v t))).
 *)
 
@@ -542,9 +542,9 @@ Definition subst_bound (b:bound) (x:var) (n:nat) :=
 Definition subst_range (r:range) (x:var) (n:nat) := 
    match r with (a,b,c) => (a,subst_bound b x n,subst_bound c x n) end.
 
-Fixpoint subst_session (l:session) (x:var) (n:nat) :=
+Fixpoint subst_locus (l:locus) (x:var) (n:nat) :=
   match l with nil => nil
-          | y::yl => (subst_range y x n)::(subst_session yl x n)
+          | y::yl => (subst_range y x n)::(subst_locus yl x n)
   end.
 
 Fixpoint subst_exp (e:exp) (x:var) (n:nat) :=
@@ -594,15 +594,15 @@ Qed.
 
 (* Below is the kind checking system in Qanfy. It determines three kinds of variables:
    competely classical variables, classical variables as the result of quantum measurement,
-   and quantum variables representing sessions. 
+   and quantum variables representing loci. 
    The kind checking system infers kinds for variables, which is the FV function in the paper.*)
 Module AEnv := FMapList.Make Nat_as_OT.
 Module AEnvFacts := FMapFacts.Facts (AEnv).
 Definition aenv := AEnv.t ktype.
 Definition empty_aenv := @AEnv.empty ktype.
 
-(* Compiling session to OQASM variables. *)
-Fixpoint ses_vars (s:session) :=
+(* Compiling locus to OQASM variables. *)
+Fixpoint ses_vars (s:locus) :=
   match s with nil => nil
             | (x,a,b)::l => @set_add var (Nat.eq_dec) x (ses_vars l)
   end.
@@ -619,7 +619,7 @@ Fixpoint var_in_list (l : list var) (a:var) :=
 
 Definition id_qenv : (var -> nat) := fun _ => 0.
 
-Fixpoint compile_ses_qenv (env:aenv) (l:session) : ((var -> nat) * list var) :=
+Fixpoint compile_ses_qenv (env:aenv) (l:locus) : ((var -> nat) * list var) :=
    match l with nil => (id_qenv,nil)
        | ((x,a,b)::xl) => match AEnv.find x env with
               Some (QT n) =>
@@ -656,7 +656,7 @@ Fixpoint compile_exp_to_oqasm (e:exp) :(option OQASM.exp) :=
            | _ => None
    end.
 
-Definition oracle_prop (env:aenv) (l:session) (e:exp) : Prop :=
+Definition oracle_prop (env:aenv) (l:locus) (e:exp) : Prop :=
     match compile_ses_qenv env l with (qenv,s) => 
      match compile_exp_to_oqasm e with None => False
              | Some e' =>
@@ -671,10 +671,10 @@ Definition state : Type := (stack * qstate).
 
 Definition find_cenv (l:state) (a:var) := (AEnv.find a (fst l)).
 
-Inductive remove_type : type_map -> session -> type_map -> Prop :=
+Inductive remove_type : type_map -> locus -> type_map -> Prop :=
    | remove_type_rule: forall S S' l v, @env_equiv S ((l,v)::S') -> remove_type S l S'.
 
-Inductive up_type : type_map -> session -> se_type -> type_map -> Prop :=
+Inductive up_type : type_map -> locus -> se_type -> type_map -> Prop :=
    | up_type_rule: forall S S' l l1 v t, @env_equiv S ((l++l1,v)::S') -> up_type S l t ((l,t)::S').
 
 Inductive up_types: type_map -> type_map -> type_map -> Prop :=
@@ -682,7 +682,7 @@ Inductive up_types: type_map -> type_map -> type_map -> Prop :=
    | up_type_many: forall T T1 T2 T3 s t, up_type T s t T1 -> up_types T1 T2 T3 -> up_types T ((s,t)::T2) T3.
 
 
-Inductive find_state {rmax} : state -> session -> option (session * state_elem) -> Prop :=
+Inductive find_state {rmax} : state -> locus -> option (locus * state_elem) -> Prop :=
     | find_qstate_rule: forall M S S' x t, @state_equiv rmax S S' -> find_env S' x t -> find_state (M,S) x t.
 
 
@@ -693,10 +693,10 @@ Inductive pick_mea : nat -> state_elem -> (R * nat) -> Prop :=
 
 Definition update_cval (l:state) (a:var) (v: R * nat) := (AEnv.add a v (fst l),snd l).
 
-Inductive up_state {rmax:nat} : state -> session -> state_elem -> state -> Prop :=
+Inductive up_state {rmax:nat} : state -> locus -> state_elem -> state -> Prop :=
     | up_state_rule : forall S M M' M'' l t, @state_equiv rmax M M' -> update_env M' l t M'' -> up_state (S,M) l t (S,M'').
 
-Inductive mask_state {rmax:nat}: session -> nat -> state -> state -> Prop :=
+Inductive mask_state {rmax:nat}: locus -> nat -> state -> state -> Prop :=
     mask_state_rule : forall l n m l1 t t' S Sa, @find_state rmax S l (Some (l++l1,t)) -> ses_len l = Some m ->
               build_state_ch m n t = Some t' -> @up_state rmax S l t' Sa -> mask_state l n S Sa.
 
@@ -706,8 +706,8 @@ Inductive type_state_elem_same : se_type -> state_elem -> Prop :=
     | ch_state_same: forall m bl, type_state_elem_same CH (Cval m bl).
 
 
-(* Session Properties. *)
-Fixpoint dom_to_ses (l : list session) :=
+(* Locus Properties. *)
+Fixpoint dom_to_ses (l : list locus) :=
   match l with nil => nil
         | (a::al) => a++(dom_to_ses al)
   end.
@@ -718,7 +718,7 @@ Fixpoint gen_qubits (x:var) (l n:nat) :=
 Definition gen_qubit_range (r:range) :=
   match r with  (x,BNum l,BNum h) => Some (gen_qubits x l (h-l)) | _ => None end.
 
-Fixpoint gen_qubit_ses (s:session) :=
+Fixpoint gen_qubit_ses (s:locus) :=
    match s with nil => Some nil | x::xl =>
      match gen_qubit_ses xl with None => None
                                | Some al => 
@@ -728,7 +728,7 @@ Fixpoint gen_qubit_ses (s:session) :=
       end
     end.
 
-Definition sub_qubits (s1 s2: session) : Prop :=
+Definition sub_qubits (s1 s2: locus) : Prop :=
     match gen_qubit_ses s1 with None => False
           | Some al =>
      match gen_qubit_ses s2 with None => False
@@ -736,7 +736,7 @@ Definition sub_qubits (s1 s2: session) : Prop :=
      end
     end.
 
-Definition dis_qubits (s1 s2: session) : Prop :=
+Definition dis_qubits (s1 s2: locus) : Prop :=
     match gen_qubit_ses s1 with None => False
           | Some al =>
      match gen_qubit_ses s2 with None => False

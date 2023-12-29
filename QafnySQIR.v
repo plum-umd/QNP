@@ -11,15 +11,14 @@ Require Import MathSpec.
 Require Import OQASM.
 Require Import CLArith.
 Require Import RZArith.
-Require Import QWhileSyntax.
-Require Import SessionDef.
-Require Import SessionSem.
-Require Import SessionKind.
-Require Import SessionType.
-Require Import SessionTypeProof.
+Require Import QafnySyntax.
+Require Import LocusDef.
+Require Import LocusSem.
+Require Import LocusType.
+Require Import LocusTypeProof.
 Require Import OQASMProof.
 (**********************)
-(** Session Definitions **)
+(** Locus Definitions **)
 (**********************)
 
 From Coq Require Recdef.
@@ -198,7 +197,7 @@ Inductive state_elem :=
                  | Hval (b:nat -> rz_val)
                  | Cval (m:nat) (b : nat -> C * rz_val).
 
-Definition qstate := list (session * state_elem).
+Definition qstate := list (locus * state_elem).
 
 Definition compile_val (v:val) (r_max : nat) : Vector 2 := 
    match v with nval b r => Cexp (2*PI * (turn_angle r r_max)) .* ∣ Nat.b2n b ⟩
@@ -232,7 +231,7 @@ Check find_pos.
 Check allfalse.
 
 
-(* n is the length, f is the mapping from posi to nat, s is a session, v is the virtual vector. *)
+(* n is the length, f is the mapping from posi to nat, s is a locus, v is the virtual vector. *)
 Check fold_left.
 
 Fixpoint perm_range (f:OQASMProof.vars) (v:rz_val) (x:var) (i:nat) (j:nat)  (n:nat) (acc:rz_val) :=
@@ -240,7 +239,7 @@ Fixpoint perm_range (f:OQASMProof.vars) (v:rz_val) (x:var) (i:nat) (j:nat)  (n:n
               | S m => update (perm_range f v x i j m acc) (find_pos f (x,i+m)) (v (j+m))
    end.
 
-Fixpoint perm_vector (f:OQASMProof.vars) (s:session) (v:rz_val) (j:nat) := 
+Fixpoint perm_vector (f:OQASMProof.vars) (s:locus) (v:rz_val) (j:nat) := 
   match s with [] => Some allfalse
              | (x,BNum l, BNum r)::ne =>
           if l <=? r then
@@ -254,7 +253,7 @@ Fixpoint perm_vector (f:OQASMProof.vars) (s:session) (v:rz_val) (j:nat) :=
 
 
 
-Fixpoint gen_qfun {d} (f:OQASMProof.vars) (s:session) (size:nat) (m:nat) (b : nat -> C * rz_val)
+Fixpoint gen_qfun {d} (f:OQASMProof.vars) (s:locus) (size:nat) (m:nat) (b : nat -> C * rz_val)
    : option (nat -> Vector d) :=
    match m with 0 => Some (fun q => Zero)
               | S ma => match perm_vector f s (snd (b ma)) 0
@@ -305,7 +304,7 @@ Lemma trans_pexp_sem :
     qft_uniform (size_env vs) tenv f ->
     qft_gt (size_env vs) tenv f ->*)
     dim > 0 ->
-    @session_system rmax t aenv tenv e tenv' ->
+    @locus_system rmax t aenv tenv e tenv' ->
     @qfor_sem rmax aenv s e s' ->
     trans_pexp vs dim e avs = Some e' ->
     trans_state_qafny vs s' = Some sa' ->
