@@ -8,10 +8,10 @@ Require Import QPE.
 Require Import BasicUtility.
 Require Import Classical_Prop.
 Require Import MathSpec.
-Require Import QWhileSyntax.
-Require Import SessionDef.
+Require Import QafnySyntax.
+Require Import LocusDef.
 (**********************)
-(** Session Definitions **)
+(** Locus Definitions **)
 (**********************)
 
 Require Import Coq.FSets.FMapList.
@@ -23,7 +23,7 @@ Local Open Scope nat_scope.
 
 Definition is_class_type (t:ktype) := match t with Mo CT => True | Mo MT => True | _ => False end.
 
-Inductive union_f : (ktype * session) -> (ktype * session) -> (ktype * session) -> Prop :=
+Inductive union_f : (ktype * locus) -> (ktype * locus) -> (ktype * locus) -> Prop :=
  | union_cl_1: union_f (Mo CT,nil) (Mo CT,nil) (Mo CT, nil)
  | union_cl_2: union_f (Mo CT,nil) (Mo MT,nil) (Mo MT, nil)
  | union_cl_3: union_f (Mo MT,nil) (Mo CT,nil) (Mo MT, nil)
@@ -31,7 +31,7 @@ Inductive union_f : (ktype * session) -> (ktype * session) -> (ktype * session) 
  | union_sr: forall a b l1 l2, is_class_type a -> union_f (a,l1) (QT b,l2) (QT b, l1)
  | union_two: forall a b l1 l2, ses_dis (l1++l2) -> union_f (QT a,l1) (QT b,l2) (QT (a+b), l1++l2). 
 
-Inductive type_aexp : aenv -> aexp -> (ktype*session) -> Prop :=
+Inductive type_aexp : aenv -> aexp -> (ktype*locus) -> Prop :=
    | ba_type : forall env b t, t = Mo MT \/ t = Mo CT -> AEnv.MapsTo b t env -> type_aexp env (BA b) (t,[])
    | ba_type_q : forall env b n, AEnv.MapsTo b (QT n) env -> type_aexp env (BA b) (QT n,[(b,BNum 0,BNum n)])
    | num_type : forall env n, type_aexp env (Num n) (Mo CT,[])
@@ -44,7 +44,7 @@ Inductive type_aexp : aenv -> aexp -> (ktype*session) -> Prop :=
    | mnum_type : forall env r n, type_aexp env (MNum r n) (Mo MT,[]).
 
 
-Inductive type_vari : aenv -> varia -> (ktype*session) -> Prop :=
+Inductive type_vari : aenv -> varia -> (ktype*locus) -> Prop :=
    | aexp_type : forall env a t, type_aexp env a t -> type_vari env a t
    | index_type : forall env x n v,
        AEnv.MapsTo x (QT n) env -> 0 <= v < n -> type_vari env (Index x (Num v)) (QT 1,[(x,BNum v,BNum (S v))]).
@@ -56,7 +56,7 @@ Inductive type_cbexp : aenv -> cbexp -> ktype -> Prop :=
   | clt_type : forall env a b t1 t2 l1 l2, type_aexp env a (t1,l1) -> type_aexp env b (t2,l2) ->
                      is_class_type t1 -> is_class_type t2 -> type_cbexp env (CLt a b) (meet_ktype t1 t2).
 
-Inductive type_bexp : aenv -> bexp -> (ktype*session) -> Prop :=
+Inductive type_bexp : aenv -> bexp -> (ktype*locus) -> Prop :=
    | cb_type: forall env b t, type_cbexp env b t -> type_bexp env (CB b) (t,nil)
 
    | beq_type_1 : forall env a b x m n v, AEnv.MapsTo a (QT m) env -> 
@@ -76,7 +76,7 @@ Inductive type_bexp : aenv -> bexp -> (ktype*session) -> Prop :=
    | bneg_type : forall env b t, type_bexp env b t -> type_bexp env (BNeg b) t.
 
 
-Inductive type_exp : aenv -> exp -> (ktype*session) -> Prop :=
+Inductive type_exp : aenv -> exp -> (ktype*locus) -> Prop :=
    | skip_fa : forall env x v n, AEnv.MapsTo x (QT n) env -> 0 <= v < n -> type_exp env (SKIP x (Num v)) (QT 1,([(x,BNum v, BNum (S v))]))
    | x_fa : forall env x v n, AEnv.MapsTo x (QT n) env -> 0 <= v < n -> type_exp env (X x (Num v)) (QT 1,([(x,BNum v, BNum (S v))]))
    | rz_fa : forall env q x v n, AEnv.MapsTo x (QT n) env -> 0 <= v < n -> type_exp env (RZ q x (Num v)) (QT 1, ([(x,BNum v, BNum (S v))]))
@@ -93,12 +93,12 @@ Inductive type_exp : aenv -> exp -> (ktype*session) -> Prop :=
    | seq_fa : forall env e1 t1 e2 t2 t3, type_exp env e1 t1 -> type_exp env e2 t2 -> union_f t1 t2 t3 ->
                  type_exp env (Seq e1 e2) t3.
 
-Inductive fv_su : aenv -> single_u -> session -> Prop :=
+Inductive fv_su : aenv -> single_u -> locus -> Prop :=
    fv_su_h : forall env a n s, type_vari env a (QT n, s) -> fv_su env (RH a) s
   | fv_su_qft : forall env x n, AEnv.MapsTo x (QT n) env -> fv_su env (SQFT x) ([(x,BNum 0,BNum n)])
   | fv_su_rqft : forall env x n, AEnv.MapsTo x (QT n) env -> fv_su env (SRQFT x) ([(x,BNum 0,BNum n)]).
 
-Inductive fv_pexp : aenv -> pexp -> session -> Prop :=
+Inductive fv_pexp : aenv -> pexp -> locus -> Prop :=
   | pskip_fa: forall env, fv_pexp env (PSKIP) nil
   | let_fa_c : forall env x a e, fv_pexp env (Let x (AE a) e) nil
   | let_fa_m : forall env x a e n, AEnv.MapsTo x (QT n) env -> fv_pexp env (Let x (Meas a) e) ([(x,BNum 0,BNum n)])
@@ -106,8 +106,8 @@ Inductive fv_pexp : aenv -> pexp -> session -> Prop :=
   | appu_fa : forall env l e, fv_pexp env (AppU l e) l
   | if_fa : forall env t l l1 b e, type_bexp env b (t,l) -> fv_pexp env e l1 -> fv_pexp env (If b e) (l++l1)
   | for_fa : forall env t l h x b e, (forall i, l <= i < h -> 
-                 fv_pexp env (If (subst_bexp b x i) (subst_pexp e x i)) (subst_session t x i))
-                              -> fv_pexp env (For x (Num l) (Num h) b e) (subst_session t x h)
+                 fv_pexp env (If (subst_bexp b x i) (subst_pexp e x i)) (subst_locus t x i))
+                              -> fv_pexp env (For x (Num l) (Num h) b e) (subst_locus t x h)
   | pseq_fa : forall env e1 e2 l1 l2, fv_pexp env e1 l1 -> fv_pexp env e2 l2 
                               -> fv_pexp env (PSeq e1 e2) (join_ses l1 l2)
   | dis_fa : forall env x n, AEnv.MapsTo x (QT n) env -> fv_pexp env (Diffuse x) ([(x,BNum 0,BNum n)]).

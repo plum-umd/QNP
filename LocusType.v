@@ -8,9 +8,9 @@ Require Import QPE.
 Require Import BasicUtility.
 Require Import Classical_Prop.
 Require Import MathSpec.
-Require Import QWhileSyntax.
-Require Import SessionDef.
-Require Import SessionKind.
+Require Import QafnySyntax.
+Require Import LocusDef.
+Require Import LocusKind.
 (**********************)
 (** Unitary Programs **)
 (**********************)
@@ -49,7 +49,7 @@ Definition sr_rotate st x n := sr_rotate' st x (S n) (S n).
 
 Definition r_rotate (r :rz_val) (q:nat) := addto_n r q.
 
-Definition tenv : Type := (session * rz_val). 
+Definition tenv : Type := (locus * rz_val). 
     (* varaible -> global phase rz_val : nat -> bool (nat), nat -> bool (nat) |0010101> *)
 Fixpoint find_pos' (p:posi) (l:list (var*nat*nat)) (pos:nat) :=
    match l with [] => 0
@@ -118,7 +118,7 @@ Fixpoint oqasm_type (qenv: var -> nat) (tv:tenv) (e:exp) :=
               | _ => Some tv
    end.
 
-Definition gen_ch_set (qenv: var -> nat) (st:nat -> rz_val) (s:session) (e:exp) :=
+Definition gen_ch_set (qenv: var -> nat) (st:nat -> rz_val) (s:locus) (e:exp) :=
     fun i => match oqasm_type qenv (s, (st i)) e
              with Some tv => snd tv
                 | None => allfalse
@@ -190,75 +190,75 @@ Inductive add_to_types : type_map -> type_map -> type_map -> Prop :=
 
 Fixpoint subst_type_map (l:type_map) (x:var) (n:nat) :=
   match l with nil => nil
-          | (y,v)::yl => (subst_session y x n,v)::(subst_type_map yl x n)
+          | (y,v)::yl => (subst_locus y x n,v)::(subst_type_map yl x n)
   end.
 
-Inductive session_system {rmax:nat}
+Inductive locus_system {rmax:nat}
            : atype -> aenv -> type_map -> pexp -> type_map -> Prop :=
 
     | sub_ses: forall q env s T T' T1,
-        session_system q env T s T' -> session_system q env (T++T1) s (T'++T1)
+        locus_system q env T s T' -> locus_system q env (T++T1) s (T'++T1)
 
-    | skip_ses : forall q env, session_system q env nil (PSKIP) nil
+    | skip_ses : forall q env, locus_system q env nil (PSKIP) nil
     | assign_ses_c : forall q env x a v e T T', ~ AEnv.In x env -> 
          simp_aexp a = Some v ->
-             session_system q env (subst_type_map T x v) (subst_pexp e x v) T'
-                  -> session_system q env T (Let x a e) T'
+             locus_system q env (subst_type_map T x v) (subst_pexp e x v) T'
+                  -> locus_system q env T (Let x a e) T'
     | assign_ses_m1 : forall q env x a e T T', type_aexp env a (Mo MT,nil) -> ~ AEnv.In x env ->
-              session_system q (AEnv.add x (Mo MT) env) T e T' -> session_system q env T (Let x a e) T'
+              locus_system q (AEnv.add x (Mo MT) env) T e T' -> locus_system q env T (Let x a e) T'
     | meas_m1 : forall env x y e n l T T', AEnv.MapsTo y (QT n) env -> ~ AEnv.In x env ->
-               session_system CT (AEnv.add x (Mo MT) env) ((l,CH)::T) e T'
-              -> session_system CT env (((y,BNum 0,BNum n)::l,CH)::T) (Let x (Meas y) e) T'
+               locus_system CT (AEnv.add x (Mo MT) env) ((l,CH)::T) e T'
+              -> locus_system CT env (((y,BNum 0,BNum n)::l,CH)::T) (Let x (Meas y) e) T'
     | appu_ses_nor : forall q env l e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
-                           session_system q env ([(l, TNor)]) (AppU l e) ([(l, TNor)])
+                           locus_system q env ([(l, TNor)]) (AppU l e) ([(l, TNor)])
 
     | appu_ses_ch : forall q env l l' e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
-                           session_system q env ([(l++l', CH)]) (AppU l e) ([(l++l', CH)])
+                           locus_system q env ([(l++l', CH)]) (AppU l e) ([(l++l', CH)])
 
 
     | appu_ses_h_nor:  forall q env p a m, type_vari env p (QT m, [a]) -> simp_varia env p a ->
-                    session_system q env ([([a], TNor)]) (AppSU (RH p)) ([([a], THad)])
+                    locus_system q env ([([a], TNor)]) (AppSU (RH p)) ([([a], THad)])
     | appu_ses_h_had:  forall q env p a m, type_vari env p (QT m, [a]) -> simp_varia env p a ->
-                    session_system q env ([([a], THad)]) (AppSU (RH p)) ([([a], TNor)])
+                    locus_system q env ([([a], THad)]) (AppSU (RH p)) ([([a], TNor)])
 (*
     | appu_ses_h_ch:  forall q env T p l l' m, type_vari env p (QT m, l)
                   -> find_type T l (Some (l',(CH))) ->
-                    session_system q env T (AppSU (RH p)) ([(l', ((CH)))])
+                    locus_system q env T (AppSU (RH p)) ([(l', ((CH)))])
     | appu_ses_qft_nor:  forall q env T x l m, AEnv.MapsTo x (QT m) env ->
                   find_type T l (Some (l,(TNor))) ->
-                    session_system q env T (AppSU (SQFT x)) ([(l, ((THad)))])
+                    locus_system q env T (AppSU (SQFT x)) ([(l, ((THad)))])
     | appu_ses_qft_ch:  forall q env T x l l' t m, AEnv.MapsTo x (QT m) env ->
                   find_type T l (Some (l',t)) ->
-                    session_system q env T (AppSU (SQFT x)) ([(l', (CH))])
+                    locus_system q env T (AppSU (SQFT x)) ([(l', (CH))])
     | appu_ses_rqft_nor:  forall q env T x l m, AEnv.MapsTo x (QT m) env ->
                   find_type T l (Some (l,(TNor))) ->
-                    session_system q env T (AppSU (SRQFT x)) ([(l, ((THad)))])
+                    locus_system q env T (AppSU (SRQFT x)) ([(l, ((THad)))])
     | appu_ses_rqft_ch:  forall q env T x l l' t m, AEnv.MapsTo x (QT m) env ->
                   find_type T l (Some (l',t)) ->
-                    session_system q env T (AppSU (SRQFT x)) ([(l', (CH))])
+                    locus_system q env T (AppSU (SRQFT x)) ([(l', (CH))])
 *)
     | qif_ses_ct: forall q env T b e T', type_bexp env b (Mo CT,nil) -> simp_bexp b = (Some true) ->
-                session_system q env T e T' -> session_system q env T (If b e) T'
+                locus_system q env T e T' -> locus_system q env T (If b e) T'
     | qif_ses_cf: forall q env T b e, type_bexp env b (Mo CT,nil) -> simp_bexp b = (Some false) ->
-                session_system q env T (If b e) T
+                locus_system q env T (If b e) T
 (*
     | qif_ses_m: forall env T b e T', type_bexp env b (Mo MT,nil) -> 
-                session_system CT env T e T' -> session_system CT env T (If b e) T'
+                locus_system CT env T e T' -> locus_system CT env T (If b e) T'
 *)
     | qif_ses_ch: forall q env b n l l1 e, type_bexp env b (QT n,l) ->
-                session_system MT env ([(l1,CH)]) e ([(l1,CH)])
-             -> session_system q env ([(l++l1,CH)]) (If b e) ([(l++l1,CH)])
+                locus_system MT env ([(l1,CH)]) e ([(l1,CH)])
+             -> locus_system q env ([(l++l1,CH)]) (If b e) ([(l++l1,CH)])
 
  (*   | dif_ses_ch: forall q env T p n l l' t, type_vari env p (QT n,l) -> find_type T l (Some (l',t)) ->
-                 session_system q env T (Diffuse p) ([(l',CH)]) *)
-    | pseq_ses_type: forall q env T e1 e2 T1 T2, session_system q env T e1 T1 ->
-                       session_system q env T1 e2 T2 ->
-                       session_system q env T (PSeq e1 e2) T2
-    | qfor_ses_no: forall q env T i l h b e, h <= l -> session_system q env T (For i (Num l) (Num h) b e) T
+                 locus_system q env T (Diffuse p) ([(l',CH)]) *)
+    | pseq_ses_type: forall q env T e1 e2 T1 T2, locus_system q env T e1 T1 ->
+                       locus_system q env T1 e2 T2 ->
+                       locus_system q env T (PSeq e1 e2) T2
+    | qfor_ses_no: forall q env T i l h b e, h <= l -> locus_system q env T (For i (Num l) (Num h) b e) T
     | qfor_ses_ch: forall q env T i l h b e, l < h -> ~ AEnv.In i env ->
-        (forall v, l <= v < h -> session_system q env (subst_type_map T i v) 
+        (forall v, l <= v < h -> locus_system q env (subst_type_map T i v) 
                            (If (subst_bexp b i v) (subst_pexp e i v)) (subst_type_map T i (v+1)))
-              -> session_system q env (subst_type_map T i l) 
+              -> locus_system q env (subst_type_map T i l) 
                            (For i (Num l) (Num h) b e) (subst_type_map T i h).
 
 

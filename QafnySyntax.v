@@ -86,7 +86,7 @@ Definition simple_bound (b:bound) :=
 
 Definition range : Set := var * bound * bound.
 
-Definition session : Type := list range.
+Definition locus : Type := list range.
 
 Inductive aexp := BA (x:var) | Num (n:nat) | MNum (r:R) (n:nat)
          | APlus (e1:aexp) (e2:aexp) | AMult (e1:aexp) (e2:aexp).
@@ -150,7 +150,7 @@ Inductive single_u := RH (p:varia) | SQFT (x:var) | SRQFT (x:var).
 Inductive pexp := PSKIP 
             | Let (x:var) (n:maexp) (e:pexp)
             | AppSU (e:single_u)
-            | AppU (l:session) (e:exp) 
+            | AppU (l:locus) (e:exp) 
             | PSeq (s1:pexp) (s2:pexp)
           (*compile to CU / CNOT *)
             | If (x:bexp) (s1:pexp)
@@ -162,7 +162,7 @@ Inductive pexp := PSKIP
                        the second arguments a is the phase of the post-state of x,
                        the third is the state s = f(x) as |x> -> e^2pi i * a *|s>,
                        excluding ancilla qubits  *)
-                (* reflection on x with the form aexp x=n. l is the session. (|n><n| - I) tensor x *)
+                (* reflection on x with the form aexp x=n. l is the locus. (|n><n| - I) tensor x *)
             | Diffuse (x:varia) 
      (*reflection on x = a_1 ,... x = a_n in al with equal probablity hadamard walk. 
         This statement basically distributes/diverges a vector x to many different vectors. *).

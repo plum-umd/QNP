@@ -8,12 +8,12 @@ Require Import QPE.
 Require Import BasicUtility.
 Require Import Classical_Prop.
 Require Import MathSpec.
-Require Import QWhileSyntax.
-Require Import SessionDef.
-Require Import SessionKind.
-Require Import SessionType.
-Require Import SessionSem.
-Require Import SessionTypeProof.
+Require Import QafnySyntax.
+Require Import LocusDef.
+Require Import LocusKind.
+Require Import LocusType.
+Require Import LocusSem.
+Require Import LocusTypeProof.
 (**********************)
 (** Unitary Programs **)
 (**********************)
@@ -27,14 +27,14 @@ Local Open Scope pexp_scope.
 Local Open Scope nat_scope.
 
 (*
-Definition session :Set := (var * nat * nat).
-Definition atpred_elem :Type := (list session * se_type).
+Definition locus :Set := (var * nat * nat).
+Definition atpred_elem :Type := (list locus * se_type).
 Definition atpred := list atpred_elem.
 *)
 
 (*
 TODO: define apply operation with few different applications:
-1: switching: mimicing the session position switching equivalence relation.
+1: switching: mimicing the locus position switching equivalence relation.
 2. masking: mimicing the partial measurement.
 3. oracle function application using oracle semantics.
 4. if conditional as entanglement.
@@ -42,13 +42,13 @@ TODO: define apply operation with few different applications:
 *)
 
 (*
-Inductive sval := ST (x:state_elem) | SV (s:session)
+Inductive sval := ST (x:state_elem) | SV (s:locus)
                | Mask (y:sval) (u:nat) (z:aexp) | AppA (x:exp) (y:sval)
-               | FSL (e:sval) (l:session) (s:nat)
-               | SSL (e:sval) (a:sval) (b:bexp) (l1:session) (l2:session).
+               | FSL (e:sval) (l:locus) (s:nat)
+               | SSL (e:sval) (a:sval) (b:bexp) (l1:locus) (l2:locus).
 *)
 
-Inductive sval := SV (s:session) | Frozen (b:bexp) (s:sval) (s:sval) 
+Inductive sval := SV (s:locus) | Frozen (b:bexp) (s:sval) (s:sval) 
      | Unfrozen (n:nat) (b:bexp) (s:sval) | FM (x:var) (n:nat) (rv:R * nat) (s:sval).
 
 Definition qpred_elem : Type := (sval * state_elem).
@@ -79,7 +79,7 @@ Axiom qpred_equiv_cong: forall rmax a P a1 P', @qpred_equiv rmax (a::P) (a1::P')
          -> @qpred_equiv rmax ([a]) ([a1]) /\ @qpred_equiv rmax P P'.
 
 Fixpoint sval_subst_c t x v :=
-  match t with SV s => SV (subst_session s x v)
+  match t with SV s => SV (subst_locus s x v)
               | Frozen b s s' => Frozen (subst_bexp b x v) (sval_subst_c s x v) (sval_subst_c s' x v)
               | Unfrozen n b s => Unfrozen n (subst_bexp b x v) (sval_subst_c s x v)
               | FM y n rv s => FM y n rv (sval_subst_c s x v)
@@ -103,13 +103,13 @@ Definition freeSesQPred (l:qpred) := List.fold_right (fun b a => freeSesSV (fst 
 
 Definition freeSesPred (a:cpred * qpred) := (freeSesQPred (snd a)).
 
-Inductive subst_ses_sval : sval -> session -> sval -> sval -> Prop :=
+Inductive subst_ses_sval : sval -> locus -> sval -> sval -> Prop :=
    subst_ses_svt : forall x v, subst_ses_sval (SV x) x v v
    | subst_ses_svf : forall x y v, x <> y -> subst_ses_sval (SV y) x v v
    | subst_ses_unf : forall x v s n b v', subst_ses_sval s x v v' -> subst_ses_sval (Unfrozen n b s) x v (Unfrozen n b v')
    | subst_ses_fm : forall x v s y n rv v', subst_ses_sval s x v v' -> subst_ses_sval (FM y n rv s) x v (FM y n rv v').
 
-Inductive subst_ses_qpred : qpred -> session -> sval -> qpred -> Prop :=
+Inductive subst_ses_qpred : qpred -> locus -> sval -> qpred -> Prop :=
    subst_ses_empty: forall x v, subst_ses_qpred nil x v nil
  | subst_ses_many: forall a b x v a' l l', subst_ses_sval a x v a' -> subst_ses_qpred l x v l'
                 -> subst_ses_qpred ((a,b)::l) x v ((a',b)::l').
@@ -127,19 +127,19 @@ Inductive resolve_unfrz : qpred -> qpred -> Prop :=
           eval_bexp ([(l++l1,Cval m f)]) b ([(l++l1,Cval m f')]) -> assem_bool n n1 m f' q fc ->
        resolve_unfrz ((Unfrozen n (BNeg b) (SV (l++l1)),Cval m f)::[((Unfrozen n b (SV (l++l1)),q))]) ([(SV (l++l1),fc)]).
 
-Fixpoint ses_in (s:session) (l:list session) :=
+Fixpoint ses_in (s:locus) (l:list locus) :=
   match l with nil => False
        | (a::xl) => ((ses_eq a s) \/ (ses_in s xl))
   end.
 
-Fixpoint ses_sublist (s:list session) (l:list session) :=
+Fixpoint ses_sublist (s:list locus) (l:list locus) :=
   match s with nil => True
        | (a::xl) => ((ses_in a l) \/ (ses_sublist xl l))
   end.
 
 Definition cpred_check (l:cpred) (env:aenv) := Forall (fun b => sublist (freeVarsCBexp b) env) l.
 
-Inductive sval_check : session -> sval -> Prop :=
+Inductive sval_check : locus -> sval -> Prop :=
   sval_check_sv: forall s, sval_check s (SV s)
  | sval_check_frozen: forall sa b s s', sval_check sa s' -> sval_check sa (Frozen b s s')
  | sval_check_unfrozen: forall sa n b s, sval_check sa s -> sval_check sa (Unfrozen n b s)
@@ -175,7 +175,7 @@ Inductive imply (rmax:nat) : cpred * qpred -> cpred * qpred -> Prop :=
   | imply_qpred: forall W P Q, @qpred_equiv rmax P Q -> imply rmax (W,P) (W,Q).
 
 Definition type_check_proof (rmax :nat) (t:atype) (env:aenv) (T T':type_map) (P Q:cpred * qpred) e :=
-   pred_check env T P /\  @session_system rmax t env T e T' /\ pred_check env T' Q.
+   pred_check env T P /\  @locus_system rmax t env T e T' /\ pred_check env T' Q.
 
 Inductive simple_qpred_elem : qpred_elem -> Prop :=
     simple_qpred_elem_rule : forall l v, simple_qpred_elem (SV l,v).
@@ -273,7 +273,7 @@ Proof.
   simpl in *. rewrite IHenv_state_eq. easy.
 Qed.
 
-Lemma dom_con {A:Type}: forall a (b:list (session*A)), dom (a::b) = (fst a)::(dom b).
+Lemma dom_con {A:Type}: forall a (b:list (locus*A)), dom (a::b) = (fst a)::(dom b).
 Proof.
   intros. unfold dom in *. simpl in *. destruct a; try easy.
 Qed.
@@ -897,7 +897,7 @@ Proof.
   intros. induction H. simpl. easy. constructor; try easy.
 Qed.
 
-Definition add_tenv (T:type_map) (l:session) := 
+Definition add_tenv (T:type_map) (l:locus) := 
     match T with ((la,CH)::ta) => Some ((la++l,CH)::ta) | _ => None end.
 
 Lemma subst_type_map_empty: forall T x v, subst_type_map T x v = nil -> T = nil.
@@ -905,8 +905,8 @@ Proof.
   induction T; intros; simpl in *; try easy. destruct a. inv H.
 Qed.
 
-Lemma subst_session_simple: forall s l1 i v, simple_ses l1
-          -> subst_session (s ++ l1) i v = subst_session s i v ++ l1.
+Lemma subst_locus_simple: forall s l1 i v, simple_ses l1
+          -> subst_locus (s ++ l1) i v = subst_locus s i v ++ l1.
 Proof.
   induction s; intros; simpl in *. rewrite simple_ses_subst; try easy.
   rewrite IHs. easy. easy.
@@ -926,11 +926,11 @@ Proof.
 Qed.
 
 Lemma type_system_not_var: forall e rmax q env T T1 x a,
-   @session_system rmax q env T (Let x a e) T1 -> ~ AEnv.In x env.
+   @locus_system rmax q env T (Let x a e) T1 -> ~ AEnv.In x env.
 Proof.
  intros. remember (Let x a e) as ea. generalize dependent a.
  generalize dependent e. induction H; intros; subst; simpl in *; try easy.
- eapply IHsession_system. easy. inv Heqea. easy.
+ eapply IHlocus_system. easy. inv Heqea. easy.
  inv Heqea. easy. inv Heqea. easy.
 Qed.
 
@@ -1055,11 +1055,11 @@ Proof.
   apply sublist_combine; try easy.
 Qed.
 
-Lemma session_system_skip : forall rmax q env T T',
-    @session_system rmax q env T PSKIP T' -> T = T'.
+Lemma locus_system_skip : forall rmax q env T T',
+    @locus_system rmax q env T PSKIP T' -> T = T'.
 Proof.
   intros. remember PSKIP as e. induction H; try easy.
-  apply IHsession_system in Heqe; subst.
+  apply IHlocus_system in Heqe; subst.
   easy.
 Qed.
 
@@ -1129,7 +1129,7 @@ Proof.
   destruct s. exists q0. split. easy.
   split. constructor.
   destruct H1 as [X1 [X2 X3]].
-  apply session_system_skip in X2; subst. easy.
+  apply locus_system_skip in X2; subst. easy.
  - 
   apply freeVars_pexp_in with (v := v) in H2 as X1; try easy.
   destruct H5 as [Y1 [Y2 Y3]].
@@ -1652,7 +1652,7 @@ Proof.
   bdestruct (i =? v0); subst; try easy.
 Qed.
 
-Lemma subst_session_twice_same: forall s i l, subst_session (subst_session s i l) i l = subst_session s i l.
+Lemma subst_locus_twice_same: forall s i l, subst_locus (subst_locus s i l) i l = subst_locus s i l.
 Proof.
   induction s; intros;simpl in *; try easy.
   rewrite subst_range_twice_same. rewrite IHs. easy.
@@ -1665,9 +1665,9 @@ Proof.
   intros. generalize dependent T. induction H0; intros; subst; simpl in *; try easy.
   inv H1. destruct T0; simpl in *; try easy.
   destruct p. inv H3. inv H6.
-  assert (qelem_subst_c (SV l0, v) i l = (SV l0, v)).
+  assert (qelem_subst_c (SV l1, v) i l = (SV l1, v)).
   unfold qelem_subst_c. simpl. inv H.
-  rewrite subst_session_twice_same.
+  rewrite subst_locus_twice_same.
   easy. rewrite H1.
   rewrite IHqpred_check with (T := T0); try easy.
 Qed.
@@ -1698,13 +1698,13 @@ Axiom invariant_exists: forall rmax q env P Q T b e i l s s',
   @triple rmax q env (subst_type_map T i l) (pred_subst_c P i l)
             (If (subst_bexp b i l) (subst_pexp e i l)) Q ->
   @qfor_sem rmax env s (If (subst_bexp b i l) (subst_pexp e i l)) s' -> 
-  @session_system rmax q env (subst_type_map T i l) (If (subst_bexp b i l) (subst_pexp e i l)) (subst_type_map T i (l + 1))
+  @locus_system rmax q env (subst_type_map T i l) (If (subst_bexp b i l) (subst_pexp e i l)) (subst_type_map T i (l + 1))
   -> Q = (pred_subst_c P i (l+1)).
 
 
 Lemma proof_completeness: forall e rmax t env s s' T T' P, 
      @env_state_eq T (snd s) -> kind_env_stack env (fst s) -> freeVarsNotCPExp env e ->
-      @session_system rmax t env T e T' -> pred_check env T P -> simple_tenv T ->
+      @locus_system rmax t env T e T' -> pred_check env T P -> simple_tenv T ->
        @qfor_sem rmax env s e s' ->  simple_qpred (snd P) -> model s P -> 
           (exists Q,simple_qpred Q /\ qpred_check T' Q /\  qmodel (snd s') Q /\ @triple rmax t env T P e (fst P, Q)).
 Proof.
@@ -1724,7 +1724,7 @@ Proof.
   apply qmodel_shrink in H9 as Y6; try easy.
   apply qmodel_shrink_1 in H9 as Y7; try easy.
   apply simple_qpred_shrink_l in H6 as Y8.
-  apply IHsession_system with (P := (c,P1)) in X8; try easy.
+  apply IHlocus_system with (P := (c,P1)) in X8; try easy.
   destruct X8 as [Q [G1 [G2 [G3 G4]]]].
   exists (Q++P2). simpl in *.
   split. apply simple_qpred_combine; try easy.
@@ -1743,7 +1743,7 @@ Proof.
   constructor.
 - rewrite simple_env_subst in *; try easy.
   apply freeVars_pexp_in with (v := v) in H1 as X1; try easy.
-  inv H6. rewrite H0 in H16. inv H16. apply IHsession_system with (P := P) in H17; try easy.
+  inv H6. rewrite H0 in H16. inv H16. apply IHlocus_system with (P := P) in H17; try easy.
   destruct H17 as [Q [Y1 [Y2 [Y3 Y4]]]].
   exists Q. split; try easy. split; try easy. split; try easy.
   apply let_c_pf with (T1 := T') (v := n); try easy.
@@ -1787,7 +1787,7 @@ Proof.
   inv H7. simpl in *. unfold cpred_check in H11.
   clear H9.
   induction H11. constructor. constructor. apply sublist_add. easy. easy.
-  apply IHsession_system with (P := ((CEq (BA x) a)::Pw,Pa)) in H17; try easy.
+  apply IHlocus_system with (P := ((CEq (BA x) a)::Pw,Pa)) in H17; try easy.
   destruct H17 as [Q [A1 [A2 [A3 A4]]]]; subst.
   exists Q. split; try easy. split; try easy.
   split; try easy. apply let_m_pf with (T1 := T'); try easy.
@@ -1852,7 +1852,7 @@ Proof.
   apply build_state_ch_exist_same with (n0 := n) (ba := r2) in H18 as Y5; try easy.
   destruct Y5 as [r3 [Y5 Y6]].
   specialize (simp_pred_mea x n0 l0 (Cval m r2) (Cval m0 r3) r v Y4 Y5) as X1.
-  apply (IHsession_system H6 H10) with
+  apply (IHlocus_system H6 H10) with
        (P := ((CEq (BA x) (MNum r v))::c,(SV l0, Cval m0 r3)::Sa)) in H19 as X2; try easy.
   destruct X2 as [Q [X2 [X3 [X4 X5]]]];subst.
   exists Q. split; try easy. split; try easy. split; try easy.
@@ -1938,7 +1938,7 @@ Proof.
   assert (freeVarsNotCPExp env e) as X1.
   unfold freeVarsNotCPExp in *.
   intros. apply H1 with (x := x) (t := t); try easy. simpl. apply in_app_iff. right. easy.
-  apply (IHsession_system X1 H4) with (P := P) in H16; try easy.
+  apply (IHlocus_system X1 H4) with (P := P) in H16; try easy.
   destruct H16 as [Q [Y1 [Y2 [Y3 Y4]]]].
   exists Q. repeat split; try easy. apply if_c_t with (T1 := T'); try easy.
   inv H7. repeat split; try easy. rewrite H0 in *. easy.
@@ -1988,7 +1988,7 @@ Proof.
   assert (resolve_frozen ([(Frozen b (SV l) (SV l1),Cval m0 bl)])
     ([(SV l1, (Cval (fst (grab_bool f' m0 n)) r0))])).
   apply resolve_frozen_many_2 with (f' := r2) (n := n) (n1 := n'); try easy.
-  apply IHsession_system with (P := (c,([(SV l1, Cval (fst (grab_bool f' m0 n)) r0)])))
+  apply IHlocus_system with (P := (c,([(SV l1, Cval (fst (grab_bool f' m0 n)) r0)])))
      in H18 as Y4; try easy.
   destruct Y4 as [Q [Y4 [Y5 [Y6 Y7]]]].
   inv Y5. inv H27. inv H28. inv Y4. inv H23. inv H25.
@@ -2035,13 +2035,13 @@ Proof.
   intros. apply H1 with (x := x); try easy.
   simpl in *. apply in_app_iff. right. easy.
   inv H5.
-  destruct (IHsession_system1 H2 H4 s1 s H H0 H13 P H3 H6 H7) as [R [A1 [A2 [A3 A4]]]].
+  destruct (IHlocus_system1 H2 H4 s1 s H H0 H13 P H3 H6 H7) as [R [A1 [A2 [A3 A4]]]].
   apply type_preserve with (q := q) (T := T) (T' := T1) in H13 as [X1 [X2 X3]]; try easy.
   apply simple_tenv_ses_system in H2_ as X4; try easy.
   apply kind_env_stack_equal with (env := env) in X2 as X5; try easy.
   assert (pred_check env T1 (fst P, R)).
   constructor. inv H3. simpl in *; try easy. easy.
-  destruct (IHsession_system2 H8 X4 s' s1 X3 X5 H15 (fst P, R) H5 A1) as [Q [G1 [G2 [G3 G4]]]].
+  destruct (IHlocus_system2 H8 X4 s' s1 X3 X5 H15 (fst P, R) H5 A1) as [Q [G1 [G2 [G3 G4]]]].
   split. simpl in *. apply cmodel_equal with (m := fst s); try easy.
   inv H7. easy. inv H7. easy.
   exists Q. split; try easy. split; try easy. split; try easy.
@@ -2115,7 +2115,7 @@ Proof.
   assert (l < l + S na) by lia.
   assert ((forall v : nat,
         l <= v < l + S na ->
-        @session_system rmax q env (subst_type_map T i v)
+        @locus_system rmax q env (subst_type_map T i v)
           (If (subst_bexp b i v) (subst_pexp e i v))
           (subst_type_map T i (v + 1)))).
   intros. apply H2. lia.
