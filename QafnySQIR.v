@@ -35,6 +35,8 @@ Check OQASMProof.vars.
 (avs: nat -> posi)
 *)
 Check SQIR.seq.
+Locate meas.
+
 Definition measure' {dim} n : base_com dim := (meas n skip skip).
 (* avs is to support the compilation of OQASM, it is id with f. *)
 Fixpoint trans_n_meas {dim} (n:nat) (p:nat) : base_com dim :=
