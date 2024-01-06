@@ -623,13 +623,50 @@ method doubleBasesA(x: seq<seq<seq<bv1>>>, n:nat) returns (y:seq<seq<seq<bv1>>>)
   }
 }
 
+method doubleBasesB(x: seq<seq<seq<bv1>>>, j:nat, n:nat) returns (y:seq<seq<seq<bv1>>>)
+  requires j < n
+  requires |x| == j + 1
+  requires lengthPat(x,0)
+  requires forall k :: 0 <= k < |x| ==> sameLengths(x[k], n)
+  requires forall k :: 0 <= k < |x| ==> forall q :: 0 <= q < |x[k]| ==> forall t :: 0 <= t < j - k ==> x[k][q][t] == 0
+  requires forall k :: 0 <= k < |x| ==> forall q :: 0 <= q < |x[k]| ==> forall t :: j - k <= t < j + 1 ==> x[k][q][t] == 1
+  requires forall k :: 0 <= k < |x| ==> forall q :: 0 <= q < |x[k]| ==> forall t :: j + 1 <= t < |x[k][q]| ==> x[k][q][t] == 0 
+  ensures lengthPat(y,1)
+  ensures |x| == |y|
+  ensures forall k :: 0 <= k < |y| ==> forall t :: 0 <= t < |x[k]| ==> x[k][t] == y[k][t]
+  ensures forall k :: 0 <= k < |y| ==> forall t :: 0 <= t < |x[k]| ==> y[k][t+|x[k]|] == x[k][t]
+  ensures forall k :: 0 <= k < |y| ==> sameLengths(y[k], n)
+  ensures forall k :: 0 <= k < |y| ==> forall q :: 0 <= q < |y[k]| ==> forall t :: 0 <= t < j - k ==> y[k][q][t] == 0
+  ensures forall k :: 0 <= k < |y| ==> forall q :: 0 <= q < |y[k]| ==> forall t :: j - k <= t < j + 1 ==> y[k][q][t] == 1
+  ensures forall k :: 0 <= k < |y| ==> forall q :: 0 <= q < |y[k]| ==> forall t :: j + 1 <= t < |y[k][q]| ==> y[k][q][t] == 0 
+{
+  y := [];
+  var i := 0;
+  while (i < |x|)
+    invariant 0 <= i <= |x|
+    invariant |y| == i
+    invariant lengthPat(y,1)
+    invariant forall k :: 0 <= k < i ==> forall t :: 0 <= t < |x[k]| ==> x[k][t] == y[k][t]
+    invariant forall k :: 0 <= k < i ==> forall t :: 0 <= t < |x[k]| ==> y[k][t+|x[k]|] == x[k][t]
+    invariant forall k :: 0 <= k < i ==> sameLengths(y[k], n)
+    invariant forall k :: 0 <= k < i ==> forall q :: 0 <= q < |y[k]| ==> forall t :: 0 <= t < j - k ==> y[k][q][t] == 0
+    invariant forall k :: 0 <= k < i ==> forall q :: 0 <= q < |y[k]| ==> forall t :: j - k <= t < j + 1 ==> y[k][q][t] == 1
+    invariant forall k :: 0 <= k < i ==> forall q :: 0 <= q < |y[k]| ==> forall t :: j + 1 <= t < |y[k][q]| ==> y[k][q][t] == 0
+  {
+    y := y + [x[i]+x[i]];
+    i := i + 1;
+  }
+}
 
-method applyHadCtr(axr: seq<real>, axb: seq<seq<seq<bv1>>>, ay: seq<seq<seq<bv1>>>, ah : seq<seq<seq<bv1>>>, au : seq<seq<bv1>>, txn: nat, hn : nat)
+method applyHadCtr(axr: seq<real>, axb: seq<seq<seq<bv1>>>, ay: seq<seq<seq<bv1>>>, ah : seq<seq<seq<bv1>>>, au : seq<seq<bv1>>, j: nat, txn: nat, hn : nat)
   returns (zxr: seq<real>, zxb: seq<seq<seq<bv1>>>, zy: seq<seq<seq<bv1>>>, zh : seq<seq<seq<bv1>>>, zu : seq<seq<bv1>>)
-  //requires j < pow2(txn)
-  requires |axr| == |axb| == |ay| == |ah| == |au|
+  requires j < pow2(txn)
+  requires |axr| == |axb| == |ay| == |ah| == |au| == j + 1
   requires forall k :: 0 <= k < |ay| ==> sameLengths(ay[k], pow2(txn))
   requires forall k :: 0 <= k < |ah| ==> sameLengths(ah[k], hn)
+  requires forall k :: 0 <= k < |ay| ==> forall q :: 0 <= q < |ay[k]| ==> forall t :: 0 <= t < j - k ==> ay[k][q][t] == 0
+  requires forall k :: 0 <= k < |ay| ==> forall q :: 0 <= q < |ay[k]| ==> forall t :: j - k <= t < j + 1 ==> ay[k][q][t] == 1
+  requires forall k :: 0 <= k < |ay| ==> forall q :: 0 <= q < |ay[k]| ==> forall t :: j + 1 <= t < |ay[k][q]| ==> ay[k][q][t] == 0 
   //requires forall k :: 0 <= k < |ay| ==> forall q :: 0 <= q < |ay[k]| ==> forall t :: j <= t < |ay[k][q]| ==> ay[k][q][t] == 0 
   requires lengthPat(axb,0)
   requires lengthPat(ay,0)
@@ -648,12 +685,14 @@ method applyHadCtr(axr: seq<real>, axb: seq<seq<seq<bv1>>>, ay: seq<seq<seq<bv1>
   ensures forall k :: 0 <= k < |zy| ==> forall t :: 0 <= t < |ay[k]| ==> zy[k][t+|ay[k]|] == ay[k][t]
   ensures forall k :: 0 <= k < |zy| ==> sameLengths(zy[k], pow2(txn))
   ensures forall k :: 0 <= k < |zy| ==> |zy[k]| == 2 * |ay[k]|
+  ensures forall k :: 0 <= k < |zy| ==> forall q :: 0 <= q < |zy[k]| ==> forall t :: 0 <= t < j - k ==> zy[k][q][t] == 0
+  ensures forall k :: 0 <= k < |zy| ==> forall q :: 0 <= q < |zy[k]| ==> forall t :: j - k <= t < j + 1 ==> zy[k][q][t] == 1
+  ensures forall k :: 0 <= k < |zy| ==> forall q :: 0 <= q < |zy[k]| ==> forall t :: j + 1 <= t < |zy[k][q]| ==> zy[k][q][t] == 0 
   ensures lengthPat(zh,1)
   ensures |ah| == |zh|
   ensures forall k :: 0 <= k < |zh| ==> forall t :: 0 <= t < |ah[k]| ==> ah[k][t] == zh[k][t]
   ensures forall k :: 0 <= k < |zh| ==> forall t :: 0 <= t < |ah[k]| ==> zh[k][t+|ah[k]|] == ah[k][t]
   ensures forall k :: 0 <= k < |zh| ==> sameLengths(zh[k], hn)
-
   ensures lengthPat(zu,1)
   ensures |zu| == |au|
   ensures forall k :: 0 <= k < |zu| ==> |zu[k]| == 2 * |au[k]|
@@ -665,7 +704,7 @@ method applyHadCtr(axr: seq<real>, axb: seq<seq<seq<bv1>>>, ay: seq<seq<seq<bv1>
   zxr := [];
   zxb := doubleBases(axb);
   zh := doubleBasesA(ah,hn);
-  zy := doubleBasesA(ay,pow2(txn));
+  zy := doubleBasesB(ay,j,pow2(txn));
   zu := doubleflip(au);
   while (i < |axr|)
     invariant 0 <= i <= |axr|
@@ -797,23 +836,6 @@ method gorights(ah : seq<seq<seq<bv1>>>, au : seq<seq<bv1>>, n:nat) returns (zh 
     i := i + 1;
   }
 }
-
-lemma {:axiom} LemmaSameMeaning(ay: seq<seq<seq<bv1>>>, zy: seq<seq<seq<bv1>>>, m : nat, j : nat)
-  requires j < m
-  requires |ay| == |zy| == j + 1
-  requires forall k :: 0 <= k < |ay| ==> sameLengths(ay[k], m)
-  requires forall k :: 0 <= k < |zy| ==> sameLengths(zy[k], m)
-  requires forall k :: 0 <= k < |ay| ==> forall q :: 0 <= q < |ay[k]| ==> forall t :: 0 <= t < j - k ==> ay[k][q][t] == 0
-  requires forall k :: 0 <= k < |ay| ==> forall q :: 0 <= q < |ay[k]| ==> forall t :: j - k <= t < j + 1 ==> ay[k][q][t] == 1
-  requires forall k :: 0 <= k < |ay| ==> forall q :: 0 <= q < |ay[k]| ==> forall t :: j + 1 <= t < |ay[k][q]| ==> ay[k][q][t] == 0 
-  requires forall k :: 0 <= k < |zy| ==> |zy[k]| == 2 * |ay[k]|;
-  requires forall k :: 0 <= k < |zy| ==> forall t :: 0 <= t < |ay[k]| ==> ay[k][t] == zy[k][t];
-  requires forall k :: 0 <= k < |zy| ==> forall t :: 0 <= t < |ay[k]| ==> zy[k][t+|ay[k]|] == ay[k][t];
-  ensures forall k :: 0 <= k < |zy| ==> forall q :: 0 <= q < |zy[k]| ==> forall t :: 0 <= t < j - k ==> zy[k][q][t] == 0
-  ensures forall k :: 0 <= k < |zy| ==> forall q :: 0 <= q < |zy[k]| ==> forall t :: j - k <= t < j + 1 ==> zy[k][q][t] == 1
-  ensures forall k :: 0 <= k < |zy| ==> forall q :: 0 <= q < |zy[k]| ==> forall t :: j + 1 <= t < |zy[k][q]| ==> zy[k][q][t] == 0 
-
-
 method qwalk(x:seq<bv1>, y: seq<bv1>, h : seq<bv1>, u:bv1, m : nat, n:nat) 
    returns (axr : seq<real>, axb: seq<seq<seq<bv1>>>, ay : seq<seq<seq<bv1>>>, ah : seq<seq<seq<bv1>>>, au : seq<seq<bv1>>)
   requires |x| > 0
@@ -879,17 +901,15 @@ method qwalk(x:seq<bv1>, y: seq<bv1>, h : seq<bv1>, u:bv1, m : nat, n:nat)
     invariant lengthPat(au,1)
   {
     axr,axb,ay,ah,au,tmpx,tmpy,tmph,tmpu := ctrLT(axr,axb,ay,ah,au,tmpx,tmpy,tmph,tmpu,m-j,|x|,n,j);
-    var zxr,zxb,zy,zh,zu := applyHadCtr(axr,axb,ay,ah,au,|x|, n);
-    assert forall k :: 0 <= k < |ah| ==> sameLengths(ah[k],n);
-    LemmaSameMeaning(ay,zy,m,j);
-    axr,axb,ay,ah,au := zxr,zxb,zy,zh,zu;
-    var zh1 := golefts(ah,au,n);
-    zh1 := gorights(zh1,au,n);
-    assert forall k :: 0 <= k < |zh1| ==> forall t :: 0 <= t < |zh1[k]| ==> au[k][t] == 1 ==> b2n(zh1[k][t],n) == 2 * b2n(ah[k][t],n) + 2;
-    assert forall k :: 0 <= k < |zh1| ==> forall t :: 0 <= t < |zh1[k]| ==> au[k][t] == 0 ==> b2n(zh1[k][t],n) == 2 * b2n(ah[k][t],n) + 1;
+    axr,axb,ay,ah,au := applyHadCtr(axr,axb,ay,ah,au,j,|x|, n);
+    var zh := golefts(ah,au,n);
+    zh := gorights(zh,au,n);
+    assert forall k :: 0 <= k < |zh| ==> forall t :: 0 <= t < |zh[k]| ==> au[k][t] == 1 ==> b2n(zh[k][t],n) == 2 * b2n(ah[k][t],n) + 2;
+    assert forall k :: 0 <= k < |zh| ==> forall t :: 0 <= t < |zh[k]| ==> au[k][t] == 0 ==> b2n(zh[k][t],n) == 2 * b2n(ah[k][t],n) + 1;
     ah := zh;
     j := j + 1;
   }
+  //The following shows that we clean the tmp arrays to be empty before leaving the procedure.
   assert tmpx == [];
   assert tmpy == [];
   assert tmph == [];
