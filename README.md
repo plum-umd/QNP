@@ -41,10 +41,10 @@ Run `make` in the top-level directory to compile our Coq proofs. See the README 
 * QafnySyntax.v - The LQafny language syntax.
 * LocusDef.v - Locus and state syntax and equation rules.
 * LocusType.v - The Qafny Type system.
-* LocusSem.v - The LQafny language semantics.
+* LocusSem.v - The Qafny language semantics.
 * LocusTypeProof.v - The Qafny Type system Soundness Proof.
 * LocusProof.v - The Qafny proof system and Soundness/Completeness Proof.
-* QafnySQIR.v - The LQafny to SQIR compilation.
-* Testing.v - The testing facility for the LQafny to SQIR compilation.
+* QafnySQIR.v - The Qafny to SQIR compilation.
+* Testing.v - The testing facility for the Qafny to SQIR compilation.
 
 
