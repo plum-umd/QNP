@@ -1,3 +1,4 @@
+//Simple Quantum Walk Proof in Dafny
 predicate boundedSame (x : seq<bv1>, y : seq<bv1> , n:nat) 
   requires n <= |x|
   requires n <= |y|
