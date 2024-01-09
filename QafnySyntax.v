@@ -25,58 +25,12 @@ Local Open Scope nat_scope.
 (* Classical State including variable relations that may be quantum *)
 
 (* we want to include all the single qubit gates here in the U below. *)
-Inductive atype := CT : atype | MT : atype.
+(*Inductive atype := CT : atype. *)
 
-Inductive ktype := Mo (a:atype) | QT (n:nat).
-
-Definition aty_eq  (t1 t2:atype) : bool := 
-   match t1 with CT => match t2 with CT  => true
-                            | _ => false
-                        end
-               | MT => match t2 with MT => true 
-                           | _ => false
-                        end
-   end.
-
-Scheme Equality for atype.
-Print atype_beq.
-Check atype_eq_dec.
-
-Notation "i '=a=' j" := (aty_eq i j) (at level 50).
-
-Lemma aty_eqb_eq : forall a b, a =a= b = true -> a = b.
-Proof.
- intros. unfold aty_eq in H.
- destruct a. destruct b. easy. easy.
- destruct b. 1-2:easy.
-Qed.
-
-Lemma aty_eqb_neq : forall a b, a =a= b = false -> a <> b.
-Proof.
- intros. unfold aty_eq in H.
- destruct a. destruct b. easy.
- easy.
- destruct b. easy. easy.
-Qed.
-
-Lemma aty_eq_reflect : forall r1 r2, reflect (r1 = r2) (aty_eq r1 r2). 
-Proof.
-  intros.
-  destruct (r1 =a= r2) eqn:eq1.
-  apply  ReflectT.
-  apply aty_eqb_eq in eq1.
-  assumption. 
-  constructor. 
-  apply aty_eqb_neq in eq1.
-  assumption. 
-Qed.
-
-Definition meet_atype (a1 a2: atype) := 
-       match a1 with CT => a2
-                | MT => MT end.
+Inductive ktype := CT | QT (n:nat).
 
 Definition meet_ktype (a1 a2: ktype) := 
-       match a1 with Mo t => (match a2 with Mo t1 => Mo (meet_atype t t1) | _ => a2 end)
+       match a1 with CT => (match a2 with CT => CT | _ => a2 end)
                 | QT n => match a2 with QT m => QT (n+m) | _ => QT n end end.
 
 Inductive bound := BVar (v:var) (n:nat) | BNum (n:nat).
@@ -88,7 +42,7 @@ Definition range : Set := var * bound * bound.
 
 Definition locus : Type := list range.
 
-Inductive aexp := BA (x:var) | Num (n:nat) | MNum (r:R) (n:nat)
+Inductive aexp := BA (x:var) | Num (n:nat)
          | APlus (e1:aexp) (e2:aexp) | AMult (e1:aexp) (e2:aexp).
 
 Coercion BA : var >-> aexp.

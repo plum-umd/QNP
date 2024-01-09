@@ -21,27 +21,21 @@ Local Open Scope nat_scope.
 
 (* Kind checking rules to determine if an expression has a certain kind. *)
 
-Definition is_class_type (t:ktype) := match t with Mo CT => True | Mo MT => True | _ => False end.
-
 Inductive union_f : (ktype * locus) -> (ktype * locus) -> (ktype * locus) -> Prop :=
- | union_cl_1: union_f (Mo CT,nil) (Mo CT,nil) (Mo CT, nil)
- | union_cl_2: union_f (Mo CT,nil) (Mo MT,nil) (Mo MT, nil)
- | union_cl_3: union_f (Mo MT,nil) (Mo CT,nil) (Mo MT, nil)
- |  union_sl: forall a b l1 l2, is_class_type b -> union_f (QT a,l1) (b,l2) (QT a, l1)
- | union_sr: forall a b l1 l2, is_class_type a -> union_f (a,l1) (QT b,l2) (QT b, l1)
+ | union_cl_1: union_f (CT,nil) (CT,nil) (CT, nil)
+ |  union_sl: forall a l1 l2, union_f (QT a,l1) (CT,l2) (QT a, l1)
+ | union_sr: forall b l1 l2, union_f (CT,l1) (QT b,l2) (QT b, l1)
  | union_two: forall a b l1 l2, ses_dis (l1++l2) -> union_f (QT a,l1) (QT b,l2) (QT (a+b), l1++l2). 
 
 Inductive type_aexp : aenv -> aexp -> (ktype*locus) -> Prop :=
-   | ba_type : forall env b t, t = Mo MT \/ t = Mo CT -> AEnv.MapsTo b t env -> type_aexp env (BA b) (t,[])
+   | ba_type : forall env b, AEnv.MapsTo b CT env -> type_aexp env (BA b) (CT,[])
    | ba_type_q : forall env b n, AEnv.MapsTo b (QT n) env -> type_aexp env (BA b) (QT n,[(b,BNum 0,BNum n)])
-   | num_type : forall env n, type_aexp env (Num n) (Mo CT,[])
-   | num_type_q : forall env r n, type_aexp env (MNum r n) (Mo MT,[])
+   | num_type : forall env n, type_aexp env (Num n) (CT,[])
    | plus_type : forall env e1 e2 t1 t2 t3, 
                    type_aexp env e1 t1 -> type_aexp env e2 t2 -> union_f t1 t2 t3 -> 
                      type_aexp env (APlus e1 e2) t3
    | mult_type : forall env e1 e2 t1 t2 t3, type_aexp env e1 t1 -> type_aexp env e2 t2 -> union_f t1 t2 t3 -> 
-                     type_aexp env (AMult e1 e2) t3
-   | mnum_type : forall env r n, type_aexp env (MNum r n) (Mo MT,[]).
+                     type_aexp env (AMult e1 e2) t3.
 
 
 Inductive type_vari : aenv -> varia -> (ktype*locus) -> Prop :=
@@ -51,10 +45,10 @@ Inductive type_vari : aenv -> varia -> (ktype*locus) -> Prop :=
 
 
 Inductive type_cbexp : aenv -> cbexp -> ktype -> Prop :=
-  | ceq_type : forall env a b t1 t2 l1 l2, type_aexp env a (t1,l1) -> type_aexp env b (t2,l2) ->
-                     is_class_type t1 -> is_class_type t2 -> type_cbexp env (CEq a b) (meet_ktype t1 t2)
-  | clt_type : forall env a b t1 t2 l1 l2, type_aexp env a (t1,l1) -> type_aexp env b (t2,l2) ->
-                     is_class_type t1 -> is_class_type t2 -> type_cbexp env (CLt a b) (meet_ktype t1 t2).
+  | ceq_type : forall env a b l1 l2, type_aexp env a (CT,l1) -> type_aexp env b (CT,l2) ->
+                     type_cbexp env (CEq a b) CT
+  | clt_type : forall env a b l1 l2, type_aexp env a (CT,l1) -> type_aexp env b (CT,l2) ->
+                     type_cbexp env (CLt a b) CT.
 
 Inductive type_bexp : aenv -> bexp -> (ktype*locus) -> Prop :=
    | cb_type: forall env b t, type_cbexp env b t -> type_bexp env (CB b) (t,nil)
@@ -112,7 +106,7 @@ Inductive fv_pexp : aenv -> pexp -> locus -> Prop :=
                               -> fv_pexp env (PSeq e1 e2) (join_ses l1 l2)
   | dis_fa : forall env x n, AEnv.MapsTo x (QT n) env -> fv_pexp env (Diffuse x) ([(x,BNum 0,BNum n)]).
 
-Fixpoint freeVarsAExp (a:aexp) := match a with BA x => ([x]) | Num n => nil | MNum r n => nil
+Fixpoint freeVarsAExp (a:aexp) := match a with BA x => ([x]) | Num n => nil
             | APlus e1 e2 => (freeVarsAExp e1)++(freeVarsAExp e2)
             | AMult e1 e2 => (freeVarsAExp e1)++(freeVarsAExp e2)
   end.
@@ -172,63 +166,22 @@ Fixpoint freeVarsPExp (p:pexp) :=
               | _ => nil
    end.
 
-Definition freeVarsNotCAExp (env:aenv) (a:aexp) :=
-   forall x t, In x (freeVarsAExp a) -> AEnv.MapsTo x (Mo t) env -> t <> CT.
-
-Definition freeVarsNotCBExp (env:aenv) (a:bexp) :=
-   forall x t, In x (freeVarsBexp a) -> AEnv.MapsTo x (Mo t) env -> t <> CT.
-
-Definition freeVarsNotCPExp (env:aenv) (a:pexp) :=
-   forall x t, In x (freeVarsPExp a) -> AEnv.MapsTo x (Mo t) env -> t <> CT.
-
-
-Definition kind_env_stack (env:aenv) (s:stack) : Prop :=
-  forall x, AEnv.MapsTo x (Mo MT) env <-> AEnv.In x s.
-
-Fixpoint simp_aexp (a:aexp) :=
-   match a with BA y => None
-             | Num a => Some a
-              | MNum r a => None
-             | APlus c d => match (simp_aexp c,simp_aexp d) with (Some v1,Some v2) => Some (v1+v2)
-                                | (_,_) => None
-                            end
-             | AMult c d => match (simp_aexp c,simp_aexp d) with (Some v1,Some v2) => Some (v1*v2)
-                                | (_,_) => None
-                            end
-   end.
-
-Fixpoint simp_bexp (a:bexp) :=
-   match a with CB (CEq x y) => match (simp_aexp x,simp_aexp y) with (Some v1,Some v2) => Some (v1 =? v2)
-                                                                   | _ => None
-                                end
-              | CB (CLt x y) => match (simp_aexp x,simp_aexp y) with (Some v1,Some v2) => Some (v1 <? v2)
-                                                                   | _ => None
-                                end
-              | BNeg b => match simp_bexp b with None => None | Some b' => Some (negb b') end
-              | _ => None
-   end.
-
-Inductive eval_aexp : stack -> aexp -> (R * nat) -> Prop :=
-    | var_sem : forall s x r n, AEnv.MapsTo x (r,n) s -> eval_aexp s (BA x) (r,n)
-    | mnum_sem: forall s r n, eval_aexp s (MNum r n) (r,n)
-    | aplus_sem_1: forall s e1 e2 r n1 n2, eval_aexp s e1 (r,n1) -> simp_aexp e2 = Some n2 -> eval_aexp s (APlus e1 e2) (r,n1 + n2)
-    | aplus_sem_2: forall s e1 e2 r n1 n2, eval_aexp s e2 (r,n2) -> simp_aexp e1 = Some n1 -> eval_aexp s (APlus e1 e2) (r,n1 + n2)
-    | amult_sem_1: forall s e1 e2 r n1 n2, eval_aexp s e1 (r,n1) -> simp_aexp e2 = Some n2 -> eval_aexp s (AMult e1 e2) (r,n1 * n2)
-    | amult_sem_2: forall s e1 e2 r n1 n2, eval_aexp s e2 (r,n2) -> simp_aexp e1 = Some n1 -> eval_aexp s (AMult e1 e2) (r,n1 * n2). 
+Inductive eval_aexp : stack -> aexp -> nat -> Prop :=
+    | var_sem : forall s x n, AEnv.MapsTo x n s -> eval_aexp s (BA x) n
+    | mnum_sem: forall s n, eval_aexp s (Num n) n
+    | aplus_sem: forall s e1 e2 n1 n2, eval_aexp s e1 n1 -> eval_aexp s e2 n2 -> eval_aexp s (APlus e1 e2) (n1 + n2)
+    | amult_sem: forall s e1 e2 n1 n2, eval_aexp s e1 n1 -> eval_aexp s e2 n2 -> eval_aexp s (AMult e1 e2) (n1 * n2).
 
 Inductive eval_cbexp : stack -> bexp -> bool -> Prop :=
-    | ceq_sem_1 : forall s x y r1 n1 n2, eval_aexp s x (r1,n1) -> simp_aexp y = Some n2 -> eval_cbexp s (CB (CEq x y)) (n1 =? n2)
-    | ceq_sem_2 : forall s x y n1 r2 n2, simp_aexp x = Some n1 -> eval_aexp s y (r2,n2) -> eval_cbexp s (CB (CEq x y)) (n1 =? n2)
-    | ceq_sem_3 : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CB (CEq x y)) (n1 =? n2)
-    | clt_sem_1 : forall s x y r1 n1 n2, eval_aexp s x (r1,n1) -> simp_aexp y = Some n2 -> eval_cbexp s (CB (CLt x y)) (n1 <? n2)
-    | clt_sem_2 : forall s x y n1 r2 n2, simp_aexp x = Some n1 -> eval_aexp s y (r2,n2) -> eval_cbexp s (CB (CLt x y)) (n1 <? n2)
-    | clt_sem_3 : forall s x y r1 n1 r2 n2, eval_aexp s x (r1,n1) -> eval_aexp s y (r2,n2) -> eval_cbexp s (CB (CLt x y)) (n1 <? n2)
+    | ceq_sem : forall s x y n1 n2, eval_aexp s x (n1) -> eval_aexp s y (n2) -> eval_cbexp s (CB (CEq x y)) (n1 =? n2)
+    | clt_sem : forall s x y n1 n2, eval_aexp s x (n1) -> eval_aexp s y (n2) -> eval_cbexp s (CB (CLt x y)) (n1 <? n2)
     | bneq_sem: forall s e b, eval_cbexp s e b -> eval_cbexp s (BNeg e) (negb b).
 
 Inductive simp_varia : aenv -> varia -> range -> Prop :=
     | aexp_sem : forall env x n, AEnv.MapsTo x (QT n) env -> simp_varia env (AExp (BA x)) (x,BNum 0, BNum n)
     | index_sem : forall env x v, simp_varia env (Index x (Num v)) (x,BNum v,BNum (v+1)).
 
+(*
 Lemma kind_aexp_class_empty: forall env a t l, type_aexp env a (Mo t, l) -> t = CT \/ t = MT -> l = [].
 Proof.
   intros. remember (Mo t, l) as e. induction H; simpl in *; try easy.
@@ -705,6 +658,7 @@ Proof.
   simpl in *. destruct H; subst. left. easy.
   apply IHl in H. right. easy.
 Qed.
+*)
 
 Lemma in_list_sub_app_iff: forall l1 l2 x i, In x (list_sub (l1++l2) i)
     <-> In x (list_sub l1 i) \/ In x (list_sub l2 i).
@@ -723,6 +677,7 @@ Proof.
   right. apply IHl1. right. easy.
 Qed.
 
+(*
 Lemma freeVarAExp_subst: forall b i v x, In x (freeVarsAExp (subst_aexp b i v))
         -> In x (list_sub (freeVarsAExp b) i).
 Proof.
@@ -743,13 +698,12 @@ Proof.
   apply in_list_sub_app_iff. left. easy.
   apply freeVarAExp_subst in H. apply in_list_sub_app_iff. right. easy.
 Qed.
+*)
 
 Lemma type_cbexp_no_qt: forall b env t n, type_cbexp env b t -> t <> QT n.
 Proof.
- induction b;intros;simpl in *; try easy. inv H. unfold is_class_type in *.
- destruct t1; try easy. destruct t2; try easy.
- inv H. unfold is_class_type in *.
- destruct t1; try easy. destruct t2; try easy.
+ induction b;intros;simpl in *; try easy. inv H. easy.
+ inv H. easy.
 Qed.
 
 Lemma type_bexp_ses_len : forall b l env n, type_bexp env b (QT n, l) -> ses_len l = Some n.

@@ -512,7 +512,6 @@ Definition build_state_ch n v (t : state_elem) :=
 Fixpoint subst_aexp (a:aexp) (x:var) (n:nat) :=
     match a with BA y => if x =? y then Num n else BA y
               | Num a => Num a
-              | MNum r a => MNum r a
               | APlus c d =>  APlus (subst_aexp c x n) (subst_aexp d x n) 
               | AMult c d =>  AMult (subst_aexp c x n) (subst_aexp d x n) 
     end.
@@ -664,8 +663,8 @@ Definition oracle_prop (env:aenv) (l:locus) (e:exp) : Prop :=
      end
     end.
 
-Definition stack := AEnv.t (R * nat).
-Definition empty_stack := @AEnv.empty (R * nat).
+Definition stack := AEnv.t nat.
+Definition empty_stack := @AEnv.empty nat.
 
 Definition state : Type := (stack * qstate).
 
@@ -691,7 +690,7 @@ Inductive pick_mea : nat -> state_elem -> (R * nat) -> Prop :=
           0 <= i < m -> b i = (r,bl) -> pick_mea n (Cval m b) (Cmod r, a_nat2fb bl n).
 
 
-Definition update_cval (l:state) (a:var) (v: R * nat) := (AEnv.add a v (fst l),snd l).
+Definition update_cval (l:state) (a:var) (v: nat) := (AEnv.add a v (fst l),snd l).
 
 Inductive up_state {rmax:nat} : state -> locus -> state_elem -> state -> Prop :=
     | up_state_rule : forall S M M' M'' l t, @state_equiv rmax M M' -> update_env M' l t M'' -> up_state (S,M) l t (S,M'').

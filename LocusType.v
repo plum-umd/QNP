@@ -193,22 +193,20 @@ Fixpoint subst_type_map (l:type_map) (x:var) (n:nat) :=
           | (y,v)::yl => (subst_locus y x n,v)::(subst_type_map yl x n)
   end.
 
+Inductive mode := C | Q.
+
 Inductive locus_system {rmax:nat}
-           : atype -> aenv -> type_map -> pexp -> type_map -> Prop :=
+           : mode -> aenv -> type_map -> pexp -> type_map -> Prop :=
 
     | sub_ses: forall q env s T T' T1,
         locus_system q env T s T' -> locus_system q env (T++T1) s (T'++T1)
 
     | skip_ses : forall q env, locus_system q env nil (PSKIP) nil
-    | assign_ses_c : forall q env x a v e T T', ~ AEnv.In x env -> 
-         simp_aexp a = Some v ->
-             locus_system q env (subst_type_map T x v) (subst_pexp e x v) T'
-                  -> locus_system q env T (Let x a e) T'
-    | assign_ses_m1 : forall q env x a e T T', type_aexp env a (Mo MT,nil) -> ~ AEnv.In x env ->
-              locus_system q (AEnv.add x (Mo MT) env) T e T' -> locus_system q env T (Let x a e) T'
+    | assign_ses : forall q env x a e T T', type_aexp env a (CT,nil) -> ~ AEnv.In x env ->
+              locus_system q (AEnv.add x (CT) env) T e T' -> locus_system q env T (Let x a e) T'
     | meas_m1 : forall env x y e n l T T', AEnv.MapsTo y (QT n) env -> ~ AEnv.In x env ->
-               locus_system CT (AEnv.add x (Mo MT) env) ((l,CH)::T) e T'
-              -> locus_system CT env (((y,BNum 0,BNum n)::l,CH)::T) (Let x (Meas y) e) T'
+               locus_system C (AEnv.add x (CT) env) ((l,CH)::T) e T'
+              -> locus_system C env (((y,BNum 0,BNum n)::l,CH)::T) (Let x (Meas y) e) T'
     | appu_ses_nor : forall q env l e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
                            locus_system q env ([(l, TNor)]) (AppU l e) ([(l, TNor)])
 
@@ -237,16 +235,14 @@ Inductive locus_system {rmax:nat}
                   find_type T l (Some (l',t)) ->
                     locus_system q env T (AppSU (SRQFT x)) ([(l', (CH))])
 *)
-    | qif_ses_ct: forall q env T b e T', type_bexp env b (Mo CT,nil) -> simp_bexp b = (Some true) ->
-                locus_system q env T e T' -> locus_system q env T (If b e) T'
-    | qif_ses_cf: forall q env T b e, type_bexp env b (Mo CT,nil) -> simp_bexp b = (Some false) ->
-                locus_system q env T (If b e) T
+    | qif_ses: forall q env T b e, type_bexp env b (CT,nil) ->
+                      locus_system q env T e T -> locus_system q env T (If b e) T
 (*
     | qif_ses_m: forall env T b e T', type_bexp env b (Mo MT,nil) -> 
                 locus_system CT env T e T' -> locus_system CT env T (If b e) T'
 *)
     | qif_ses_ch: forall q env b n l l1 e, type_bexp env b (QT n,l) ->
-                locus_system MT env ([(l1,CH)]) e ([(l1,CH)])
+                locus_system Q env ([(l1,CH)]) e ([(l1,CH)])
              -> locus_system q env ([(l++l1,CH)]) (If b e) ([(l++l1,CH)])
 
  (*   | dif_ses_ch: forall q env T p n l l' t, type_vari env p (QT n,l) -> find_type T l (Some (l',t)) ->

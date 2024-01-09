@@ -40,6 +40,4 @@ LocusDef.v
 LocusKind.v
 LocusType.v
 LocusSem.v
-LocusTypeProof.v
-LocusProof.v
 
