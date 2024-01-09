@@ -45,6 +45,5 @@ Run `make` in the top-level directory to compile our Coq proofs. See the README 
 * LocusTypeProof.v - The Qafny Type system Soundness Proof.
 * LocusProof.v - The Qafny proof system and Soundness/Completeness Proof.
 * QafnySQIR.v - The Qafny to SQIR compilation.
-* Testing.v - The testing facility for the Qafny to SQIR compilation.
 
 
