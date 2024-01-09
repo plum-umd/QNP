@@ -1,4 +1,4 @@
-//Simple Quantum Walk Proof in Dafny
+//The generated Dafny proof for simple quantum walk, the Qafny code is given exactly as in the Qafny paper
 predicate boundedSame (x : seq<bv1>, y : seq<bv1> , n:nat) 
   requires n <= |x|
   requires n <= |y|
@@ -10,8 +10,6 @@ predicate allzero (x : seq<bv1>)
 {
   forall k :: 0 <= k < |x| ==> x[k]==0
 }
-
-//function method {:axiom} sqrt(a:real) : real
 
 function method pow2(N:nat):int
   ensures pow2(N) > 0
@@ -28,9 +26,6 @@ function b2n (x:seq<bv1>, i:nat) : nat
 function {:axiom} ab2n(x:nat, n:nat) : seq<bv1>
    ensures |ab2n(x,n)| == n
    ensures b2n(ab2n(x,n), n) == x
-   //ensures ab2n(b2n(x,n), n) == x
-
-  //lemma {:axiom} 
 
   lemma LemmaPow2LT (n: nat)
     ensures n <= pow2(n)
@@ -54,7 +49,6 @@ function {:axiom} ab2n(x:nat, n:nat) : seq<bv1>
 
   }
 
-// sets x[ind] to n for a sequence
 method sequenceAdd(x:seq<bv1>, n:bv1, ind:nat) returns (y:seq<bv1>)
   requires 0 <= ind < |x|
   ensures |y| == |x|
@@ -84,12 +78,6 @@ method sequenceAdd(x:seq<bv1>, n:bv1, ind:nat) returns (y:seq<bv1>)
   }
 }
 
-//this method will double the size of z,
-//the idea is that if you have state: |0> + |1> + .... + |n-1> 
-//and you add a had type object |0> +- |1> to the above state, it just turn the state to be  
-//|0>|0> + |0>|1> + .... + |0>|n>  +- |1>|0> +- |1>|1> +- .... +- |1>|n-1> 
-//first try the simplest case, where phase is 0.
-//simplest case is to add at the end of first seq
 method addHad(z:array<(real,seq<bv1>)>, ni:nat) returns (y : array<(real,seq<bv1>)>)
   requires forall k :: 0 <= k < z.Length ==> |z[k].1| == ni
   requires forall k :: 0 <= k < z.Length ==> z[k].0 == 1.0 / (pow2(ni) as real)
@@ -104,40 +92,21 @@ method addHad(z:array<(real,seq<bv1>)>, ni:nat) returns (y : array<(real,seq<bv1
   ensures forall k :: z.Length <= k < 2 * z.Length ==> y[k].1[ni] == 1
   ensures forall k :: 0 <= k < z.Length ==> y[k].0 == 1.0 / (pow2(ni + 1) as real)
   ensures forall k :: z.Length <= k < 2* z.Length ==> y[k].0 == 1.0 / (pow2(ni + 1) as real)
-  //the following two will be hard.
-  //ensures forall k :: 0 <= k < z.Length ==> convBvSeq(y[k]) == convBvSeq(z[k])
-  //ensures forall k :: 0 <= k < z.Length ==> convBvSeq(y[k+z.Length) == convBvSeq(z[k]) + pow2(ni)
 {
   y := new (real,seq<bv1>)[2 * z.Length](i => (1.0,[]));
-  var i := 0;
-  // Maybe try splitting this into two loops to make the invariants easier?
-  
+  var i := 0;  
   while i < z.Length 
     modifies y 
     invariant y.Length >= i + z.Length
     invariant forall k :: 0 <= k < i ==> |y[k].1| == ni+1
-    //invariant forall k :: 0 <= k < i ==> |y[k+z.Length].0| == ni+1
     invariant forall k :: 0 <= k < i ==> boundedSame(y[k].1,z[k].1,ni)
-    //invariant forall k :: 0 <= k < i ==> y[k+z.Length].1 == z[k].1
     invariant forall k :: 0 <= k < i ==> y[k].1[ni] == 0
     invariant forall k :: 0 <= k < i ==> y[k].0 == z[k].0 / (2 as real)
   {
-    //y[i] := z[i];
-    //var temp := new bv1[|z[i].2|](j => z[i].2[j]);
     y[i] := (z[i].0 / (2 as real),z[i].1+[0]);
-    //maybe put LemmaCastBVTail here. I guess you do not need a forall version, you might only need the simple version.
-     //LemmaCastBVTail(z[i].0,y[i].0);
-    //y[i+z.Length] := (z[i].0+[1], z[i].1);
-    //maybe put another LemmaCastBVTail here.
-     //LemmaCastBVTail(z[i].0,y[i+z.Length].0);
-
     i := i + 1;
   }
-  //label aa:
   label aa:  var j := z.Length;
-  // Maybe try splitting this into two loops to make the invariants easier?
-  //assert 0 <= z.Length;
-  //assert (forall k :: 0 <= k < z.Length ==> y[k] == old@aa(y[k]));
   while j < 2 * z.Length 
     modifies y 
     invariant z.Length <= j <= y.Length
@@ -147,15 +116,7 @@ method addHad(z:array<(real,seq<bv1>)>, ni:nat) returns (y : array<(real,seq<bv1
     invariant forall k :: z.Length <= k < j ==> (y[k].1)[ni] == 1
     invariant forall k :: z.Length <= k < j ==> y[k].0 == z[k-z.Length].0 / (2 as real)
   {
-    //y[i] := z[i];
-    //var temp := new bv1[|z[i].2|](j => z[i].2[j]);
-    //y[i] := (z[i].0+[0], z[i].1);
-    //maybe put LemmaCastBVTail here. I guess you do not need a forall version, you might only need the simple version.
-     //LemmaCastBVTail(z[i].0,y[i].0);
     y[j] := (z[j-z.Length].0 / (2 as real),z[j-z.Length].1+[1]);
-    //maybe put another LemmaCastBVTail here.
-     //LemmaCastBVTail(z[i].0,y[i+z.Length].0);
-
     j := j + 1;
   }
 }
@@ -163,8 +124,6 @@ method addHad(z:array<(real,seq<bv1>)>, ni:nat) returns (y : array<(real,seq<bv1
 method addHadShell(z: seq<(real,seq<bv1>)>, ni:nat) returns (y: seq<(real,seq<bv1>)>)
   requires forall k :: 0 <= k < |z| ==> |z[k].1| == ni
   requires forall k :: 0 <= k < |z| ==> z[k].0 == 1.0 / (pow2(ni) as real)
-  //requires 0 <= z.Length
-  //ensures fresh(y)
   ensures |y| == 2 * |z| 
   ensures forall k :: 0 <= k < |z|  ==> |y[k].1| == ni+1
   ensures forall k :: |z|  <= k < 2 * |z|  ==> |y[k].1| == ni+1
@@ -184,15 +143,10 @@ method addHadShell(z: seq<(real,seq<bv1>)>, ni:nat) returns (y: seq<(real,seq<bv
       tmp1[i] := z[i];
       i := i + 1;
     }
-    //assert (forall k :: 0 <= k < tmp1.Length ==> tmp1[k].0 == 1.0);
-    //assert (forall k :: 0 <= k < tmp1.Length ==> tmp1[k].0 == pow2(0) as real);
     var tmp := addHad(tmp1,ni);
     y := tmp[..];
-    //z := new (seq<bv1>,seq<bv1>)[2 * z.Length](i => tmp[i]);
   }
 
-  //try to prove this lemma by doing the same as the link I show you. 
-  //You will need to remove the axiom tag to see the proof.
   lemma {:axiom} LemmaSubSeq(x : seq<bv1>, n:nat)
     requires n <= |x|
     ensures b2n(x,n) == b2n(x[..n],n)
@@ -204,19 +158,11 @@ method addHadShell(z: seq<(real,seq<bv1>)>, ni:nat) returns (y: seq<(real,seq<bv
   {
 
      if (|x| == 0) {
-      //assert b2n(x,|x|) == 0;
-      //assert b2n(y,|x|) == 0;
     } else {
       LemmaTailstringSame(x,y,|x|);
       LemmaSameBVCast(x,y[..|x|]);
       assert b2n(x,|x|) == b2n(y[..|x|],|x|);
       LemmaSubSeq(y,|x|);
-      //LemmaB2NTailingZeros(a[1..], i - 1);
-      //assert b2n(a[1..]) == b2n(a[1..][0..i-1]);
-      //assert (a[1..][0..i-1] == a[1..i]);
-      //assert b2n(a[1..]) == b2n(a[1..i]);
-      //assert a[0] + 2 * b2n(a[1..]) == a[0] + 2 * b2n(a[1..i]);
-      //assert b2n(a) == b2n(a[0..i]);
     }
 
   }
@@ -259,12 +205,8 @@ method addHadShell(z: seq<(real,seq<bv1>)>, ni:nat) returns (y: seq<(real,seq<bv
     requires boundedSame(x,y,i)
     ensures b2n(y,i+1) == b2n(x,i) + (y[i] as nat) * pow2(i)
   {
-    //LemmaTailstringSame(x,y,i);
     LemmaB2NPow2(y,i);
-    //assert b2n(y,i+1) == b2n(y,i) + (y[i] as nat) * pow2(i);
     LemmaB2NTail(x,y);
-    //assert b2n(y,i+1);
-    //LemmaSeqEQ(x,i);
   }
 
   lemma LemmaB2NPow2s(x : seq<(real,seq<bv1>)>, y : seq<(real,seq<bv1>)>, i : nat)
@@ -289,11 +231,9 @@ method hadHallEN(n:nat) returns (y : seq<(real,seq<bv1>)>)
   ensures |y| == pow2(n)
   ensures 0 < |y|;
   ensures forall k :: 0 <= k < |y| ==> y[k].0 == (1.0 / pow2(n) as real)
-  //ensures forall k :: 0 <= k < |y| ==> y[k].1 == 1.0
   ensures forall k :: 0 <= k < |y| ==> |y[k].1| == n
   ensures forall k :: 0 <= k < |y| ==> b2n(y[k].1,n) == k
 {
-   //var tmp := nHEnPre(n);
    var i := 0;
    y := [(1 as real, [])];
    while (i < n)
@@ -302,11 +242,8 @@ method hadHallEN(n:nat) returns (y : seq<(real,seq<bv1>)>)
      invariant forall k :: 0 <= k < |y| ==> y[k].0 == (1.0 / pow2(i) as real)
      invariant forall k :: 0 <= k < |y| ==> |y[k].1| == i
      invariant forall k :: 0 <= k < |y| ==> b2n(y[k].1,i) == k
-     //invariant 
    {
     var tmpy := addHadShell(y,i);
-    //assert forall k :: 0 <= k < |y| ==> boundedSame(y[k].1,tmpy[k].1,i);
-    //LemmaB2NTails(y, tmpy);
     LemmaB2NPow2s(y,tmpy[..|y|],i);
     LemmaB2NPow2s(y,tmpy[|y|..],i);
     y := tmpy;
@@ -349,7 +286,6 @@ method castNorEnSingle(x:seq<(real,seq<bv1>)>, y : bv1) returns (z: seq<bv1>)
 method bitflip(x:array<bv1>, j:nat)
   modifies x
   requires j < x.Length
-  //requires forall t :: j <= t < x.Length ==> x[t] == 0
   ensures j < x.Length
   ensures forall t :: j < t < x.Length ==> x[t] == old(x[t])
   ensures forall t :: 0 <= t < j ==> x[t] == old(x[t])
@@ -360,7 +296,6 @@ method bitflip(x:array<bv1>, j:nat)
 
 method bitflipShell(x:seq<bv1>, j:nat) returns (y:seq<bv1>)
   requires j < |x|
-  //requires forall t :: j <= t < |x| ==> x[t] == 0
   ensures j < |y|
   ensures |y| == |x|
   ensures forall t :: j < t < |y| ==> y[t] == x[t]
@@ -396,23 +331,9 @@ predicate ampPat(x:seq<real>, n:nat, i:nat)
   forall k :: 0 <= k < |x| ==> x[k] == (1.0 / pow2(k + n + i) as real)
 }
 
-//predicate boundZeroLt(x:seq<bv1>, l:nat, h:nat)
-//{
-//  forall t :: l < t < h ==> x[t] == 0 
-//}
-
-//predicate boundSameLt(x:seq<bv1>, y:seq<bv1>, l:nat, h:nat)
-//{
-//  forall t :: l < t < h ==> x[t] == y[t]
-//}
-
-  //requires sameLengths(x, n)
-  //requires forall q :: 0 <= q < |x| ==> forall t :: 0 <= t < j - ind - 1 ==> x[q][t] == 0
 
 method bitflipShells(x:seq<seq<bv1>>, ind:nat, j:nat, n:nat) returns (y:seq<seq<bv1>>)
   requires j < n
-  //requires |x| == j
-  //requires j - ind - 1 < n
   requires ind < j
   requires sameLengths(x, n)
   requires forall q :: 0 <= q < |x| ==> forall t :: 0 <= t < j - ind - 1 ==> x[q][t] == 0
@@ -430,16 +351,12 @@ method bitflipShells(x:seq<seq<bv1>>, ind:nat, j:nat, n:nat) returns (y:seq<seq<
   while (i < |x|)
     invariant 0 <= i <= |x|
     invariant |y| == i
-    //invariant j - ind - 1 < j
-    //invariant forall k :: 0 <= k < i ==> |y[k]| == pow2(txn)
     invariant forall k :: 0 <= k < i ==> |y[k]| == |x[k]|
     invariant forall k :: 0 <= k < i ==> forall t :: 0 <= t < j - ind - 1 ==> y[k][t] == 0
     invariant forall k :: 0 <= k < i ==> forall t :: j - ind -1 <= t < j+1 ==> y[k][t] == 1
     invariant forall k :: 0 <= k < i ==> forall t :: j + 1 <= t < |y[k]| ==> y[k][t] == 0 
   {
     var tmpv := bitflipShell(x[i],j);
-    //assert forall k :: 0 <= k < |y| ==> forall t :: 0 <= t < j - ind - 1 ==> y[k][t] == 0;
-    //assert tmpv[j] == 1;
     y := y + [tmpv];
     i := i + 1;
   }
@@ -529,13 +446,9 @@ method ctrLT(axr: seq<real>, axb: seq<seq<seq<bv1>>>, ay: seq<seq<seq<bv1>>>, ah
   ensures forall k :: 0 <= k < |zh| ==> sameLengths(zh[k],hn)
   ensures zu[0] == [0]
   ensures forall k :: 0 <= k < |zy| ==> sameLengths(zy[k], pow2(txn))
-  //ensures forall k :: 0 <= k < |ay| ==> |ay[k]| == |zy[k+1]|
   ensures forall k :: 0 <= k < |zy| ==> forall q :: 0 <= q < |zy[k]| ==> forall t :: 0 <= t < j - k ==> zy[k][q][t] == 0
   ensures forall k :: 0 <= k < |zy| ==> forall q :: 0 <= q < |zy[k]| ==> forall t :: j - k <= t < j + 1 ==> zy[k][q][t] == 1
   ensures forall k :: 0 <= k < |zy| ==> forall q :: 0 <= q < |zy[k]| ==> forall t :: j + 1 <= t < |zy[k][q]| ==> zy[k][q][t] == 0
-  //ensures forall k :: 0 <= k < |zy| ==> forall q :: 0 <= q < |zy[k]| ==> zy[k][q][j] == 1
-  //ensures |zy[0]| == 1
-  //ensures forall t :: 0 < t < j ==> zy[0][0][t] == 0
   ensures txa == tx[1..]
   ensures tya == ty[1..]
   ensures tha == th[1..]
@@ -553,14 +466,10 @@ method ctrLT(axr: seq<real>, axb: seq<seq<seq<bv1>>>, ay: seq<seq<seq<bv1>>>, ah
   zh := [[th[0]]]+ah;
   zu := [[tu[0]]]+au;
   zy := [];
-  //var tamyv := bitflipShell(ty[0],j);
-  //zy := [[tamyv]];
   var i := 0;
   while (i < |ay|)
     invariant 0 <= i <= |ay|
-    //invariant 0 <= i <= j
     invariant |zy| == i
-    //invariant forall k :: 0 <= k < |ay| ==> sameLengths(ay[k], pow2(txn))
     invariant forall k :: 0 <= k < i ==> sameLengths(zy[k], pow2(txn))
     invariant forall k :: 0 <= k < i ==> |ay[k]| == |zy[k]|
     invariant forall k :: 0 <= k < i ==> forall q :: 0 <= q < |zy[k]| ==> forall t :: 0 <= t < j - k - 1 ==> zy[k][q][t] == 0
@@ -568,7 +477,6 @@ method ctrLT(axr: seq<real>, axb: seq<seq<seq<bv1>>>, ay: seq<seq<seq<bv1>>>, ah
     invariant forall k :: 0 <= k < i ==> forall q :: 0 <= q < |zy[k]| ==> forall t :: j + 1 <= t < |zy[k][q]| ==> zy[k][q][t] == 0
   {
     var tmpv := bitflipShells(ay[i],i, j,pow2(txn));
-    //assert tmpv[j] == 1;
     zy := zy + [tmpv];
     i := i + 1;
   }
@@ -576,7 +484,6 @@ method ctrLT(axr: seq<real>, axb: seq<seq<seq<bv1>>>, ay: seq<seq<seq<bv1>>>, ah
   zy := [[tamyv]] + zy;
 }
 
-//a function to double the basis in each block in an array.
 method doubleBases(x: seq<seq<seq<bv1>>>) returns (y:seq<seq<seq<bv1>>>)
   requires lengthPat(x,0)
   ensures lengthPat(y,1)
@@ -668,7 +575,6 @@ method applyHadCtr(axr: seq<real>, axb: seq<seq<seq<bv1>>>, ay: seq<seq<seq<bv1>
   requires forall k :: 0 <= k < |ay| ==> forall q :: 0 <= q < |ay[k]| ==> forall t :: 0 <= t < j - k ==> ay[k][q][t] == 0
   requires forall k :: 0 <= k < |ay| ==> forall q :: 0 <= q < |ay[k]| ==> forall t :: j - k <= t < j + 1 ==> ay[k][q][t] == 1
   requires forall k :: 0 <= k < |ay| ==> forall q :: 0 <= q < |ay[k]| ==> forall t :: j + 1 <= t < |ay[k][q]| ==> ay[k][q][t] == 0 
-  //requires forall k :: 0 <= k < |ay| ==> forall q :: 0 <= q < |ay[k]| ==> forall t :: j <= t < |ay[k][q]| ==> ay[k][q][t] == 0 
   requires lengthPat(axb,0)
   requires lengthPat(ay,0)
   requires lengthPat(ah,0)
@@ -860,7 +766,6 @@ method qwalk(x:seq<bv1>, y: seq<bv1>, h : seq<bv1>, u:bv1, m : nat, n:nat)
   ensures lengthPat(ah,1)
   ensures lengthPat(au,1)
 {
-  //first step is to do the same to turn x to superposition.
   var tmpx := hadHallEN(|x|);
   assert |tmpx| == m;
 
@@ -910,7 +815,6 @@ method qwalk(x:seq<bv1>, y: seq<bv1>, h : seq<bv1>, u:bv1, m : nat, n:nat)
     ah := zh;
     j := j + 1;
   }
-  //The following shows that we clean the tmp arrays to be empty before leaving the procedure.
   assert tmpx == [];
   assert tmpy == [];
   assert tmph == [];
