@@ -767,6 +767,12 @@ Inductive step {rmax:nat}
           step aenv s (For x (Num l) (Num h) b p) (1:R) s (PSeq (If b p) (For x (Num (l+1)) (Num h) b p)).
 
 
+Inductive steps {rmax:nat}
+           : nat -> aenv -> state -> pexp -> R -> state -> Prop :=
+   steps_0 : forall env s e, steps 0 env s e (1:R) s
+ | steps_n : forall n env s e r s' e', @step rmax env s e r s' e'
+                 -> steps n env s' e' r s -> steps (S n) env s e r s.
+
 (*
 
 Inductive locus_system {rmax:nat}
