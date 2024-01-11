@@ -769,7 +769,7 @@ Inductive step {rmax:nat}
 
 Inductive steps {rmax:nat}
            : nat -> aenv -> state -> pexp -> R -> state -> Prop :=
-   steps_0 : forall env s e, steps 0 env s e (1:R) s
+   steps_0 : forall env s, steps 0 env s PSKIP (1:R) s
  | steps_n : forall n env s e r s' e', @step rmax env s e r s' e'
                  -> steps n env s' e' r s -> steps (S n) env s e r s.
 
