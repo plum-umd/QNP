@@ -8,7 +8,7 @@ Many quantum programs are assured by formal verification, but such verification 
 
 ## Setup
 
-To compile Qafny, you will need [Coq](https://coq.inria.fr/) and [QuickChick](https://github.com/QuickChick/QuickChick). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.12-8.14**.
+To compile Qafny, you will need [Coq](https://coq.inria.fr/) and [QuickChick](https://github.com/QuickChick/QuickChick). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.13**.
 
 Assuming you have opam installed (following the instructions in the link above), follow the steps below to set up your environment.
 ```
