@@ -1,4 +1,6 @@
 //Dafny Proof for DeutschJozsa algorithm, the Qafny version of the code is in the ~Qafnycode/test/Resource/Algorithms
+function method {:axiom} sqrt(a:real) : real
+
 lemma {:axiom} sqrtgreater(a:real)
    requires a > 0.0
    ensures sqrt(a) > 0.0
