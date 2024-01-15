@@ -33,13 +33,6 @@ Check OQASMProof.vars.
 
 (avs: nat -> posi)
 *)
-Check SQIR.seq.
-Locate meas.
-
-Definition measure' {dim} n : base_com dim := (meas n skip skip).
-(* avs is to support the compilation of OQASM, it is id with f. *)
-Fixpoint trans_n_meas {dim} (n:nat) (p:nat) : base_com dim :=
-  match n with 0 => SQIR.ID (p) | S m => measure' (p+m);trans_n_meas m p end.
 
 (*
 Fixpoint nX (f : vars) (dim:nat) (x:var) (n:nat) : base_ucom dim :=
@@ -137,28 +130,38 @@ Section mergeSort.
 
 End mergeSort.
 
-Inductive trans_exp_rel {dim rmax:nat} {env:aenv} {s:var -> nat}: stack -> exp -> (base_ucom dim) -> Prop :=
-    etrans_skip : forall W x a v, eval_aexp W a v -> trans_exp_rel W (SKIP x a) (SQIR.ID ((s x)+v))
-  | etrans_x : forall W x a v, eval_aexp W a v -> trans_exp_rel W (X x a) (SQIR.X ((s x)+v))
-  | etrans_cu : forall W x a e v p, eval_aexp W a v -> trans_exp_rel W e p
-                -> trans_exp_rel W (CU x a e) (control ((s x)+v) p)
-  | etrans_rz : forall W q x a v, eval_aexp W a v -> trans_exp_rel W (RZ q x a) (SQIR.Rz (rz_ang q) ((s x)+v))
-  | etrans_rrz : forall W q x a v, eval_aexp W a v -> trans_exp_rel W (RRZ q x a) (SQIR.Rz (rrz_ang q) ((s x)+v))
-  | etrans_sr : forall W q x, trans_exp_rel W (SR q x) (gen_sr_gate s dim x q)
-  | etrans_srr : forall W q x, trans_exp_rel W (SR q x) (gen_srr_gate s dim x q)
-  | etrans_qft : forall W q x p, trans_qft s env dim x q = Some p -> trans_exp_rel W (QFT x q) p
-  | etrans_rqft : forall W q x p, trans_rqft s env dim x q = Some p -> trans_exp_rel W (QFT x q) p
-  | etrans_seq: forall W e1 e2 p1 p2,
-          trans_exp_rel W e1 p1 -> trans_exp_rel W e2 p2 -> trans_exp_rel W (QafnySyntax.Seq e1 e2) (SQIR.useq p1 p2).
+Inductive trans_exp_rel {dim rmax:nat} {env:aenv} {s:var -> nat}: exp -> (base_ucom dim) -> Prop :=
+    etrans_skip : forall x v, trans_exp_rel (SKIP x (Num v)) (SQIR.ID ((s x)+v))
+  | etrans_x : forall x v, trans_exp_rel (X x (Num v)) (SQIR.X ((s x)+v))
+  | etrans_cu : forall x e v p, trans_exp_rel e p -> trans_exp_rel (CU x (Num v) e) (control ((s x)+v) p)
+  | etrans_rz : forall q x v, trans_exp_rel (RZ q x (Num v)) (SQIR.Rz (rz_ang q) ((s x)+v))
+  | etrans_rrz : forall q x v, trans_exp_rel (RRZ q x (Num v)) (SQIR.Rz (rrz_ang q) ((s x)+v))
+  | etrans_sr : forall q x, trans_exp_rel (SR q x) (gen_sr_gate s dim x q)
+  | etrans_srr : forall q x, trans_exp_rel (SR q x) (gen_srr_gate s dim x q)
+  | etrans_qft : forall q x p, trans_qft s env dim x q = Some p -> trans_exp_rel (QFT x q) p
+  | etrans_rqft : forall q x p, trans_rqft s env dim x q = Some p -> trans_exp_rel (QFT x q) p
+  | etrans_seq: forall e1 e2 p1 p2,
+          trans_exp_rel e1 p1 -> trans_exp_rel e2 p2 -> trans_exp_rel (QafnySyntax.Seq e1 e2) (SQIR.useq p1 p2).
 
 
 (*Defining trans_pexp using induction relation *)
+Declare Scope scom_scope.
+Delimit Scope scom_scope with scom.
+Local Open Scope scom_scope.
+
 Inductive scom (U: nat -> Set) (dim : nat) : Set :=
 | skip : scom U dim
 | seq : scom U dim -> scom U dim -> scom U dim
 | uc : ucom U dim -> scom U dim
-| abort : nat -> scom U dim
-| meas : nat -> scom U dim -> scom U dim -> scom U dim.
+| abort : nat -> nat -> scom U dim (* abort a starting location and the length n qubits.
+                                       abort will be valid only if these qubits are Nor type. *)
+| meas : nat -> nat -> scom U dim. 
+   (* meas the qubits starting from the first nat, and the length is the second nat. *)
+
+(* avs is to support the compilation of OQASM, it is id with f. the same meaning as above.
+Fixpoint trans_n_meas {dim} (n:nat) (p:nat) (x:var) : base_scom dim :=
+  match n with 0 => SQIR.ID (p) | S m => measure' (p+m) x;trans_n_meas m p end.
+*)
 
 Arguments skip {U dim}.
 Arguments seq {U dim}.
@@ -170,19 +173,19 @@ Definition from_ucom_s {U dim} (c : ucom U dim) : scom U dim := uc c.
 Coercion from_ucom_s : ucom >-> scom.
 
 Definition base_scom := scom base_Unitary.
-
+Notation "p1 ; p2" := (seq p1 p2) (at level 50) : scom_scope.
             
-Inductive trans_pexp_rel  {dim rmax:nat} : aenv -> (var -> nat) -> stack
+Inductive trans_pexp_rel  {dim chi rmax:nat} : aenv -> (var -> nat)
                     -> type_map -> pexp -> type_map -> option (base_scom dim) -> Prop :=
-  | trans_pexp_skip : forall env f W T,
-      trans_pexp_rel env f W T PSKIP T (Some skip)
-  | trans_pexp_let_num : forall env f W T T' x a v s e',
-      eval_aexp W a v ->
-      trans_pexp_rel (AEnv.add x (CT) env) f W T s T' (Some e') ->
-      trans_pexp_rel env f W T (Let x (AE a) s) T (Some (seq e' (abort x))).
-  | trans_pexp_let_meas : forall env f W T T' x y s cr,
-      trans_pexp_rel env f W T s T' (Some cr) ->
-      trans_pexp_rel env f W T (Let x (Meas y) s) avs (Some (trans_n_meas (vsize f y) (start f y) ; cr)).
+  | trans_pexp_skip : forall env f T,
+      trans_pexp_rel env f T PSKIP T (Some skip)
+  | trans_pexp_let_num : forall env f T T' x v s e',
+      trans_pexp_rel (AEnv.add x (CT) env) f T s T' (Some e') ->
+      trans_pexp_rel env f T (Let x (AE (Num v)) s) T (Some (seq e' (abort (f x) chi)))
+  | trans_pexp_let_meas : forall env f T T' x y l s cr,
+      AEnv.MapsTo y (QT chi) env ->
+      trans_pexp_rel (AEnv.add x (CT) env) f ((l,CH)::T) s T' (Some cr) ->
+      trans_pexp_rel env f (((y,BNum 0,BNum chi)::l,CH)::T) (Let x (Meas y) s) T' (Some (meas (f y) chi ; cr; (abort (f y) chi))).
   | trans_pexp_appsu_index : forall f avs x i,
       trans_pexp_rel dim f (AppSU (RH (Index x (Num i)))) avs (Some (from_ucom (SQIR.H (find_pos f (x,i)))))
   
