@@ -79,9 +79,6 @@ Inductive type_exp : aenv -> exp -> (ktype*locus) -> Prop :=
    | srr_fa : forall env q x n,  AEnv.MapsTo x (QT n) env -> q < n -> type_exp env (SRR q x) (QT n, ([(x,BNum 0, BNum n)]))
    | qft_fa : forall env q x n,  AEnv.MapsTo x (QT n) env -> q <= n -> 0 < n -> type_exp env (QFT x q) (QT n, ([(x,BNum 0, BNum n)]))
    | rqft_fa : forall env q x n,  AEnv.MapsTo x (QT n) env -> q <= n -> 0 < n -> type_exp env (RQFT x q) (QT n, ([(x,BNum 0, BNum n)]))
-   | lft_fa : forall env x n,  AEnv.MapsTo x (QT n) env -> type_exp env (Lshift x) (QT n, ([(x,BNum 0, BNum n)]))
-   | rft_fa : forall env x n,  AEnv.MapsTo x (QT n) env -> type_exp env (Rshift x) (QT n, ([(x,BNum 0, BNum n)]))
-   | rev_fa : forall env x n,  AEnv.MapsTo x (QT n) env -> type_exp env (Rev x) (QT n, ([(x,BNum 0, BNum n)]))
    | cu_fa : forall env x v n e t1 t2, AEnv.MapsTo x (QT n) env -> 0 <= v < n -> 
             type_exp env e t1 -> union_f (QT 1, ([(x,BNum v, BNum (S v))])) t1 t2 -> type_exp env (CU x (Num v) e) t2
    | seq_fa : forall env e1 t1 e2 t2 t3, type_exp env e1 t1 -> type_exp env e2 t2 -> union_f t1 t2 t3 ->

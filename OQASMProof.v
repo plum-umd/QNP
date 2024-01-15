@@ -4007,10 +4007,6 @@ Definition id_fun := fun (i:nat) => i.
 Definition adj_offset (index:nat) (offset:nat) (size:nat) :=
     (index + offset) mod size.
 
-Definition rz_ang (n:nat) : R := ((2%R * PI)%R / 2%R^n).
-
-Definition rrz_ang (n:nat) : R := ((2%R * PI)%R - ((2%R * PI)%R / 2%R^n)).
-
 Definition vars := nat -> (nat * nat * (nat -> nat) * (nat -> nat)).
 
 Definition start (vs :vars) (x:var) := fst (fst (fst (vs x))).

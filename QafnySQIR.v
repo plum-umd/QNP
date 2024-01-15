@@ -13,10 +13,10 @@ Require Import CLArith.
 Require Import RZArith.
 Require Import QafnySyntax.
 Require Import LocusDef.
+Require Import LocusKind.
 Require Import LocusSem.
 Require Import LocusType.
-Require Import LocusTypeProof.
-Require Import OQASMProof.
+(*Require Import LocusTypeProof.*)
 (**********************)
 (** Locus Definitions **)
 (**********************)
@@ -41,20 +41,21 @@ Definition measure' {dim} n : base_com dim := (meas n skip skip).
 Fixpoint trans_n_meas {dim} (n:nat) (p:nat) : base_com dim :=
   match n with 0 => SQIR.ID (p) | S m => measure' (p+m);trans_n_meas m p end.
 
+(*
 Fixpoint nX (f : vars) (dim:nat) (x:var) (n:nat) : base_ucom dim :=
-     match n with 0 => SQIR.ID (find_pos f (x,0))
-               | S m => SQIR.useq (nX f dim x m) (SQIR.X (find_pos f (x,m))) 
+     match n with 0 => SQIR.ID (OQASMProof.find_pos f (x,0))
+               | S m => SQIR.useq (nX f dim x m) (SQIR.X (OQASMProof.find_pos f (x,m))) 
      end.
 
 Fixpoint controlled_x_gen (f : vars) (dim:nat) (x:var) (n : nat) (size:nat) : base_ucom dim :=
   match n with
-  | 0 | 1 => SQIR.X (find_pos f (x,size-1))
-  | S m  => control (find_pos f (x,size - n)) (controlled_x_gen f dim x m size)
+  | 0 | 1 => SQIR.X (OQASMProof.find_pos f (x,size-1))
+  | S m  => control (OQASMProof.find_pos f (x,size - n)) (controlled_x_gen f dim x m size)
   end.
 
 Definition diff (f : vars) (dim:nat) (x:var) (n : nat) : base_com dim := 
   nH f dim x n 0 ; nX f dim x n; 
-   SQIR.H (find_pos f (x,n-1)); controlled_x_gen f dim x n n ; nX f dim x n; nH f dim x n 0.
+   SQIR.H (OQASMProof.find_pos f (x,n-1)); controlled_x_gen f dim x n n ; nX f dim x n; nH f dim x n 0.
 
 
 (* M - x *)
@@ -68,6 +69,50 @@ Definition rz_eq_circuit (x:var) (n:nat) (c:posi) (M:nat) :=
    OQASM.Seq (OQASM.Seq (OQASM.X c) (rz_compare_anti x n c M)) (OQASM.Seq (OQASM.X c) (rz_compare x n c M)).
 
 Definition rz_lt_circuit (x:var) (n:nat) (c:posi) (M:nat) := rz_compare x n c M.
+*)
+
+Fixpoint gen_sr_gate' (f:var -> nat) (dim:nat) (x:var) (n:nat) (size:nat) : base_ucom dim := 
+   match n with 0 => SQIR.ID ((f x))
+             | S m => SQIR.useq (gen_sr_gate' f dim x m size) (SQIR.Rz (rz_ang (size - m)) ((f x) + m))
+   end.
+Definition gen_sr_gate (f:var -> nat) (dim:nat) (x:var) (n:nat) := gen_sr_gate' f dim x (S n) (S n).
+
+Fixpoint gen_srr_gate' (f:var -> nat) (dim:nat) (x:var) (n:nat) (size:nat) : base_ucom dim := 
+   match n with 0 => SQIR.ID ((f x))
+             | S m => SQIR.useq (gen_srr_gate' f dim x m size) (SQIR.Rz (rrz_ang (size - m)) ((f x) + m))
+   end.
+Definition gen_srr_gate (f:var -> nat) (dim:nat) (x:var) (n:nat) := gen_srr_gate' f dim x (S n) (S n).
+
+Fixpoint controlled_rotations_gen (f : var -> nat) (dim:nat) (x:var) (n : nat) (i:nat) : base_ucom dim :=
+  match n with
+  | 0 | 1 => SQIR.ID ((f x) + i)
+  | S m  => SQIR.useq (controlled_rotations_gen f dim x m i)
+                 (control ((f x) + (m+i)) (SQIR.Rz (rz_ang n) ((f x) + i)))
+  end.
+
+Fixpoint QFT_gen (f : var -> nat) (dim:nat) (x:var) (n : nat) (size:nat) : base_ucom dim :=
+  match n with
+  | 0    => SQIR.ID (f x)
+  | S m => SQIR.useq  (QFT_gen f dim x m size)
+             (SQIR.useq (SQIR.H ((f x) + m)) ((controlled_rotations_gen f dim x (size-m) m)))
+  end.
+
+Fixpoint nH (f : var -> nat) (dim:nat) (x:var) (n:nat) (b:nat) : base_ucom dim :=
+     match n with 0 => SQIR.ID (f x)
+               | S m => SQIR.useq (nH f dim x m b) (SQIR.H ((f x) + (b+m))) 
+     end.
+
+Definition trans_qft (f:var -> nat) (env:aenv) (dim:nat) (x:var) (b:nat) : option (base_ucom dim) :=
+         match AEnv.find x env with
+                | Some (QT size) => Some (SQIR.useq (QFT_gen f dim x b b) (nH f dim x (size - b) b))
+                | _ => None
+         end.
+
+Definition trans_rqft (f:var -> nat) (env:aenv) (dim:nat) (x:var) (b:nat) : option (base_ucom dim) :=
+         match AEnv.find x env with
+                | Some (QT size) => Some (invert (SQIR.useq (QFT_gen f dim x b b) (nH f dim x (size - b) b)))
+                | _ => None
+         end.
 
 Section mergeSort.
   Variable A : Type.
@@ -91,23 +136,53 @@ Section mergeSort.
     end.
 
 End mergeSort.
-            
-            (*Defining trans_pexp using induction relation *)
-            
-Inductive trans_pexp_rel (dim:nat) : OQASMProof.vars -> pexp -> (nat -> posi) -> option (base_com dim) -> Prop :=
-  | trans_pexp_skip : forall f avs,
-      trans_pexp_rel dim f PSKIP avs (Some skip)
-  | trans_pexp_let_num : forall f x a n s avs e',
-      simp_aexp a = Some n ->
-      trans_pexp_rel dim f (subst_pexp s x n) avs (Some e') ->
-      trans_pexp_rel dim f (Let x (AE a) s) avs (Some e')
-  | trans_pexp_let_mnum : forall f x r n s avs,
-      trans_pexp_rel dim f s avs None ->
-      trans_pexp_rel dim f (Let x (AE (MNum r n)) s) avs None
 
-  | trans_pexp_let_meas : forall f x y s avs cr,
-      trans_pexp_rel dim f s avs (Some cr) ->
-      trans_pexp_rel dim f (Let x (Meas y) s) avs (Some (trans_n_meas (vsize f y) (start f y) ; cr))
+Inductive trans_exp_rel {dim rmax:nat} {env:aenv} {s:var -> nat}: stack -> exp -> (base_ucom dim) -> Prop :=
+    etrans_skip : forall W x a v, eval_aexp W a v -> trans_exp_rel W (SKIP x a) (SQIR.ID ((s x)+v))
+  | etrans_x : forall W x a v, eval_aexp W a v -> trans_exp_rel W (X x a) (SQIR.X ((s x)+v))
+  | etrans_cu : forall W x a e v p, eval_aexp W a v -> trans_exp_rel W e p
+                -> trans_exp_rel W (CU x a e) (control ((s x)+v) p)
+  | etrans_rz : forall W q x a v, eval_aexp W a v -> trans_exp_rel W (RZ q x a) (SQIR.Rz (rz_ang q) ((s x)+v))
+  | etrans_rrz : forall W q x a v, eval_aexp W a v -> trans_exp_rel W (RRZ q x a) (SQIR.Rz (rrz_ang q) ((s x)+v))
+  | etrans_sr : forall W q x, trans_exp_rel W (SR q x) (gen_sr_gate s dim x q)
+  | etrans_srr : forall W q x, trans_exp_rel W (SR q x) (gen_srr_gate s dim x q)
+  | etrans_qft : forall W q x p, trans_qft s env dim x q = Some p -> trans_exp_rel W (QFT x q) p
+  | etrans_rqft : forall W q x p, trans_rqft s env dim x q = Some p -> trans_exp_rel W (QFT x q) p
+  | etrans_seq: forall W e1 e2 p1 p2,
+          trans_exp_rel W e1 p1 -> trans_exp_rel W e2 p2 -> trans_exp_rel W (QafnySyntax.Seq e1 e2) (SQIR.useq p1 p2).
+
+
+(*Defining trans_pexp using induction relation *)
+Inductive scom (U: nat -> Set) (dim : nat) : Set :=
+| skip : scom U dim
+| seq : scom U dim -> scom U dim -> scom U dim
+| uc : ucom U dim -> scom U dim
+| abort : nat -> scom U dim
+| meas : nat -> scom U dim -> scom U dim -> scom U dim.
+
+Arguments skip {U dim}.
+Arguments seq {U dim}.
+Arguments uc {U dim}.
+Arguments abort {U dim}.
+Arguments meas {U dim}.
+
+Definition from_ucom_s {U dim} (c : ucom U dim) : scom U dim := uc c.
+Coercion from_ucom_s : ucom >-> scom.
+
+Definition base_scom := scom base_Unitary.
+
+            
+Inductive trans_pexp_rel  {dim rmax:nat} : aenv -> (var -> nat) -> stack
+                    -> type_map -> pexp -> type_map -> option (base_scom dim) -> Prop :=
+  | trans_pexp_skip : forall env f W T,
+      trans_pexp_rel env f W T PSKIP T (Some skip)
+  | trans_pexp_let_num : forall env f W T T' x a v s e',
+      eval_aexp W a v ->
+      trans_pexp_rel (AEnv.add x (CT) env) f W T s T' (Some e') ->
+      trans_pexp_rel env f W T (Let x (AE a) s) T (Some (seq e' (abort x))).
+  | trans_pexp_let_meas : forall env f W T T' x y s cr,
+      trans_pexp_rel env f W T s T' (Some cr) ->
+      trans_pexp_rel env f W T (Let x (Meas y) s) avs (Some (trans_n_meas (vsize f y) (start f y) ; cr)).
   | trans_pexp_appsu_index : forall f avs x i,
       trans_pexp_rel dim f (AppSU (RH (Index x (Num i)))) avs (Some (from_ucom (SQIR.H (find_pos f (x,i)))))
   

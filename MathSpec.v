@@ -3,6 +3,10 @@ Require Import Dirac.
 Require Import BasicUtility.
 Local Open Scope nat_scope.
 
+Definition rz_ang (n:nat) : R := ((2%R * PI)%R / 2%R^n).
+
+Definition rrz_ang (n:nat) : R := ((2%R * PI)%R - ((2%R * PI)%R / 2%R^n)).
+
 (* Here we defined the specification of carry value for each bit. *)
 (* fb_push is to take a qubit and then push it to the zero position 
         in the bool function representation of a number. *)
