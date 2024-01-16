@@ -292,21 +292,11 @@ Proof.
   apply aenv_mapsto_equal with (s4 := s1) in H1; try easy.
   exists x0. easy.
 Qed.
+*)
 
-Lemma type_cbexp_class: forall env b t, type_cbexp env b t -> exists t', t = Mo t'.
+Lemma type_cbexp_class: forall env b t, type_cbexp env b t -> t = CT.
 Proof.
-  intros. induction H. unfold is_class_type in *.
-  destruct t1 eqn:eq1; try easy. destruct a0. destruct t2 eqn:eq2; try easy.
-  destruct a0. exists CT; easy.
-  exists MT. easy.
-  destruct t2 eqn:eq2; try easy. destruct a0.
-  exists MT. unfold meet_ktype in *. easy. exists MT. easy.
-  unfold is_class_type in *.
-  destruct t1 eqn:eq1; try easy. destruct a0. destruct t2 eqn:eq2; try easy.
-  destruct a0. exists CT; easy.
-  exists MT. easy.
-  destruct t2 eqn:eq2; try easy. destruct a0.
-  exists MT. unfold meet_ktype in *. easy. exists MT. easy.
+  intros. induction H; try easy.
 Qed.
 
 (*We assume a subset of allowed bexp syntax. *)
@@ -316,7 +306,8 @@ Axiom eval_bexp_exists : forall aenv n b s l l1 m f, type_bexp aenv b (QT n, l)
 Lemma type_bexp_gt : forall env b n l, type_bexp env b (QT n, l) -> n > 0.
 Proof.
   intros. remember (QT n, l) as t. induction H; try easy.
-  apply type_cbexp_class in H. destruct H; subst. inv Heqt. inv Heqt. lia.
+  inv Heqt.
+  apply type_cbexp_class in H. inv H. inv Heqt. lia.
   inv Heqt. lia. inv Heqt. lia. inv Heqt. lia. inv Heqt. lia.
   subst. apply IHtype_bexp. easy.
 Qed.
@@ -327,30 +318,19 @@ Proof.
   induction H; intros; subst;try easy.
   inv H0. easy. inv H0. easy.
   inv H0. easy. inv H0. easy. 
-  unfold is_class_type in *. easy.
-  unfold is_class_type in *. easy.
-  inv H0. unfold is_class_type in *. easy.
-  easy. unfold is_class_type in *. easy.
-  inv H0. unfold is_class_type in *. easy.
-  unfold is_class_type in *. easy.
-  easy.
 Qed.
 
 Lemma type_aexp_only: forall env b t t', type_aexp env b t
          -> type_aexp env b t' -> t = t'.
 Proof.
   intros. generalize dependent t'.
-  induction H; intros;subst. inv H1.
-  apply aenv_mapsto_always_same with (v1 := t0) in H0; try easy; subst. easy.
-  apply aenv_mapsto_always_same with (v1 := QT n) in H0; try easy; subst.
-  inv H; try easy.
+  induction H; intros;subst. inv H0. easy.
+  apply aenv_mapsto_always_same with (v1 := CT) in H3; try easy; subst.
   inv H0.
-  apply aenv_mapsto_always_same with (v1 := QT n) in H4; try easy; subst.
-  inv H2; try easy.
+  apply aenv_mapsto_always_same with (v1 := QT n) in H3; try easy; subst.
   apply aenv_mapsto_always_same with (v1 := QT n) in H3; try easy; subst.
   inv H3. easy.
   inv H0. easy.
-  inv H0. easy. easy.
   inv H2.
   apply IHtype_aexp1 in H5.
   apply IHtype_aexp2 in H7. subst.
@@ -359,20 +339,15 @@ Proof.
   apply IHtype_aexp1 in H5.
   apply IHtype_aexp2 in H7. subst.
   apply union_f_same with (t2 := t3) in H9; subst;try easy.
-  inv H0. easy. easy.
 Qed.
 
 Lemma type_cbexp_only: forall env b t t', type_cbexp env b t
          -> type_cbexp env b t' -> t = t'.
 Proof.
   intros. induction H. inv H0.
-  apply type_aexp_only with (t := (t0, l0)) in H; subst; try easy.
-  apply type_aexp_only with (t := (t3, l3)) in H1; subst; try easy.
-  inv H. inv H1. easy.
+  apply type_aexp_only with (t := (CT, l0)) in H; subst; try easy.
   inv H0.
-  apply type_aexp_only with (t := (t0, l0)) in H; subst; try easy.
-  apply type_aexp_only with (t := (t3, l3)) in H1; subst; try easy.
-  inv H. inv H1. easy.
+  apply type_aexp_only with (t := (CT, l0)) in H; subst; try easy.
 Qed.
 
 Lemma type_bexp_only: forall env b t t', type_bexp env b t
@@ -491,14 +466,13 @@ Lemma bexp_extend: forall aenv b n l l1 v v' s sa, type_bexp aenv b (QT n, l) ->
 Proof.
   intros. remember ((l ++ l1, v) :: s) as S1. remember ((l ++ l1, v') :: s) as S2.
   induction H0; simpl in *; subst; try easy. inv HeqS1. inv HeqS2.
-  apply beq_sem_1.
+  apply beq_sem_1. easy.
   inv HeqS1. inv HeqS2.
-  apply beq_sem_2.
+  apply beq_sem_2. easy.
   inv HeqS1. inv HeqS2.
-  apply blt_sem_1.
+  apply blt_sem_1. easy.
   inv HeqS1. inv HeqS2.
-  apply blt_sem_2.
-  inv HeqS2. constructor.
+  apply blt_sem_2. easy.
 Qed.
 
 Lemma bexp_extend_1: forall aenv b n l l1 v v' s, type_bexp aenv b (QT n, l) ->
@@ -507,16 +481,16 @@ Lemma bexp_extend_1: forall aenv b n l l1 v v' s, type_bexp aenv b (QT n, l) ->
 Proof.
   intros. remember ((l ++ l1, v) :: s) as S1. remember ((l ++ l1, v') :: s) as S2.
   induction H0; simpl in *; subst; try easy. inv HeqS1. inv HeqS2.
-  apply beq_sem_1.
+  apply beq_sem_1. easy.
   inv HeqS1. inv HeqS2.
-  apply beq_sem_2.
+  apply beq_sem_2. easy.
   inv HeqS1. inv HeqS2.
-  apply blt_sem_1.
+  apply blt_sem_1. easy.
   inv HeqS1. inv HeqS2.
-  apply blt_sem_2.
-  inv HeqS2. constructor.
+  apply blt_sem_2. easy.
 Qed.
 
+(*
 Lemma qfor_sem_local: forall rmax aenv s e s' s1,
    @qfor_sem rmax aenv s e s' -> @qfor_sem rmax aenv (fst s, (snd s)++s1) e (fst s', (snd s')++s1).
 Proof.
@@ -581,12 +555,11 @@ Lemma type_progress :
 Proof.
   intros.
   generalize dependent s.
-  induction H1; simpl in *; intros.
-
+  induction H0; simpl in *; intros.
  - apply env_state_eq_app in H as X1; try easy.
   destruct X1 as [s1 [s2 [X1 [X2 X3]]]].
-  destruct s0; simpl in * ; subst. apply env_state_eq_same_length in X1; try easy.
-  destruct X1. apply simple_tenv_app_l in H4 as X1.
+  subst. apply env_state_eq_same_length in X1; try easy.
+  destruct X1. apply simple_tenv_app_l in H3 as X1.
   apply qstate_wt_app_l in H3 as X2.
   destruct (IHlocus_system H2 X1 (s0,s1) H5 H0 X2) as [Y1 [sa [Y2 [Y3 [Y4 Y5]]]]].
   split. apply simple_tenv_app; try easy.
