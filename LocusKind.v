@@ -163,6 +163,38 @@ Fixpoint freeVarsPExp (p:pexp) :=
               | _ => nil
    end.
 
+Definition freeVarsNotCAExp (env:aenv) (a:aexp) :=
+   forall x t, In x (freeVarsAExp a) -> AEnv.MapsTo x t env -> t <> CT.
+
+Definition freeVarsNotCBExp (env:aenv) (a:bexp) :=
+   forall x t, In x (freeVarsBexp a) -> AEnv.MapsTo x t env -> t <> CT.
+
+Definition freeVarsNotCPExp (env:aenv) (a:pexp) :=
+   forall x t, In x (freeVarsPExp a) -> AEnv.MapsTo x t env -> t <> CT.
+
+
+Fixpoint simp_aexp (a:aexp) :=
+   match a with BA y => None
+             | Num a => Some a
+             | APlus c d => match (simp_aexp c,simp_aexp d) with (Some v1,Some v2) => Some (v1+v2)
+                                | (_,_) => None
+                            end
+             | AMult c d => match (simp_aexp c,simp_aexp d) with (Some v1,Some v2) => Some (v1*v2)
+                                | (_,_) => None
+                            end
+   end.
+
+Fixpoint simp_bexp (a:bexp) :=
+   match a with CB (CEq x y) => match (simp_aexp x,simp_aexp y) with (Some v1,Some v2) => Some (v1 =? v2)
+                                                                   | _ => None
+                                end
+              | CB (CLt x y) => match (simp_aexp x,simp_aexp y) with (Some v1,Some v2) => Some (v1 <? v2)
+                                                                   | _ => None
+                                end
+              | BNeg b => match simp_bexp b with None => None | Some b' => Some (negb b') end
+              | _ => None
+   end.
+
 Inductive eval_aexp : stack -> aexp -> nat -> Prop :=
     | var_sem : forall s x n, AEnv.MapsTo x n s -> eval_aexp s (BA x) n
     | mnum_sem: forall s n, eval_aexp s (Num n) n

@@ -278,7 +278,7 @@ Proof.
      apply H in H0. easy.
 Qed.
 
-
+(*
 Lemma kind_env_stack_equal: forall env s1 s2, AEnv.Equal s1 s2 -> kind_env_stack env s1 -> kind_env_stack env s2.
 Proof.
   intros. unfold kind_env_stack in *.
@@ -569,15 +569,15 @@ Proof.
   apply IHlocus_system1; try easy.
   apply simple_tenv_subst_right with (v := h) in H. easy.
 Qed.
+*)
 
-Lemma type_soundness : 
-    forall e rmax t aenv s tenv tenv', @env_state_eq tenv (snd s) -> kind_env_stack aenv (fst s) ->
+Lemma type_progress : 
+    forall e rmax t aenv s tenv tenv', @env_state_eq tenv s ->
       @locus_system rmax t aenv tenv e tenv' -> freeVarsNotCPExp aenv e
-       -> @qstate_wt (snd s) -> simple_tenv tenv ->
+       -> @qstate_wt s -> simple_tenv tenv ->
           simple_tenv tenv' /\
-          (exists s', @qfor_sem rmax aenv s e s'
-             /\ AEnv.Equal (fst s) (fst s') /\ @qstate_wt (snd s')
-            /\ env_state_eq tenv' (snd s')).
+          (exists s' r e', @step rmax aenv s e r s' e'
+             /\ @qstate_wt s').
 Proof.
   intros.
   generalize dependent s.
