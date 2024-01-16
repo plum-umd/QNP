@@ -185,42 +185,36 @@ Inductive trans_pexp_rel  {dim chi rmax:nat} : aenv -> (var -> nat)
   | trans_pexp_let_meas : forall env f T T' x y l s cr,
       AEnv.MapsTo y (QT chi) env ->
       trans_pexp_rel (AEnv.add x (CT) env) f ((l,CH)::T) s T' (Some cr) ->
-      trans_pexp_rel env f (((y,BNum 0,BNum chi)::l,CH)::T) (Let x (Meas y) s) T' (Some (meas (f y) chi ; cr; (abort (f y) chi))).
-  | trans_pexp_appsu_index : forall f avs x i,
-      trans_pexp_rel dim f (AppSU (RH (Index x (Num i)))) avs (Some (from_ucom (SQIR.H (find_pos f (x,i)))))
-  
-  | trans_pexp_appsu_rh_ba : forall f x avs,
-      trans_pexp_rel dim f (AppSU (RH (AExp (BA x)))) avs (Some (from_ucom (nH f dim x (vsize f x) 0)))
-  
-  | trans_pexp_appsu_sqft : forall f x avs,
-      trans_pexp_rel dim f (AppSU (SQFT x)) avs (Some (from_ucom (trans_qft f dim x (vsize f x))))
-  | trans_pexp_appsu_srqft : forall f x avs,
-      trans_pexp_rel dim f (AppSU (SRQFT x)) avs (Some (from_ucom (trans_rqft f dim x (vsize f x))))
-  | trans_pexp_appu : forall f l e avs e',
-      compile_exp_to_oqasm e = Some e' ->
-      trans_pexp_rel dim f (AppU l e) avs (Some (from_ucom (fst (fst (trans_exp f dim e' avs)))))
-  | trans_pexp_pseq : forall f e1 e2 avs e1' e2',
-      trans_pexp_rel dim f e1 avs (Some e1') ->
-      trans_pexp_rel dim f e2 avs (Some e2') ->
-      trans_pexp_rel dim f (PSeq e1 e2) avs (Some (e1' ; e2'))
-  | trans_pexp_if_beq : forall f x y v n s avs s',
-      trans_pexp_rel dim f s avs (Some s') ->
-      trans_pexp_rel dim f (If (BEq (AExp (BA x)) (AExp (Num n)) y (Num v)) s)
-              avs (Some ((fst (fst (trans_exp f dim (rz_eq_circuit x (vsize f x) (y, v) n) avs))) ; s'))
-  | trans_pexp_if_blt : forall f x y v n s avs s',
-      trans_pexp_rel dim f s avs (Some s') ->
-      trans_pexp_rel dim f (If (BLt (AExp (BA x)) (AExp (Num n)) y (Num v)) s)
-            avs (Some (((fst (fst (trans_exp f dim (rz_eq_circuit x (vsize f x) (y, v) n) avs)))); s'))
-   
-  | trans_pexp_if_btest : forall f x v s avs s' ce,
-      trans_pexp_rel dim f s avs (Some (uc s')) ->
-      Some (from_ucom (UnitaryOps.control (find_pos f (x, v)) s')) = ce ->
-            trans_pexp_rel dim f (If (BTest x (Num v)) s) avs ce.
-  | trans_pexp_rel_Default : forall f dim e s avs,
-            (* Need to Define default case for remaining others
-              Trans_pexp_rel f dim e s avs None   * ) . 
+      trans_pexp_rel env f (((y,BNum 0,BNum chi)::l,CH)::T) (Let x (Meas y) s) T' (Some (meas (f y) chi ; cr; (abort (f y) chi)))
+  | trans_pexp_appsu_index : forall env f T T' x i l,
+    trans_pexp_rel env f T (AppSU (RH (Index x (Num i)))) T' (Some (SQIR.H ((f x) + i)))
+  | trans_pexp_appsu_rh_ba : forall env f T T' x n l,
+    trans_pexp_rel env f T (AppSU (RH (AExp (BA x)))) (Some (nH (f x) n 0))
+  | trans_pexp_appsu_sqft : forall env f T x,
+    trans_pexp_rel env f T (AppSU (SQFT x)) (Some (trans_qft (f x) (vsize f x)))
+  | trans_pexp_appsu_srqft : forall env f T x,
+    trans_pexp_rel env f T (AppSU (SRQFT x)) (Some (trans_rqft (f x) (vsize f x)))
+  | trans_pexp_appu : forall env f T l e e',
+    compile_exp_to_oqasm e = Some e' ->
+    trans_pexp_rel env f T (AppU l e) (Some (trans_exp (f l) e'))
+  | trans_pexp_pseq : forall env f T e1 e2 e1' e2',
+    trans_pexp_rel env f T e1 (Some e1') ->
+    trans_pexp_rel env f T e2 (Some e2') ->
+    trans_pexp_rel env f T (PSeq e1 e2) (Some (e1' ; e2'))
+  | trans_pexp_if_beq : forall env f T x y v n s e',
+    trans_pexp_rel env f T s (Some e') ->
+    trans_pexp_rel env f T (If (BEq (AExp (BA x)) (AExp (Num n)) y (Num v)) s) 
+        (Some ((trans_exp (f x) (rz_eq_circuit x (vsize f x) (y, v) n)) ; e'))
+  | trans_pexp_if_blt : forall env f T x y v n s e',
+    trans_pexp_rel env f T s (Some e') ->
+    trans_pexp_rel env f T (If (BLt (AExp (BA x)) (AExp (Num n)) y (Num v)) s) 
+        (Some ((trans_exp (f x) (rz_lt_circuit x (vsize f x) (y, v) n)) ; e'))
+        | trans_pexp_if_btest : forall env f T x v s e',
+    trans_pexp_rel env f T s (Some (uc e')) ->
+    trans_pexp_rel env f T (If (BTest x (Num v)) s) 
+        (Some (uc (control (f x + v) e'))).
 
-Function trans_pexp (f:OQASMProof.vars) (dim:nat) (e:pexp) (avs: nat -> posi) {struct e}: (option (base_com dim)) :=
+(*Function trans_pexp (f:OQASMProof.vars) (dim:nat) (e:pexp) (avs: nat -> posi) {struct e}: (option (base_com dim)) :=
   match e with PSKIP => Some skip
              | Let x (AE (Num n)) s => trans_pexp f dim (subst_pexp s x n) avs
              | Let x (AE (MNum r n)) s => trans_pexp f dim s avs
@@ -266,7 +260,7 @@ Function trans_pexp (f:OQASMProof.vars) (dim:nat) (e:pexp) (avs: nat -> posi) {s
                   end
 
        | _ => None
-  end.
+ end.*)
 
 
 (*
@@ -299,8 +293,7 @@ Definition trans_state (avs : nat -> posi) (rmax : nat) (f : posi -> val) : (nat
 function: posi -> nat
                  | Nval (p:C) (r:rz_val)
                  | Hval (b:nat -> rz_val)
-                 | Cval (m:nat) (b : nat -> C * rz_val).
-*)
+                 | Cval (m:nat) (b : nat -> C * rz_val).*)
 
 Check vsum.
 
