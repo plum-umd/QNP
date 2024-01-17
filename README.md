@@ -34,7 +34,7 @@ opam install coq-quickchick
 
 ## Compiling & Running Qafny
 
-Run `make` in the top-level directory to compile our Coq proofs. See the README in the experiments directory for information on how to run QNP to generate the data in our paper.
+Run `make` in the top-level directory to compile our Coq proofs. externals directory contains the coq files from SQIR and QWIRE that support the development of the Qafny proof.
 
 ## Directory Contents
 
