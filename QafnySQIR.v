@@ -8,9 +8,6 @@ Require Import QPE.
 Require Import BasicUtility.
 Require Import Classical_Prop.
 Require Import MathSpec.
-Require Import OQASM.
-Require Import CLArith.
-Require Import RZArith.
 Require Import QafnySyntax.
 Require Import LocusDef.
 Require Import LocusKind.
@@ -95,16 +92,62 @@ Definition diff (f : var -> nat) (dim:nat) (x:var) (n : nat) : base_com dim :=
 
 
 (* M - x *)
-Definition rz_sub_anti (x:var) (n:nat) (M:nat -> bool) := OQASM.Seq (negator0 n x) (rz_adder x n M).
+Fixpoint negator0 i x : exp :=
+  match i with
+  | 0 => SKIP x (Num 0)
+  | S i' => Seq (negator0 i' x) (X x (Num i'))
+  end.
+
+Fixpoint rz_adder' (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
+  match n with 
+  | 0 => SKIP x (Num 0)
+  | S m => Seq (rz_adder' x m size M) (if M m then SR (size - n) x else SKIP x (Num m))
+  end.
+
+Definition rz_adder (x:var) (n:nat) (M:nat -> bool) := rz_adder' x n n M.
+
+Definition rz_sub_anti (x:var) (n:nat) (M:nat -> bool) := Seq (negator0 n x) (rz_adder x n M).
+
+Fixpoint rz_sub' (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
+  match n with 
+  | 0 => SKIP x (Num 0)
+  | S m => Seq (rz_sub' x m size M) (if M m then SRR (size - n) x else SKIP x (Num m))
+  end.
+
+Definition rz_sub (x:var) (n:nat) (M:nat -> bool) := rz_sub' x n n M.
+
+Definition CNOT (x: var) (i:aexp) (y : var) (c:aexp) := CU x i (X y c).
+
+Definition rz_compare_half (x:var) (n:nat) (ca:var) (cv:aexp) (M:nat) := 
+   Seq (Seq (rz_sub x n (nat2fb M)) (RQFT x n)) (CNOT x (Num 0) ca cv).
+
+Fixpoint inv_exp p :=
+  match p with
+  | SKIP x a => SKIP x a
+  | X x n => X x n
+  | CU x n p => CU x n (inv_exp p)
+  | SR n x => SRR n x
+  | SRR n x => SR n x
+ (* | HCNOT p1 p2 => HCNOT p1 p2 *)
+  | RZ q x p1 => RRZ q x p1
+  | RRZ q x p1 => RZ q x p1
+  | QFT x b => RQFT x b
+  | RQFT x b => QFT x b
+  (*| H x => H x*)
+  | Seq p1 p2 => Seq (inv_exp p2) (inv_exp p1)
+   end.
 
 (* M <? x *)
-Definition rz_compare_anti (x:var) (n:nat) (c:posi) (M:nat) := 
- OQASM.Seq (rz_compare_half x n c M) (inv_exp ( OQASM.Seq (rz_sub_anti x n (nat2fb M)) (OQASM.RQFT x n))).
+Definition rz_compare_anti (x:var) (n:nat) (ca:var) (cv:aexp) (M:nat) := 
+ Seq (rz_compare_half x n ca cv M) (inv_exp (Seq (rz_sub_anti x n (nat2fb M)) (RQFT x n))).
 
-Definition rz_eq_circuit (x:var) (n:nat) (c:posi) (M:nat) :=
-   OQASM.Seq (OQASM.Seq (OQASM.X c) (rz_compare_anti x n c M)) (OQASM.Seq (OQASM.X c) (rz_compare x n c M)).
+Definition rz_compare (x:var) (n:nat) (ca:var) (cv:aexp) (M:nat) := 
+  Seq (rz_compare_half x n ca cv M) (inv_exp (Seq (rz_sub x n (nat2fb M)) (RQFT x n))).
 
-Definition rz_lt_circuit (x:var) (n:nat) (c:posi) (M:nat) := rz_compare x n c M.
+Definition rz_eq_circuit (x:var) (n:nat) (ca:var) (cv:aexp) (M:nat) :=
+   Seq (Seq (X ca cv) (rz_compare_anti x n ca cv M)) (Seq (X ca cv) (rz_compare x n ca cv M)).
+
+Definition rz_lt_circuit (x:var) (n:nat) (ca:var) (cv:aexp) (M:nat) := rz_compare x n ca cv M.
 
 Section mergeSort.
   Variable A : Type.
@@ -168,14 +211,16 @@ Inductive trans_pexp_rel  {dim chi rmax:nat} : aenv -> (var -> nat)
     trans_pexp_rel env f T e1 (Some e1') ->
     trans_pexp_rel env f T e2 (Some e2') ->
     trans_pexp_rel env f T (PSeq e1 e2) (Some (e1' ; e2'))
-  | trans_pexp_if_beq : forall env f T x y v n s e',
+  | trans_pexp_if_beq : forall env f T x y v n s ce e',
     trans_pexp_rel env f T s (Some e') ->
+    @trans_exp_rel dim rmax env f (rz_eq_circuit x (f x) y (Num v) n) ce ->
     trans_pexp_rel env f T (If (BEq (AExp (BA x)) (AExp (Num n)) y (Num v)) s) 
-        (Some ((trans_exp (f x) (rz_eq_circuit x (vsize f x) (y, v) n)) ; e'))
-  | trans_pexp_if_blt : forall env f T x y v n s e',
+        (Some (ce ; e'))
+  | trans_pexp_if_blt : forall env f T x y v n s ce e',
     trans_pexp_rel env f T s (Some e') ->
+    @trans_exp_rel dim rmax env f (rz_lt_circuit x (f x) y (Num v) n) ce ->
     trans_pexp_rel env f T (If (BLt (AExp (BA x)) (AExp (Num n)) y (Num v)) s) 
-        (Some ((trans_exp (f x) (rz_lt_circuit x (vsize f x) (y, v) n)) ; e'))
+        (Some (ce ; e'))
         | trans_pexp_if_btest : forall env f T x v s e',
     trans_pexp_rel env f T s (Some (uc e')) ->
     trans_pexp_rel env f T (If (BTest x (Num v)) s) 
