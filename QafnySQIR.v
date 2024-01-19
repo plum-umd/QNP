@@ -312,6 +312,8 @@ Check find_pos.
 
 Check allfalse.
 
+Check fold_left.
+
      
 Definition compile_val (v: val) (r_max: nat): Vector 2 :=
   match v with
@@ -340,7 +342,7 @@ Lemma trans_pexp_sem :
 Proof.
 
 (* n is the length, f is the mapping from posi to nat, s is a locus, v is the virtual vector. *)
-Check fold_left.
+
 
 (*Fixpoint perm_range (f:OQASMProof.vars) (v:rz_val) (x:var) (i:nat) (j:nat)  (n:nat) (acc:rz_val) :=
    match n with 0 => acc
