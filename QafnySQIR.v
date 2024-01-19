@@ -275,8 +275,7 @@ Inductive trans_pexp_rel  {dim chi rmax:nat} : aenv -> (var -> nat)
  end.*)
 
 
-(*
-Inductive state_elem :=
+(*Inductive state_elem :=
                  | Nval (p:C) (r:rz_val)
                  | Hval (b:nat -> rz_val)
                  | Cval (m:nat) (b : nat -> C * rz_val).
@@ -313,11 +312,37 @@ Check find_pos.
 
 Check allfalse.
 
+     
+Definition compile_val (v: val) (r_max: nat): Vector 2 :=
+  match v with
+  | nval b r => Cexp (2 * PI * (turn_angle r r_max)) .* ∣ Nat.b2n b ⟩
+  | qval q r => RtoC (/ √2) * Cexp (2 * PI * (turn_angle q r_max)) .* (∣0⟩ .+ (Cexp (2 * PI * (turn_angle r r_max))) .* ∣1⟩)
+  end.
+
+Definition outer_product (v : Vector 2) : Matrix 2 2 := v × (adjoint v).
+
+
+Definition trans_state (avs : nat -> posi) (rmax : nat) (f : posi -> val) (n : nat) : Matrix (2^n) (2^n) :=
+  let state_vectors := map (fun i => compile_val (f (avs i)) rmax) (range 0 n) in
+     let full_state := fold_left tensor (Zero 2) state_vectors in (*Issue with tensor need to recheck the code.*)
+  outer_product full_state.
+
+Lemma trans_pexp_sem :
+  forall dim chi rmax t aenv tenv e tenv',
+    locus_system rmax t aenv tenv e tenv' ->
+    forall (n : nat) (S S' : state) (e' : base_com dim) (r : R),
+    steps n aenv S e r S' ->
+    trans_pexp_rel aenv tenv e e' ->
+    let phi := trans_state S in
+    let phi' := c_eval e' phi in
+    trans_state S' = phi' ->
+    r * phi' ⊆ phi.
+Proof.
 
 (* n is the length, f is the mapping from posi to nat, s is a locus, v is the virtual vector. *)
 Check fold_left.
 
-Fixpoint perm_range (f:OQASMProof.vars) (v:rz_val) (x:var) (i:nat) (j:nat)  (n:nat) (acc:rz_val) :=
+(*Fixpoint perm_range (f:OQASMProof.vars) (v:rz_val) (x:var) (i:nat) (j:nat)  (n:nat) (acc:rz_val) :=
    match n with 0 => acc
               | S m => update (perm_range f v x i j m acc) (find_pos f (x,i+m)) (v (j+m))
    end.
@@ -414,6 +439,6 @@ intros. generalize dependent tenv. generalize dependent tenv'.
 - admit.
 - admit. 
 - inv H2.
-Admitted.
+Admitted.*)
 
  
