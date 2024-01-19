@@ -325,8 +325,8 @@ Definition outer_product (v : Vector 2) : Matrix 2 2 := v × (adjoint v).
 
 
 Definition trans_state (avs : nat -> posi) (rmax : nat) (f : posi -> val) (n : nat) : Matrix (2^n) (2^n) :=
-  let state_vectors := map (fun i => compile_val (f (avs i)) rmax) (range 0 n) in
-     let full_state := fold_left tensor (Zero 2) state_vectors in (*Issue with tensor need to recheck the code.*)
+  let state_vectors := map (fun i => compile_val (f (avs i)) rmax) (seq 0 n) in
+  let full_state := fold_left (fun acc vec => acc ⊗ vec) state_vectors (I 1) in (* Using I 1 as the initial state *)
   outer_product full_state.
 
 Lemma trans_pexp_sem :
