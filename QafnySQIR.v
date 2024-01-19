@@ -315,19 +315,39 @@ Check allfalse.
 Check fold_left.
 
      
-Definition compile_val (v: val) (r_max: nat): Vector 2 :=
-  match v with
-  | nval b r => Cexp (2 * PI * (turn_angle r r_max)) .* ∣ Nat.b2n b ⟩
-  | qval q r => RtoC (/ √2) * Cexp (2 * PI * (turn_angle q r_max)) .* (∣0⟩ .+ (Cexp (2 * PI * (turn_angle r r_max))) .* ∣1⟩)
-  end.
+Definition compile_val (v: val) (r_max : nat) : Vector 2 := 
+   match v with 
+   | nval b r => Cexp (2*PI * (turn_angle r r_max)) .* ∣ Nat.b2n b ⟩
+   | qval q r => RtoC(/ √ 2) * Cexp (2*PI * (turn_angle q r_max)) .* (∣0⟩ .+ (Cexp (2*PI * (turn_angle r r_max))) .* ∣1⟩)
+   end.
 
-Definition outer_product (v : Vector 2) : Matrix 2 2 := v × (adjoint v).
+Definition outer_product {n : nat} (v : Vector n) : Matrix n n := v × (adjoint v).
+     
+(*To generate vector states*)
+Definition gstate_vectors (avs : nat -> posi) (rmax : nat) (f : posi -> val) (n : nat) : list (Vector 2) :=
+  map (fun i => compile_val (f (avs i)) rmax) (seq 0 n).
+
+(* Function to calculate the dimension of a matrix. *)
+Definition dim_of (m : nat) : nat := 2 ^ m.
+     
+(*Function to combine the vectors into a full quantum state *)
+Definition cfull_state (state_vectors : list (Vector 2)) : 
+      Matrix (dim_of (length state_vectors)) (dim_of (length state_vectors)) :=
+      fold_left (fun (acc : Matrix (dim_of (length state_vectors)) 
+                      (dim_of (length state_vectors))) (vec : Vector 2) => acc ⊗ vec) 
+                         state_vectors (I (dim_of (length state_vectors))).
 
 
-Definition trans_state (avs : nat -> posi) (rmax : nat) (f : posi -> val) (n : nat) : Matrix (2^n) (2^n) :=
-  let state_vectors := map (fun i => compile_val (f (avs i)) rmax) (seq 0 n) in
-  let full_state := fold_left (fun acc vec => acc ⊗ vec) state_vectors (I 1) in (* Using I 1 as the initial state *)
+Check gstate_vectors.
+Check cfull_state.
+Check outer_product.
+
+
+Definition trans_state (avs : nat -> posi) (rmax : nat) (f : posi -> val) (n : nat) : Matrix (dim_of n) (dim_of n) :=
+  let state_vectors := gstate_vectors avs rmax f n in
+  let full_state := cfull_state state_vectors in
   outer_product full_state.
+
 
 Lemma trans_pexp_sem :
   forall dim chi rmax t aenv tenv e tenv',
