@@ -193,7 +193,7 @@ Fixpoint subst_type_map (l:type_map) (x:var) (n:nat) :=
           | (y,v)::yl => (subst_locus y x n,v)::(subst_type_map yl x n)
   end.
 
-Inductive mode := C | Q.
+Inductive mode := CM | QM.
 
 Inductive locus_system {rmax:nat}
            : mode -> aenv -> type_map -> pexp -> type_map -> Prop :=
@@ -205,8 +205,8 @@ Inductive locus_system {rmax:nat}
     | assign_ses : forall q env x a e T T', type_aexp env a (CT,nil) -> ~ AEnv.In x env ->
               locus_system q (AEnv.add x (CT) env) T e T' -> locus_system q env T (Let x a e) T'
     | meas_m1 : forall env x y e n l T T', AEnv.MapsTo y (QT n) env -> ~ AEnv.In x env ->
-               locus_system C (AEnv.add x (CT) env) ((l,CH)::T) e T'
-              -> locus_system C env (((y,BNum 0,BNum n)::l,CH)::T) (Let x (Meas y) e) T'
+               locus_system CM (AEnv.add x (CT) env) ((l,CH)::T) e T'
+              -> locus_system CM env (((y,BNum 0,BNum n)::l,CH)::T) (Let x (Meas y) e) T'
     | appu_ses_nor : forall q env l e n, type_exp env e (QT n,l) -> oracle_prop env l e ->
                            locus_system q env ([(l, TNor)]) (AppU l e) ([(l, TNor)])
 
@@ -242,7 +242,7 @@ Inductive locus_system {rmax:nat}
                 locus_system CT env T e T' -> locus_system CT env T (If b e) T'
 *)
     | qif_ses_ch: forall q env b n l l1 e, type_bexp env b (QT n,l) ->
-                locus_system Q env ([(l1,CH)]) e ([(l1,CH)])
+                locus_system QM env ([(l1,CH)]) e ([(l1,CH)])
              -> locus_system q env ([(l++l1,CH)]) (If b e) ([(l++l1,CH)])
 
  (*   | dif_ses_ch: forall q env T p n l l' t, type_vari env p (QT n,l) -> find_type T l (Some (l',t)) ->

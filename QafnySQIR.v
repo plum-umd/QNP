@@ -2,7 +2,7 @@ Require Import Reals.
 Require Import Psatz.
 Require Import Complex.
 Require Import SQIR.
-Require Import VectorStates NDSem UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat Permutation. 
+Require Import VectorStates DensitySem UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat Permutation. 
 Require Import Dirac.
 Require Import QPE.
 Require Import BasicUtility.
@@ -342,23 +342,70 @@ Check gstate_vectors.
 Check cfull_state.
 Check outer_product.
 
+Fixpoint perm_range (f: var -> nat) (v:rz_val) (x:var) (i:nat) (j:nat)  (n:nat) (acc:rz_val) :=
+   match n with 0 => acc
+              | S m => update (perm_range f v x i j m acc) ((f x) + (i+m)) (v (j+m))
+   end.
 
-Definition trans_state (avs : nat -> posi) (rmax : nat) (f : posi -> val) (n : nat) : Matrix (dim_of n) (dim_of n) :=
-  let state_vectors := gstate_vectors avs rmax f n in
-  let full_state := cfull_state state_vectors in
-  outer_product full_state.
+Fixpoint perm_vector (f:var -> nat) (s:locus) (v:rz_val) (j:nat) := 
+  match s with [] => Some allfalse
+             | (x,BNum l, BNum r)::ne =>
+          if l <=? r then
+              (match perm_vector f ne v (j+(r-l))
+                   with None => None
+                      | Some acc => Some (perm_range f v x l j (r-l) acc)
+               end)
+          else None
+             | _ => None
+  end.
 
+Fixpoint gen_qfun {d} (f: var -> nat) (s:locus) (size:nat) (m:nat) (b : nat -> C * rz_val)
+   : option (nat -> Vector d) :=
+   match m with 0 => Some (fun q => Zero)
+              | S ma => match perm_vector f s (snd (b ma)) 0
+                            with None => None
+                               | Some acc =>
+                         match gen_qfun f s size ma b
+                              with None => None
+                               | Some new_f =>
+                Some (update new_f ma ((fst (b ma)).* (@basis_vector d (a_nat2fb acc size))))
+                         end
+                        end
+   end.
+
+Definition trans_qstate (f:var -> nat) (s:qstate) (dim:nat) : option (Vector dim):=
+    match s with (sa,Cval m b)::nil =>
+      match ses_len sa with None => None
+                            | Some na => 
+           match @gen_qfun (2^na) f sa na m b
+              with None => None
+                 | Some acc => Some (@vsum (2^na) m acc)
+           end
+      end
+              | _ => None
+   end.
+
+Definition trans_state (f : var -> nat) (s:qstate) (dim : nat) : option (Density dim) :=
+  match trans_qstate f s dim with None => None 
+         | Some st => Some (st† × st)
+  end.
+
+Definition env_eq (aenv:aenv) (f: var -> nat):= forall x n env, AEnv.MapsTo x (QT n) env -> f x = n.
 
 Lemma trans_pexp_sem :
-  forall dim chi rmax t aenv tenv e tenv',
-    locus_system rmax t aenv tenv e tenv' ->
-    forall (n : nat) (S S' : state) (e' : base_com dim) (r : R),
-    steps n aenv S e r S' ->
-    trans_pexp_rel aenv tenv e e' ->
-    let phi := trans_state S in
+  forall dim chi rmax t aenv f tenv e tenv' phi,
+    chi > 0 ->
+    dim > 0 ->
+    env_eq aenv f ->
+    @locus_system rmax t aenv tenv e tenv' ->
+    forall (n : nat) (S S' : qstate) (e' : base_com dim) (r : R),
+    @steps rmax n aenv S e r S' ->
+    @trans_pexp_rel dim chi rmax aenv f tenv e e' ->
+    trans_state f S dim = Some phi ->
     let phi' := c_eval e' phi in
-    trans_state S' = phi' ->
-    r * phi' ⊆ phi.
+    trans_state f S' dim = Some phi' /\ r .* phi' = phi.
+     (*I wrote here = , because of the subset operator is not right.
+        You need to define it later the meaning of r .* phi' is subset to phi *)
 Proof.
 
 (* n is the length, f is the mapping from posi to nat, s is a locus, v is the virtual vector. *)
