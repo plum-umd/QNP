@@ -186,16 +186,16 @@ Inductive trans_exp_rel {dim rmax:nat} {env:aenv} {s:var -> nat}: exp -> (base_u
           trans_exp_rel e1 p1 -> trans_exp_rel e2 p2 -> trans_exp_rel (QafnySyntax.Seq e1 e2) (SQIR.useq p1 p2).
             
 Inductive trans_pexp_rel  {dim chi rmax:nat} : aenv -> (var -> nat)
-                    -> type_map -> pexp -> (base_com dim) -> Prop :=
-  | trans_pexp_skip : forall env f T,
-      trans_pexp_rel env f T PSKIP (skip)
-  | trans_pexp_let_num : forall env f T x v s e',
-      trans_pexp_rel (AEnv.add x (CT) env) f T s (e') ->
-      trans_pexp_rel env f T (Let x (AE (Num v)) s) (e')
-  | trans_pexp_let_meas : forall env f T x y l s cr,
+                    -> type_map-> pexp -> type_map -> (base_com dim * pexp) -> Prop :=
+  | trans_pexp_skip : forall env f T T',
+      trans_pexp_rel env f T PSKIP T' (skip,PSKIP)
+  | trans_pexp_let_num : forall env f T T' x v s e' e'',
+      trans_pexp_rel (AEnv.add x (CT) env) f T' s T' (e', e'') ->
+      trans_pexp_rel env f T (Let x (AE (Num v)) s) T' (e', e'')
+  |trans_pexp_let_meas : forall env f T x y l s T' e' e'',
       AEnv.MapsTo y (QT chi) env ->
-      trans_pexp_rel (AEnv.add x (CT) env) f ((l,CH)::T) s (cr) ->
-      trans_pexp_rel env f (((y,BNum 0,BNum chi)::l,CH)::T) (Let x (Meas y) s) ((trans_n_meas (f y) chi ; cr))
+      trans_pexp_rel (AEnv.add x (CT) env) f ((l,CH)::T) s T' (e' , e'') ->
+      trans_pexp_rel env f (((y,BNum 0,BNum chi)::l,CH)::T) (Let x (Meas y) s) T' ((trans_n_meas (f y) chi ; e'), e'').
   | trans_pexp_appsu_index : forall env f T x i,
     trans_pexp_rel env f T (AppSU (RH (Index x (Num i)))) ((from_ucom (SQIR.H ((f x) + i))))
   | trans_pexp_appsu_rh_ba : forall env f T x n,
