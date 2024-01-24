@@ -212,11 +212,11 @@ Inductive trans_pexp_rel  {dim chi rmax:nat} : aenv -> (var -> nat)
 | trans_pexp_if_blt : forall env f T T' x y v n s ce e' e'',
       trans_pexp_rel env f T' s T' (e', e'') ->
       @trans_exp_rel dim rmax env f (rz_lt_circuit x (f x) y (Num v) n) ce ->
-      trans_pexp_rel env f T (If (BLt (AExp (BA x)) (AExp (Num n)) y (Num v)) s) T' ((ce ; e'), e'').
-        | trans_pexp_if_btest : forall env f T x v s e',
-    trans_pexp_rel env f T s ((uc e')) ->
-    trans_pexp_rel env f T (If (BTest x (Num v)) s) 
-        ((uc (control (f x + v) e'))).
+      trans_pexp_rel env f T (If (BLt (AExp (BA x)) (AExp (Num n)) y (Num v)) s) T' ((ce ; e'), e'')
+| trans_pexp_if_btest : forall env f T T' x v s e' e'',
+    trans_pexp_rel env f T s T' ((uc e'),e'') ->
+    trans_pexp_rel env f T (If (BTest x (Num v)) s) T'
+        ((uc (control (f x + v) e')),e'').
 
 (*Function trans_pexp (f:OQASMProof.vars) (dim:nat) (e:pexp) (avs: nat -> posi) {struct e}: (option (base_com dim)) :=
   match e with PSKIP => Some skip
